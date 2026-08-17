@@ -1,0 +1,95 @@
+# Render deployment (ADR-010). Single EU region — Frankfurt.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# NOT DEPLOYED IN PHASE 0. This file is written so the deployment target is
+# reviewable alongside the architecture, but no environment is created until
+# a later phase.
+#
+# CRITICAL: the `worker` service must be always-on. On a plan that spins
+# services down when idle, the reconciliation sweepers stop and the entire
+# scheduling correctness guarantee silently disappears (ADR-005).
+# ─────────────────────────────────────────────────────────────────────────────
+
+databases:
+  - name: lpr-postgres
+    databaseName: lpr
+    user: lpr
+    region: frankfurt
+    plan: basic-256mb # raise before pilot; must support PITR (NFR-18)
+
+services:
+  - type: web
+    name: lpr-api
+    runtime: node
+    region: frankfurt
+    plan: starter # NOT free — free spins down
+    buildCommand: pnpm install --frozen-lockfile && pnpm build --filter=@lpr/api...
+    # Migrations run before the new version serves traffic, and are always
+    # backward-compatible with the previous release so rollback is safe.
+    preDeployCommand: pnpm --filter=@lpr/db migrate:up
+    startCommand: pnpm --filter=@lpr/api start
+    healthCheckPath: /ready
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase: { name: lpr-postgres, property: connectionString }
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: PARTICIPANT_ORIGIN
+        sync: false
+      - key: RESEARCHER_ORIGIN
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+
+  - type: worker
+    name: lpr-worker
+    runtime: node
+    region: frankfurt
+    plan: starter # MUST be always-on — see the warning above
+    buildCommand: pnpm install --frozen-lockfile && pnpm build --filter=@lpr/worker...
+    startCommand: pnpm --filter=@lpr/worker start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase: { name: lpr-postgres, property: connectionString }
+      - key: SWEEP_INTERVAL_SECONDS
+        value: "60"
+      - key: SENTRY_DSN
+        sync: false
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+
+  - type: web
+    name: lpr-participant
+    runtime: node
+    region: frankfurt
+    plan: starter
+    buildCommand: pnpm install --frozen-lockfile && pnpm build --filter=@lpr/participant...
+    startCommand: pnpm --filter=@lpr/participant start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
+
+  - type: web
+    name: lpr-researcher
+    runtime: node
+    region: frankfurt
+    plan: starter
+    buildCommand: pnpm install --frozen-lockfile && pnpm build --filter=@lpr/researcher...
+    startCommand: pnpm --filter=@lpr/researcher start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
