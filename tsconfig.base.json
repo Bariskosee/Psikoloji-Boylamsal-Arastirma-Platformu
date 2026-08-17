@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "_comment": "Strictness and shared options only. Module settings live in packages/config/tsconfig.node.json (backend, CommonJS) and packages/config/tsconfig.next.json (frontends, bundler resolution).",
+  "compilerOptions": {
+    "target": "ES2023",
+
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+
+    // Deliberately OFF. TypeScript writes tsconfig.tsbuildinfo next to the
+    // tsconfig, not inside outDir, so deleting dist/ leaves the build info
+    // behind — tsc then concludes there is nothing to do and emits NOTHING
+    // while exiting 0. Downstream packages fail with a confusing
+    // "cannot find module" instead of a build error.
+    //
+    // Turborepo already caches builds by content hash and restores outputs
+    // correctly, so this second, inconsistent cache layer buys nothing.
+    "incremental": false,
+
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true
+  },
+  "exclude": ["node_modules", "dist", ".next", ".turbo"]
+}
