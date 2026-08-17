@@ -1,0 +1,25 @@
+{
+  "name": "@lpr/domain",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Pure domain logic: protocol timing, state transitions, compliance, missingness, export shaping. Zero I/O.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@lpr/contracts": "workspace:*",
+    "luxon": "^3.5.0"
+  },
+  "devDependencies": {
+    "@lpr/config": "workspace:*",
+    "@types/luxon": "^3.4.2",
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

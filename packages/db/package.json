@@ -1,0 +1,29 @@
+{
+  "name": "@lpr/db",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Drizzle schema, migrations, and database connectivity. Server-side only — never imported by a frontend.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "migrate:generate": "drizzle-kit generate",
+    "migrate:up": "drizzle-kit migrate",
+    "migrate:check": "drizzle-kit check"
+  },
+  "dependencies": {
+    "@lpr/contracts": "workspace:*",
+    "drizzle-orm": "^0.38.2",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "@lpr/config": "workspace:*",
+    "@types/node": "^22.10.2",
+    "@types/pg": "^8.11.10",
+    "drizzle-kit": "^0.30.1",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

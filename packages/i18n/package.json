@@ -1,0 +1,30 @@
+{
+  "name": "@lpr/i18n",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Interface translation catalogs (en, tr) and locale negotiation",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./messages/*": "./messages/*"
+  },
+  "files": [
+    "dist",
+    "messages"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@lpr/contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "@lpr/config": "workspace:*",
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

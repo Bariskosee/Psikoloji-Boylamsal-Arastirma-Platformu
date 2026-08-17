@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "_comment": "Backend and shared packages. CommonJS output so NestJS consumes it without interop friction.",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023"],
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "types": ["node"],
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
+  }
+}
