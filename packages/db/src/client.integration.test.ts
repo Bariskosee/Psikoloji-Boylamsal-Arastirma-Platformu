@@ -11,8 +11,22 @@ import { createPool, ping } from "./client.js";
  *
  * Run with: pnpm --filter=@lpr/db test:integration
  */
-const connectionString =
-  process.env["DATABASE_URL"] ?? "postgresql://lpr:lpr_local_dev_only@localhost:5432/lpr";
+/**
+ * No default. A hardcoded fallback here would silently connect somewhere other
+ * than the environment under test — which is exactly how this suite once passed
+ * locally (matching the developer's Docker) while failing in CI. An integration
+ * test that cannot see its target must fail loudly, not improvise one.
+ */
+const connectionString = process.env["DATABASE_URL"];
+if (!connectionString) {
+  throw new Error(
+    "DATABASE_URL is required for integration tests.\n" +
+      "  Local:  pnpm db:up && cp .env.example .env\n" +
+      "  CI:     provide it in the job environment\n" +
+      "Note: turbo.json must also declare DATABASE_URL under the task's `env`, " +
+      "or Turborepo strips it before the test process starts.",
+  );
+}
 
 const pool = createPool({ connectionString, max: 2 });
 
