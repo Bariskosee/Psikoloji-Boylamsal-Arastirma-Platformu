@@ -9,3 +9,7 @@ packages:
 allowBuilds:
   esbuild: true
   sharp: true
+
+# Refuse to install on an unsupported Node version rather than only warning.
+# pnpm 11 reads these settings here, not from .npmrc.
+engineStrict: true

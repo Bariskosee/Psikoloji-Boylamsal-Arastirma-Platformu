@@ -2,13 +2,13 @@
   "name": "@lpr/api",
   "version": "0.0.0",
   "private": true,
-  "description": "NestJS API — HTTP boundary, authn/authz, validation, transaction boundaries",
+  "description": "NestJS API \u2014 HTTP boundary, authn/authz, validation, transaction boundaries",
   "main": "dist/main.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --passWithNoTests",
-    "dev": "tsx watch src/main.ts",
+    "dev": "nest start --watch",
     "start": "node dist/main.js"
   },
   "dependencies": {
@@ -26,9 +26,9 @@
   },
   "devDependencies": {
     "@lpr/config": "workspace:*",
+    "@nestjs/cli": "^11.0.24",
     "@types/express": "^5.0.0",
     "@types/node": "^22.10.2",
-    "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
   }
