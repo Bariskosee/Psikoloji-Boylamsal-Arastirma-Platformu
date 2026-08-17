@@ -1,0 +1,18 @@
+/**
+ * @lpr/domain — pure domain logic.
+ *
+ * This package holds the logic most capable of silently corrupting research
+ * data: protocol timing, session state transitions, compliance denominators,
+ * missingness classification, and export shaping.
+ *
+ * It is deliberately pure — no database, no framework, no I/O, no wall-clock
+ * access — so all of it is exhaustively unit-testable in milliseconds without a
+ * database and without waiting for real time. Everything else in the system is
+ * plumbing around this package. See STRUCTURE.md §3 and ADR-001.
+ *
+ * Phase 0 scope: the Clock port only.
+ * Phase 1 adds: scheduling/, state-machine/, compliance/, missingness/,
+ *               export/, question-types/.
+ */
+
+export * from "./clock.js";

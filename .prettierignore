@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.next/
+.turbo/
+coverage/
+pnpm-lock.yaml
+
+# Markdown is excluded deliberately.
+#
+# The repository documents are prose deliverables with hand-tuned tables and
+# ASCII architecture diagrams. Automated reflow produces churn and risks
+# mangling them, for no functional gain. Format code; write documentation.
+*.md

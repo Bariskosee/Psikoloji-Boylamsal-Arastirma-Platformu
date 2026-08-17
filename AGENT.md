@@ -14,10 +14,16 @@ The application is not a clinical decision system and must not infer diagnoses, 
 
 Before changing code, review the relevant project documents:
 
-1. `REQUIREMENTS.md` — normative product requirements.
-2. `STRUCTURE.md` — target architecture and module boundaries.
-3. `PLAN.md` — implementation sequence and current milestone.
+1. `REQUIREMENTS.md` — normative product requirements and glossary.
+2. `STRUCTURE.md` — decided architecture, domain model, and module boundaries.
+3. `PLAN.md` — implementation sequence and current phase.
 4. `README.md` — product overview and intended use cases.
+
+When working on a specific area, also read:
+
+- `docs/adr/` — why each technical choice was made, and what was rejected. Do not re-open a decided question without reading its ADR.
+- `docs/compliance-formula.md` — before touching any participation metric.
+- `docs/export-codebook.md` — before touching export or missingness handling.
 
 When a human maintainer supplies newer requirements, those instructions override repository documents.
 
@@ -123,17 +129,16 @@ The following invariants must remain true unless requirements explicitly change.
 
 ### Session lifecycle
 
-A questionnaire assignment/session should have explicit lifecycle states such as:
+A `ParticipantSession` has eight explicit, persisted lifecycle states:
 
 ```text
-SCHEDULED
-AVAILABLE
-STARTED
-COMPLETED
-MISSED
+PENDING_TRIGGER  SCHEDULED  AVAILABLE  STARTED
+COMPLETED  EXPIRED_UNSTARTED  EXPIRED_PARTIAL  CANCELLED
 ```
 
-Do not infer all states only from timestamps at presentation time if persisted state is necessary for auditability.
+`MISSED` is a display label covering the two expiry states, not a stored value. Transitions and guards are defined in `STRUCTURE.md` §7.
+
+Do not infer state from timestamps at presentation time. Persisted state is required for auditability, and the two expiry states must remain distinguishable because they mean different things in a missing-data analysis.
 
 ### Response persistence
 
@@ -181,8 +186,7 @@ Where roles exist, prefer least privilege. Potential future roles include:
 Never commit:
 
 - database passwords,
-- JWT/session secrets,
-- Firebase service account keys,
+- session secrets,
 - VAPID private keys,
 - API keys,
 - production connection strings.
@@ -213,34 +217,16 @@ Apply sensible rate limits to authentication, enrollment, participant recovery, 
 
 ## 6. Data Modeling Guidance
 
-Prefer normalized relational modeling for canonical research data.
+Use normalized relational modeling for canonical research data.
 
-Core conceptual entities should include:
+**The authoritative entity model is `STRUCTURE.md` §6.** Do not introduce entities, rename them, or change their relationships without updating that document in the same change.
 
-- `User` / researcher account
-- `Study`
-- `StudyMember`
-- `ConsentVersion`
-- `Participant`
-- `ParticipantContact` or notification identity where required
-- `Enrollment`
-- `Questionnaire`
-- `QuestionnaireVersion`
-- `Question`
-- `QuestionVersion`
-- `QuestionOption`
-- `Protocol`
-- `ProtocolVersion`
-- `ProtocolStep`
-- `ParticipantSession`
-- `Response`
-- `PushSubscription`
-- `NotificationEvent`
-- `AuditLog`
+Rules that apply regardless of entity:
 
-Do not model longitudinal answers as arbitrary columns such as `Q1_DAY1`, `Q1_DAY2` in the canonical database. Use normalized records and generate wide format only during export.
-
-Prefer immutable or versioned definitions once data collection has started.
+- Do not model longitudinal answers as study-specific columns such as `Q1_DAY1`, `Q1_DAY2`. Use normalized records and generate wide format only during export.
+- Definitions become immutable once published. Do not add an update path to a published questionnaire or protocol version.
+- Store values in typed columns, not in an untyped JSON blob, wherever the value is filtered, joined, or aggregated.
+- Enforce uniqueness with database constraints, not only with application logic. Application-level checks lose races.
 
 ---
 
@@ -448,20 +434,12 @@ Do not mark placeholder implementations, mock persistence, or fake notification 
 
 ## 15. Scope Discipline
 
-The initial MVP intentionally excludes several features unless explicitly requested:
+**The authoritative out-of-scope list is `REQUIREMENTS.md` §9.** Read it before proposing any feature not named in the current phase.
 
-- native iOS app,
-- native Android app,
-- SMS notifications,
-- SPSS `.sav` export,
-- automated R analysis,
-- AI-based psychological interpretation,
-- multi-center administration,
-- random ESM scheduling,
-- advanced conditional branching,
-- full offline completion.
+Two rules govern scope:
 
-Do not spend implementation time on these ahead of MVP-critical features.
+1. Do not spend implementation time on excluded features ahead of MVP-critical work.
+2. Do not exceed the current phase in `PLAN.md`. Each phase ends with an explicit "what NOT to build yet" list; treat it as binding. Building ahead makes a phase unreviewable and is the most common way agent-driven work goes wrong here.
 
 ---
 
@@ -486,6 +464,8 @@ Do not invent participant-facing psychological content. Use neutral placeholders
 
 ## 17. Non-Negotiable Red Flags
 
+This is the single canonical list. `STRUCTURE.md` references it rather than repeating it.
+
 Stop and reconsider an implementation if it would:
 
 - overwrite historical questions after responses exist,
@@ -493,12 +473,15 @@ Stop and reconsider an implementation if it would:
 - expose participant answers publicly,
 - use raw email/phone as the primary research identifier,
 - send reminders after completion,
-- depend on a browser tab remaining open for multi-day scheduling,
+- depend on a browser tab or an in-memory timer for multi-day scheduling,
 - silently drop partial answers,
 - calculate schedules using only client-side clocks,
 - store secrets in Git,
-- claim guaranteed push delivery,
+- claim guaranteed push delivery, or treat push acceptance as engagement,
 - treat missing values as zero,
-- introduce clinical diagnosis or scoring without explicit research-team requirements.
+- introduce clinical diagnosis or scoring without explicit research-team requirements,
+- **emit a numeric default, sentinel, or empty string in place of a typed missing-value status** — see `docs/export-codebook.md`,
+- **describe the data as anonymous** in code, comments, interface strings, exports, or documentation. It is pseudonymous; continuity credentials, push endpoints, and contact details keep re-identification possible,
+- **read the wall clock inside `packages/domain`** via `new Date()`, `Date.now()`, or equivalent. A `Clock` is injected, so that multi-day and daylight-saving behaviour stays testable.
 
 These are architectural or research-integrity defects, not minor implementation details.

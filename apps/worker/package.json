@@ -1,0 +1,34 @@
+{
+  "name": "@lpr/worker",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Background worker \u2014 job handlers and reconciliation sweepers. Same NestJS codebase as the API, deployed as a separate always-on process.",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "dev": "nest start --watch",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@lpr/contracts": "workspace:*",
+    "@lpr/db": "workspace:*",
+    "@lpr/domain": "workspace:*",
+    "@nestjs/common": "^11.0.1",
+    "@nestjs/core": "^11.0.1",
+    "@sentry/node": "^8.47.0",
+    "pg-boss": "^10.1.6",
+    "pino": "^9.5.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@lpr/config": "workspace:*",
+    "@nestjs/cli": "^11.0.24",
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

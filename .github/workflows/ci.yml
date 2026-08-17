@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "22"
+
+jobs:
+  verify:
+    name: Lint, typecheck, build, test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    # Integration tests run against a real PostgreSQL. An in-memory fake cannot
+    # reproduce SELECT ... FOR UPDATE SKIP LOCKED, partial unique indexes, or
+    # transactional enqueue — the exact mechanisms the scheduling guarantee
+    # depends on — so a fake would test the wrong thing (STRUCTURE.md §16).
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: lpr
+          POSTGRES_PASSWORD: lpr_ci
+          POSTGRES_DB: lpr_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U lpr -d lpr_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Build
+        run: pnpm build
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Integration tests
+        run: pnpm test:integration
+        env:
+          DATABASE_URL: postgresql://lpr:lpr_ci@localhost:5432/lpr_test
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan for committed secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Belt and braces: .env must never be tracked, only .env.example (NFR-16).
+      - name: Assert no .env file is tracked
+        run: |
+          if git ls-files --error-unmatch .env 2>/dev/null; then
+            echo "::error::.env is tracked in git. Only .env.example may be committed."
+            exit 1
+          fi
+          echo "OK: no tracked .env"

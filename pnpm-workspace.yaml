@@ -1,0 +1,15 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# pnpm blocks postinstall scripts by default. Only these are permitted, and each
+# genuinely needs one: esbuild fetches its platform binary (used by Vitest and
+# tsx), sharp fetches native image bindings (used by Next.js image optimisation).
+# Anything not listed here cannot execute code at install time.
+allowBuilds:
+  esbuild: true
+  sharp: true
+
+# Refuse to install on an unsupported Node version rather than only warning.
+# pnpm 11 reads these settings here, not from .npmrc.
+engineStrict: true

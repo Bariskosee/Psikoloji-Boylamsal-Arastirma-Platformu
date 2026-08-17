@@ -1,0 +1,15 @@
+{
+  "common": {
+    "appName": "Longitudinal Research Platform",
+    "loading": "Loading…",
+    "error": "Something went wrong"
+  },
+  "health": {
+    "title": "Service status",
+    "operational": "The service is running",
+    "phase": "Phase 0 — foundation. No study functionality is available yet.",
+    "participantApp": "Participant application",
+    "researcherApp": "Researcher dashboard",
+    "switchLanguage": "Türkçe"
+  }
+}

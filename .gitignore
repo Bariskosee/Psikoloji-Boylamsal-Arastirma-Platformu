@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+
+# Turborepo
+.turbo/
+
+# Test output
+coverage/
+test-results/
+playwright-report/
+.playwright/
+
+# Environment — NEVER commit real secrets. Only .env.example is tracked.
+.env
+.env.*
+!.env.example
+
+# Secrets and keys
+*.pem
+*.key
+*.p8
+vapid.json
+service-account*.json
+
+# Local database volumes
+.postgres-data/
+
+# Editor and OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*

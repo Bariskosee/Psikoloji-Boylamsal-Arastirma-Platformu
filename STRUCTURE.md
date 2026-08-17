@@ -2,166 +2,286 @@
 
 ## Purpose
 
-This document defines the target architecture for the **Longitudinal Psychology Research Platform**. It is a design target, not a claim that these modules already exist.
+This document defines the **decided technical architecture** for the Longitudinal Psychology Research Platform.
 
-## High-Level Architecture
+Earlier drafts of this file described alternatives. They no longer do. Every choice below is settled and recorded as an Architecture Decision Record in `docs/adr/`. Where a decision is later revisited, the ADR is superseded and this document is updated — the two must never disagree.
+
+This document is the authority for technical design. Product behaviour is defined in `REQUIREMENTS.md`; engineering rules in `AGENT.md`; sequencing in `PLAN.md`.
+
+---
+
+## 1. Technology Stack
+
+| Layer | Decision | ADR |
+|---|---|---|
+| Language | TypeScript on Node.js 22 LTS, across all four deployables | ADR-002 |
+| Backend | NestJS 11, modular monolith | ADR-002 |
+| Worker | Same NestJS codebase, bootstrapped as a standalone context, deployed as a separate always-on process | ADR-002 |
+| Database | PostgreSQL 16, two schemas (`research`, `identity`), two roles | ADR-003 |
+| Data access | Drizzle ORM, migrations via drizzle-kit | ADR-003 |
+| Background jobs | **pg-boss on PostgreSQL. No Redis.** | ADR-004 |
+| Scheduling guarantee | **Reconciliation sweepers are authoritative; jobs are an optimisation** | ADR-005 |
+| Push | **Web Push with VAPID via `web-push`. No Firebase.** | ADR-006 |
+| Participant continuity | Hashed token cookie + one-time install handoff + recovery code | ADR-007 |
+| Versioning | Draft → published immutable; pinned at enrollment | ADR-008 |
+| Frontend | **Two** Next.js 15 applications on separate origins | ADR-009 |
+| Deployment | Render, Frankfurt, single EU region | ADR-010 |
+| Validation | Zod, shared between server and both clients | ADR-001 |
+| Time | Luxon, IANA-aware | ADR-005 |
+| Testing | Vitest, Testcontainers, Playwright | ADR-001 |
+| Monorepo | pnpm workspaces + Turborepo | ADR-001 |
+
+**Explicitly rejected**, with reasoning in the referenced ADRs: FastAPI/Python (ADR-002) · Prisma (ADR-003) · Redis with BullMQ or Celery (ADR-004) · Firebase Cloud Messaging (ADR-006) · a single combined frontend application (ADR-009) · Vercel-only and AWS/GCP deployment (ADR-010).
+
+---
+
+## 2. High-Level Architecture
 
 ```text
-Participant PWA ───────┐
-                       │ HTTPS
-Researcher Dashboard ──┼────► Backend API ─────► PostgreSQL
-                       │           │
-                       │           └────────────► Background Worker / Queue
-                       │                                │
-                       └────────────────────────────────► Web Push provider
+                          ┌──────────────────── EU region (Frankfurt) ───────────────────┐
+                          │                                                              │
+  ┌──────────────┐        │   ┌──────────────────────────────────────────────────────┐   │
+  │  Participant │        │   │             apps/api  —  NestJS monolith             │   │
+  │   phone      │        │   │                                                      │   │
+  │              │        │   │  ┌────────────┐  ┌────────────┐  ┌────────────────┐  │   │
+  │ ┌──────────┐ │ HTTPS  │   │  │ participant│  │ researcher │  │  shared domain │  │   │
+  │ │   PWA    │─┼────────┼──▶│  │   API      │  │    API     │  │    services    │  │   │
+  │ │ +Service │ │        │   │  │ (token)    │  │  (session) │  │  protocol/     │  │   │
+  │ │  Worker  │ │        │   │  └────────────┘  └────────────┘  │  compliance/   │  │   │
+  │ └────┬─────┘ │        │   │         │              │         │  export        │  │   │
+  └──────┼───────┘        │   └─────────┼──────────────┼─────────┴────────┬───────┘   │   │
+         │                │             │              │                  │           │
+         │ Push API       │             ▼              ▼                  ▼           │
+         │ (VAPID)        │   ┌──────────────────────────────────────────────────┐    │
+         │                │   │            PostgreSQL 16  (managed, PITR)        │    │
+  ┌──────┴───────┐        │   │                                                  │    │
+  │ Browser push │        │   │  schema: research          schema: identity      │    │
+  │   service    │◀───────┼───┤  ├ studies                 ├ participant_        │    │
+  │ (FCM/APNs/   │  send  │   │  ├ questionnaire_versions   │   credentials      │    │
+  │  Mozilla)    │        │   │  ├ protocol_versions        ├ push_subscriptions │    │
+  └──────────────┘        │   │  ├ participants (pseudo)    ├ participant_       │    │
+                          │   │  ├ participant_sessions     │   contacts         │    │
+  ┌──────────────┐        │   │  ├ responses                └ recovery_codes     │    │
+  │  Researcher  │ HTTPS  │   │  ├ notification_attempts                         │    │
+  │   browser    │────────┼──▶│  ├ audit_events        schema: pgboss            │    │
+  │  (dashboard) │        │   │  └ …                   └ job queues              │    │
+  └──────────────┘        │   └──────────────────────▲───────────────────────────┘    │
+                          │                          │                                │
+                          │   ┌──────────────────────┴───────────────────────────┐    │
+                          │   │        apps/worker  —  same NestJS codebase      │    │
+                          │   │                                                  │    │
+                          │   │   job handlers          reconciliation sweepers  │    │
+                          │   │   ├ session.activate    ├ sweep.activate_due     │    │
+                          │   │   ├ session.expire      ├ sweep.expire_due       │    │
+                          │   │   ├ notification.send   ├ sweep.notifications_due│    │
+                          │   │   └ protocol.materialize└ sweep.heartbeat        │    │
+                          │   │                              (every 60s)         │    │
+                          │   └──────────────────────────────────────────────────┘    │
+                          └──────────────────────────────────────────────────────────┘
 ```
 
-The system should separate participant UX, researcher administration, canonical research data, and durable background processing.
+### Component responsibilities
 
-## Recommended Repository Layout
+| Component | Owns | Explicitly does not |
+|---|---|---|
+| `apps/participant` | Enrollment, consent, questionnaire runtime, autosave outbox, push onboarding, service worker | Decide availability, expiry, or completion validity |
+| `apps/researcher` | Builders, monitoring, analytics views, export triggers | Contain compliance or missingness logic |
+| `apps/api` | HTTP boundary, authn/authz, validation, transaction boundaries | Long-running work, sending push |
+| `apps/worker` | Job execution, sweepers, push transport | Serve HTTP other than `/health` |
+| PostgreSQL | Canonical research state **and** job state | — |
+| Push services | Best-effort transport | Any delivery guarantee |
 
-A monorepo is recommended:
+---
+
+## 3. Repository Layout
 
 ```text
 /
-├── README.md
-├── CLAUDE.md
-├── AGENT.md
-├── REQUIREMENTS.md
-├── STRUCTURE.md
-├── PLAN.md
-├── .env.example
-│
 ├── apps/
-│   ├── web/                 # Participant PWA + researcher dashboard
-│   ├── api/                 # Backend API
-│   └── worker/              # Scheduling/reminder jobs
+│   ├── participant/          Next.js 15 — participant PWA (public origin)
+│   │   ├── app/[locale]/     join, consent, home, session, notifications, install
+│   │   ├── public/           manifest.webmanifest, icons
+│   │   └── worker/           service worker source (push, notificationclick, update)
+│   ├── researcher/           Next.js 15 — dashboard (authenticated origin)
+│   │   └── app/[locale]/     login, studies, questionnaires, protocol,
+│   │                         participants, analytics, export, ops
+│   ├── api/                  NestJS — HTTP boundary
+│   │   └── src/modules/      auth, study, consent, questionnaire, protocol,
+│   │                         participant, session, response, notification,
+│   │                         analytics, export, audit, health
+│   └── worker/               NestJS standalone — jobs + sweepers
+│       └── src/              handlers/, sweepers/, push/
 │
 ├── packages/
-│   ├── contracts/           # Shared API/event contracts
-│   ├── validation/
-│   ├── i18n/
-│   ├── ui/
-│   └── config/
+│   ├── domain/               PURE logic. Zero I/O, zero framework, zero DB.
+│   │   └── src/              scheduling/, state-machine/, compliance/,
+│   │                         missingness/, export/, question-types/
+│   ├── contracts/            Zod schemas + inferred types (API, jobs, question configs)
+│   ├── db/                   Drizzle schema, migrations, seeds, test factories
+│   ├── i18n/                 en.json, tr.json, locale negotiation
+│   ├── ui/                   Shared primitives + design tokens
+│   └── config/               tsconfig / eslint / vitest base configs
 │
-├── database/
-│   ├── migrations/
-│   ├── schema/
-│   └── seeds/
+├── docs/
+│   ├── adr/                  ADR-001 … ADR-010
+│   ├── compliance-formula.md
+│   ├── export-codebook.md
+│   └── runbooks/
 │
-├── tests/
-│   ├── e2e/
-│   └── fixtures/
-│
-└── docs/
-    └── adr/
+├── tests/e2e/                Playwright — cross-app critical journeys
+├── infrastructure/           render.yaml, migration entrypoint
+└── *.md                      the six root documents
 ```
 
-The exact folder names may evolve, but domain boundaries should remain explicit.
+### Dependency direction
 
-## Frontend Boundaries
-
-### Participant PWA
-
-Suggested participant routes:
+Strictly one-way, enforced by an ESLint import-boundary rule in CI.
 
 ```text
-/join/:studyCode
-/p/consent
-/p/home
-/p/session/:sessionId
-/p/session/:sessionId/complete
-/p/notifications
+apps/participant ─┐
+apps/researcher  ─┼──▶ contracts ──▶ (nothing)
+                  └──▶ i18n, ui
+
+apps/api    ─┬──▶ domain ──▶ contracts
+apps/worker ─┘└──▶ db     ──▶ contracts
 ```
 
-Core participant modules:
+**Rules:**
 
-- enrollment;
-- consent;
-- participant continuity;
-- current-session/status view;
-- questionnaire renderer;
-- autosave/resume;
-- completion flow;
-- push onboarding;
-- PWA install guidance;
-- Turkish/English localization.
+- `packages/domain` imports **nothing but `contracts`**. No Drizzle, no NestJS, no database, and **no direct clock access** — a `Clock` is always passed in.
+- Frontends must never import `packages/db`.
+- `apps/api` and `apps/worker` never import each other. They share through `domain` and `db`.
 
-Do not use a raw participant database ID as the only authorization mechanism in public URLs.
+**Why `packages/domain` is the most important package.** The logic most capable of silently corrupting research data — timing arithmetic, state transitions, compliance denominators, missingness classification, export shaping — lives there as pure functions with injected clocks. It is exhaustively unit-testable in milliseconds, including daylight-saving transitions and multi-week protocols, with no database and no time travel. Everything else is plumbing around it.
 
-### Researcher Dashboard
+**Packages deliberately not created:** no `utils`, no `types` separate from `contracts`, no `logger`. Each would be a bucket without a boundary.
 
-Suggested researcher routes:
+---
+
+## 4. Frontend Boundaries
+
+Two applications on two origins. A service worker's scope is origin-wide: in a single application the participant service worker would sit in front of authenticated dashboard routes, and dashboard code would ship in the public bundle. See ADR-009.
+
+### Participant PWA — `app.example.org`
 
 ```text
-/researcher/login
-/researcher/studies
-/researcher/studies/:studyId
-/researcher/studies/:studyId/questionnaires
-/researcher/studies/:studyId/protocol
-/researcher/studies/:studyId/participants
-/researcher/studies/:studyId/analytics
-/researcher/studies/:studyId/export
+/join/:studyCode          study information
+/consent                  versioned consent, explicit acceptance
+/home                     current status, next expected activity
+/session/:id              questionnaire runtime
+/session/:id/complete     confirmation
+/install                  Home Screen guidance + handoff link
+/notifications            permission state and re-enable path
+/r/:code                  one-time continuity handoff redemption
 ```
 
-Core modules:
+Modules: enrollment · consent · continuity · status view · questionnaire renderer · autosave outbox · completion · push onboarding · install guidance · localisation.
 
-- authentication;
-- study builder;
-- questionnaire builder;
-- question editor/reordering;
-- protocol editor;
-- reminder settings;
-- participant table;
-- participant timeline;
-- longitudinal response inspector;
-- compliance dashboard;
-- descriptive analytics;
-- exports.
+**A participant identifier in a URL is never an authorization mechanism.** All participant endpoints derive identity from the credential cookie. The only identifier-bearing URL is `/r/:code`, whose code is single-use, short-lived, and rate-limited.
 
-## Backend Domains
-
-### Auth
-
-Researcher authentication, sessions/tokens, server-side authorization, and role checks.
-
-Participant continuity should use a separate lightweight model rather than researcher credentials.
-
-### Study
-
-Study metadata, lifecycle, enrollment code/link, timezone, languages, ownership, and study membership.
-
-Possible lifecycle:
+### Researcher Dashboard — `research.example.org`
 
 ```text
-DRAFT → ACTIVE → PAUSED → CLOSED → ARCHIVED
+/login
+/studies
+/studies/:id
+/studies/:id/questionnaires
+/studies/:id/protocol
+/studies/:id/participants
+/studies/:id/participants/:participantId
+/studies/:id/analytics
+/studies/:id/export
+/ops                      admin only — job and notification health
 ```
 
-### Consent
+Modules: authentication · study builder · questionnaire builder · protocol editor with timeline preview · participant table · participant timeline · response inspector · compliance dashboard · descriptive analytics · exports · operational health.
 
-Versioned consent documents and participant acceptance records.
+---
 
-### Questionnaire
+## 5. Backend Modules
 
-Questionnaires, questionnaire versions, question versions, options, ordering, required flags, and page/section grouping.
+| Module | Responsibility |
+|---|---|
+| `auth` | Researcher authentication, DB-backed sessions, role guards, CSRF |
+| `study` | Study metadata, lifecycle, enrollment code, QR, membership |
+| `consent` | Versioned consent documents and acceptance records |
+| `questionnaire` | Questionnaires, versions, questions, options, publishing |
+| `protocol` | Protocols, versions, steps, reminder policies, trigger-graph validation, preview |
+| `participant` | Pseudonymous identity, enrollment, continuity, withdrawal |
+| `session` | ParticipantSession lifecycle and availability enforcement |
+| `response` | Autosave, validation, completion transaction |
+| `notification` | Subscriptions, attempts, guard chain, push transport |
+| `analytics` | Compliance, distributions, monitoring queries |
+| `export` | Long, wide, and codebook CSV generation |
+| `audit` | Audit event recording |
+| `health` | Liveness, readiness, operational metrics |
 
-Historical versions must remain interpretable after data collection starts.
+Study lifecycle: `DRAFT → ACTIVE → PAUSED → CLOSED → ARCHIVED`.
 
-### Protocol
+---
 
-Protocol versions, steps, timing triggers, delays, availability windows, and reminder rules.
+## 6. Domain Model
 
-A protocol step should reference a questionnaire version rather than only a mutable questionnaire record.
+```text
+researcher_users ──< study_members >── studies ──┬─< consent_versions
+                                                 │
+                                                 ├─< questionnaires ─< questionnaire_versions
+                                                 │                        └─< question_versions ─< question_options
+                                                 │                                                (+ *_translations)
+                                                 ├─< protocols ─< protocol_versions ─< protocol_steps
+                                                 │                                        │ → questionnaire_version_id
+                                                 │                                        └─< reminder_policies
+                                                 └─< enrollments ─── participants
+                                                         │  (binds protocol_version + consent_version)
+                                                         │
+                                                         ├─< participant_sessions ─┬─< responses ─< response_option_selections
+                                                         │   (one per step         │      └─< response_history (append-only)
+                                                         │    occurrence)          ├─── session_submissions (1:1, on complete)
+                                                         │                         └─< notification_attempts
+                                                         │
+                                                         └─ [identity schema] participant_credentials
+                                                                               push_subscriptions
+                                                                               participant_contacts
+                                                                               recovery_codes
+studies ──< audit_events
+```
 
-### Participant
+### Key entities
 
-Pseudonymous participant identity, enrollment, study status, continuity credentials/device binding, and withdrawal state where supported.
+**`participants`** *(research schema)* — `id`, `public_code`, `study_id`, `enrolled_at`, `timezone` (IANA, nullable), `locale`, `status ∈ {ACTIVE, COMPLETED, WITHDRAWN}`, `withdrawn_at`, `withdrawal_reason`. Contains **no directly identifying field**.
 
-### Participant Session
+`public_code` is `P-` plus six uppercase Crockford base-32 characters, from a CSPRNG, unique per study, excluding visually ambiguous characters (I, L, O, U). Never sequential — a sequential code leaks enrollment order and sample size.
 
-A `ParticipantSession` represents one concrete questionnaire assignment for one participant.
+**`enrollments`** — binds participant ↔ study ↔ `protocol_version_id` ↔ `consent_version_id` ↔ `consented_at` ↔ `consent_locale`. **This is where protocol version pinning happens** (NFR-17). An enrolled participant remains on their bound version for life.
 
-Conceptual fields:
+**`questionnaire_versions`** — `status ∈ {DRAFT, PUBLISHED, RETIRED}`. One draft per questionnaire. Publishing deep-copies the draft into immutable rows. Published rows are protected by a `BEFORE UPDATE` trigger, not merely by convention.
+
+**`question_versions`** — `questionnaire_version_id`, `question_key`, `display_order`, `type`, `is_required`, `page_index`, `config` (jsonb).
+
+`question_key` is stable across versions and is the export column key (FR-43). `question_version_id` identifies the exact wording shown.
+
+On `config`: everything queried relationally — order, type, required flag, page, key — is a real column. `config` holds only type-specific presentation parameters (Likert anchor labels, numeric bounds, text length limits) that are never filtered or joined on, and each type has a registered Zod schema validated on write. Adding a question type requires one enum value, one Zod schema, and one renderer — **no migration**.
+
+**`question_options`** — `question_version_id`, `option_key`, `display_order`, `value_number`, `is_exclusive`. Normalised rather than embedded in jsonb, because option distributions are `GROUP BY` queries and responses need referential integrity to the exact option shown.
+
+**`protocol_steps`** — the heart of the protocol engine:
+
+| Field | Purpose |
+|---|---|
+| `protocol_version_id`, `step_index`, `step_key` | Identity; `step_key` is the stable export column prefix |
+| `questionnaire_version_id` | Pinned to an immutable version |
+| `trigger_type` | `ENROLLMENT` \| `CONSENT` \| `STEP_COMPLETED` \| `STEP_AVAILABLE` \| `FIXED_DATETIME` |
+| `trigger_step_id` | Required when the trigger references another step |
+| `offset_iso` | ISO-8601 duration, e.g. `PT72H`. DST-immune |
+| `anchor_local_time`, `anchor_timezone_source` | Wall-clock steps. `STUDY` \| `PARTICIPANT` |
+| `window_duration_iso` | e.g. `PT24H` |
+| `occurrence_count`, `recurrence_interval_iso` | `7` × `P1D` = daily for a week (FR-38) |
+| `reminder_policy_id` | FK |
+| `counts_toward_compliance` | Excludes exploratory steps from the denominator |
+
+**`reminder_policies`** — `initial_delay_iso`, `interval_iso`, `max_reminders` (NOT NULL), `quiet_hours_start`, `quiet_hours_end`, `quiet_hours_behavior ∈ {SKIP, DEFER}` (FR-40).
+
+**`participant_sessions`** — one row per (participant, protocol step, occurrence). Unique on that triple.
 
 ```text
 id
@@ -169,236 +289,514 @@ participant_id
 study_id
 protocol_version_id
 protocol_step_id
+occurrence_index
 questionnaire_version_id
+status
+trigger_fired_at
 scheduled_at
 available_from
 available_until
 started_at
 completed_at
-missed_at
-status
+expired_at
+cancelled_at
+cancellation_reason
 created_at
 updated_at
 ```
 
-### Response
+**`responses`** — `session_id`, `participant_id`, `question_version_id`, `value_kind`, `value_number`, `value_text`, `value_boolean`, `answered_at`, `client_revision`. Unique on `(session_id, question_version_id)`. Plus `response_option_selections(response_id, question_option_id)`.
 
-Canonical answers should be normalized records, not study-specific database columns.
+Typed columns rather than a single `value_json`: every analytics query and every export row is an aggregate over these values. Typed columns index and aggregate directly; jsonb requires casting on every read with no type guarantee and cannot enforce that a selected option exists in the version shown.
 
-Conceptual fields:
+**`response_history`** — append-only record of every write. Cheap, and provides full forensics for autosave conflicts and any data-integrity question a reviewer raises.
+
+**`session_submissions`** — 1:1 with a completed session: `completed_at`, `answered_count`, `required_count`, `content_hash`, `idempotency_key`. Draft responses are distinguished from a final submission by this row's existence plus the `COMPLETED` status — the answers themselves are never duplicated.
+
+**`notification_attempts`** — `session_id`, `kind ∈ {INITIAL, REMINDER}`, `occurrence_index`, `push_subscription_id`, `scheduled_for`, `attempted_at`, `outcome`, `push_status_code`, `error_detail`. **Unique on `(session_id, kind, occurrence_index)`** — the primary duplicate-reminder guard.
+
+**`audit_events`** — `actor_type`, `actor_id`, `study_id`, `action`, `entity_type`, `entity_id`, `metadata` (redacted jsonb), `ip_hash`, `occurred_at`. Never contains response payloads.
+
+---
+
+## 7. ParticipantSession State Machine
 
 ```text
-id
-participant_session_id
-participant_id
-question_version_id
-value_json
-answered_at
-created_at
-updated_at
+                    ┌──────────────────┐
+   enrollment ─────▶│ PENDING_TRIGGER  │  timing not yet computable
+                    └────────┬─────────┘
+                             │ trigger fires → compute scheduled_at
+                             ▼
+   enrollment ─────▶┌──────────────────┐
+   (computable) ───▶│    SCHEDULED     │
+                    └────────┬─────────┘
+                             │ now ≥ available_from
+                             ▼
+                    ┌──────────────────┐──────────────┐
+                    │    AVAILABLE     │              │ now > available_until
+                    └────────┬─────────┘              ▼
+                             │ first answer   ┌──────────────────────┐
+                             │ persisted      │  EXPIRED_UNSTARTED   │
+                             ▼                └──────────────────────┘
+                    ┌──────────────────┐──────────────┐
+                    │     STARTED      │              │ now > available_until
+                    └────────┬─────────┘              ▼
+                             │ complete()     ┌──────────────────────┐
+                             │ validated      │   EXPIRED_PARTIAL    │
+                             ▼                └──────────────────────┘
+                    ┌──────────────────┐
+                    │    COMPLETED     │
+                    └──────────────────┘
+
+   any non-terminal ───────▶ ┌──────────────────┐
+                             │    CANCELLED     │
+                             └──────────────────┘
 ```
 
-Wide formats such as `Q1_DAY1` should be generated only during export.
+### Transitions
 
-### Notification
+| From | To | Trigger | Guard |
+|---|---|---|---|
+| `PENDING_TRIGGER` | `SCHEDULED` | Referenced step reaches `COMPLETED`/`AVAILABLE` | Same enrollment |
+| `PENDING_TRIGGER` | `CANCELLED` | Trigger step terminal without completing | Cascades to dependents |
+| `SCHEDULED` | `AVAILABLE` | Activation job or sweeper | `now ≥ available_from`, server clock |
+| `SCHEDULED` | `CANCELLED` | Withdrawal, study closure | — |
+| `AVAILABLE` | `STARTED` | First response persisted | Window open |
+| `AVAILABLE` | `EXPIRED_UNSTARTED` | Expiry job or sweeper | `now > available_until`, zero responses |
+| `STARTED` | `COMPLETED` | `POST /complete` | All required answered, window open, row locked |
+| `STARTED` | `EXPIRED_PARTIAL` | Expiry job or sweeper | `now > available_until`, ≥1 response |
+| `AVAILABLE`/`STARTED` | `CANCELLED` | Withdrawal | — |
 
-Push subscriptions, scheduled reminders, send attempts, click/open events where measurable, and invalid-subscription cleanup.
+**Forbidden and tested as such:** any transition out of a terminal state · any backwards transition · `SCHEDULED → COMPLETED` directly · any transition driven by a client-supplied timestamp.
 
-Do not equate `sent` with delivered/read/completed unless the provider supplies that exact guarantee.
+---
 
-### Analytics
+## 8. Scheduling Architecture
 
-Server-side calculations for participant counts, session-state distributions, compliance, demographic summaries, and answer distributions.
+### 8.1 The governing principle
 
-Business logic such as compliance formulas should not be duplicated independently in dashboard components.
+**The database is the schedule. The queue only executes.**
 
-### Export
+Every scheduling outcome is derivable from `participant_sessions` and `notification_attempts` alone. If the job system lost every pending job, the reconciliation sweepers in §8.4 would restore correct behaviour within one minute. Jobs make the system *prompt*; sweepers make it *correct*. See ADR-005.
 
-At minimum:
+### 8.2 Materialisation
 
-- long-format CSV;
-- wide-format CSV.
+At enrollment, all ParticipantSessions for every step of the bound protocol version are created immediately, expanded across `occurrence_count`. Steps whose time is computable start in `SCHEDULED`; the rest start in `PENDING_TRIGGER`.
 
-### Audit
+Materialising upfront rather than lazily is what makes the compliance denominator and the participant timeline knowable, and pins the protocol version at one well-defined moment.
 
-Critical administrative operations should create audit records without logging secrets or full sensitive response payloads.
-
-## Core Data Relationships
+### 8.3 Timing computation
 
 ```text
-Researcher
-   └── StudyMember ─── Study
-                       ├── ConsentVersion
-                       ├── Questionnaire
-                       │      └── QuestionnaireVersion
-                       │              └── QuestionVersion(s)
-                       ├── Protocol
-                       │      └── ProtocolVersion
-                       │              └── ProtocolStep(s)
-                       └── Enrollment
-                              └── Participant
-                                     ├── ParticipantSession(s)
-                                     │       └── Response(s)
-                                     └── PushSubscription(s)
+Duration mode   (offset_iso set)
+  available_from = anchor_utc + offset_iso        ← pure UTC, DST-immune
+  Use for: "baseline completion + 72h", "enrollment + 48h"
+
+Wall-clock mode (anchor_local_time set)
+  zone   = anchor_timezone_source == PARTICIPANT
+             ? participant.timezone ?? study.timezone
+             : study.timezone
+  local  = (anchor_utc in zone).plus(day_offset).set{ anchor_local_time }
+  available_from = local.toUTC()
+  Use for: "every day at 18:00 local"
+
+available_until = available_from + window_duration_iso   (always duration arithmetic)
 ```
 
-## Durable Scheduling
+**Daylight saving.** Duration mode is inherently safe. Wall-clock mode must handle two anomalies explicitly, each with a named unit test:
 
-The database must be the source of truth. A queue/worker is only the execution mechanism.
+- **Spring-forward gap** — a local time that does not exist. Shift forward to the first valid instant.
+- **Fall-back ambiguity** — a local time occurring twice. Take the first occurrence, maximising the response window.
 
-Recommended flow:
+Türkiye has been permanently UTC+3 with no DST since 2016, which limits exposure for an initial Turkish study — but participants may travel or be recruited elsewhere, so the logic is required regardless.
 
-```text
-Participant completes trigger session
-→ backend records completion
-→ scheduler evaluates next protocol step
-→ future ParticipantSession is persisted
-→ durable job is scheduled
-→ worker wakes at/after availability time
-→ worker re-checks canonical database state
-→ session becomes AVAILABLE
-→ initial notification is scheduled/sent
-→ reminder jobs are scheduled
+**Recurrence.** Occurrence *n* is anchored on the step's own trigger plus *n* × `recurrence_interval_iso`, never chained from occurrence *n−1*. A missed occurrence therefore does not delay the ones after it.
+
+### 8.4 Reconciliation sweepers
+
+Four cron jobs at 60-second intervals, each with a `singletonKey` so only one instance runs across replicas.
+
+```sql
+-- sweep.activate_due
+SELECT id FROM research.participant_sessions
+WHERE status = 'SCHEDULED' AND available_from <= now()
+FOR UPDATE SKIP LOCKED LIMIT 500;
+
+-- sweep.expire_due
+SELECT id FROM research.participant_sessions
+WHERE status IN ('AVAILABLE','STARTED') AND available_until <= now()
+FOR UPDATE SKIP LOCKED LIMIT 500;
+
+-- sweep.notifications_due
+--   sessions in AVAILABLE/STARTED, window open, active subscription,
+--   whose next due notification has no notification_attempts row
+FOR UPDATE SKIP LOCKED LIMIT 500;
+
+-- sweep.heartbeat
+--   write system_heartbeats(worker_id, swept_at); alert if stale > 5 min
 ```
 
-Every reminder must re-check:
+These four queries mean the system converges on correct state from any starting condition: queue wiped, worker down for hours, database restored from backup, jobs duplicated. Recovery requires no manual intervention.
+
+### 8.5 Jobs
+
+| Job | Enqueued | Handler |
+|---|---|---|
+| `session.activate` | On materialisation or trigger firing, delayed to `available_from` | Lock row; `SCHEDULED` → `AVAILABLE`; enqueue expiry and initial notification |
+| `session.expire` | On activation, delayed to `available_until` | Lock row; `AVAILABLE`→`EXPIRED_UNSTARTED`, `STARTED`→`EXPIRED_PARTIAL`; no-op if completed |
+| `notification.send` | Self-chaining, see §9 | Guard chain, send, record, chain next |
+| `protocol.materialize` | On completion, in the completion transaction | Move dependent sessions to `SCHEDULED`; enqueue activations |
+| `subscription.prune` | Daily | Remove subscriptions long marked gone |
+
+**Universal handler contract.** Every handler, without exception:
+
+1. Opens a transaction and takes `SELECT … FOR UPDATE` on the session row.
+2. Re-reads canonical state and re-derives the decision. It never trusts the job payload beyond identifiers.
+3. Is a no-op when the decision is no longer valid, recording *why* when research-relevant.
+4. Is safe to run twice, out of order, or a week late.
+
+Retries use exponential backoff with a limit of 5. Exhausted jobs land in the dead-letter queue and surface on the ops page. Because sweepers are authoritative, a dead-lettered job degrades timing, not correctness.
+
+### 8.6 Idempotency
+
+| Risk | Mechanism |
+|---|---|
+| Duplicate reminder | Unique `(session_id, kind, occurrence_index)` |
+| Duplicate materialisation | Unique `(participant_id, protocol_step_id, occurrence_index)` |
+| Duplicate answer | Unique `(session_id, question_version_id)` + upsert gated on `client_revision` |
+| Duplicate completion | Unique `session_id` on `session_submissions`; conditional update returning zero rows returns the existing submission with 200 |
+| Duplicate enrollment | Valid existing credential resumes rather than creates |
+| Concurrent jobs | Row-level `FOR UPDATE` + `singletonKey` |
+| Concurrent sweepers | `FOR UPDATE SKIP LOCKED` + cron `singletonKey` |
+
+---
+
+## 9. Notification Architecture
+
+### 9.1 Reminder chain
+
+Reminders are **self-chaining, not pre-scheduled**. Reminder *n*'s handler schedules reminder *n+1*. There is no fan-out of jobs that must later be cancelled.
 
 ```text
-Is the session still open?
-Is it incomplete?
-Has this reminder already been sent?
-Does a valid push subscription still exist?
+session becomes AVAILABLE
+  └─ enqueue notification.send(kind=INITIAL, occurrence=0)
+        delay = reminder_policy.initial_delay_iso
+
+  handler(session, kind, occurrence):
+    BEGIN; SELECT … FOR UPDATE on session
+    ── guard chain, in order ──────────────────────────────────────────
+    1. status ∉ {AVAILABLE, STARTED}        → SUPPRESSED_STATE;     STOP
+    2. now > available_until                → SUPPRESSED_EXPIRED;   STOP
+    3. participant.status ≠ ACTIVE          → SUPPRESSED_WITHDRAWN; STOP
+    4. occurrence > policy.max_reminders    → SUPPRESSED_CAP;       STOP
+    5. attempt row already exists           → STOP  (idempotency)
+    6. no active push subscription          → SUPPRESSED_NO_SUB;    STOP
+    7. inside quiet hours →
+         SKIP  → SUPPRESSED_QUIET; chain next; STOP
+         DEFER → re-enqueue at quiet_hours_end; STOP
+    8. scheduled_for older than one interval→ SUPPRESSED_STALE;     STOP
+                                    (no burst after an outage)
+    ── send ───────────────────────────────────────────────────────────
+    INSERT notification_attempts (…, outcome='ATTEMPTED')
+    COMMIT                          ← committed BEFORE the network call
+    send via web-push
+    UPDATE attempt SET outcome = SENT_ACCEPTED | FAILED, status_code
+      404/410 → mark subscription inactive, do not retry this occurrence
+    if occurrence < max_reminders:
+      enqueue notification.send(occurrence+1) delayed by policy.interval_iso
 ```
 
-All jobs must be idempotent and restart-safe. Do not use browser timers or in-memory `setTimeout` as the primary mechanism for multi-day scheduling.
+**Committing the attempt row before the network call** guarantees at-most-once send per (session, kind, occurrence) even if the process dies mid-send. Losing a reminder is acceptable; repeatedly double-notifying a participant is not — it is both an annoyance and a compliance-data artefact.
 
-## Time Strategy
+### 9.2 Completion cancels reminders through state
 
-- Persist timestamps in UTC.
-- Store an explicit study timezone.
-- Never use the participant browser clock as the authority for availability.
-- Use timezone-aware date libraries.
-- Test daylight-saving transitions where applicable.
+`POST /complete` sets `COMPLETED` while holding the session row lock. Any in-flight reminder handler blocks on that same lock, then fails guard 1.
 
-Prefer explicit timing semantics such as:
+**This is why the completion-versus-reminder race cannot produce a post-completion notification** (FR-18): the two paths serialise on one row. No job-cancellation API is needed or trusted.
+
+### 9.3 Observable events
+
+| Event | Observable? | Source |
+|---|---|---|
+| `notification_scheduled` | Reliable | Server, on enqueue |
+| `notification_attempted` | Reliable | Server, before send |
+| `notification_accepted` | Reliable — **push service accepted it, not delivered it** | Push service 201 |
+| `notification_failed` | Reliable | Non-2xx; 404/410 means the subscription is gone |
+| `notification_displayed` | Best-effort | Service worker `push`; lost if killed or offline |
+| `notification_clicked` | Best-effort | Service worker `notificationclick` |
+| `notification_dismissed` | Unreliable | `notificationclose` is inconsistent on iOS |
+| `session_opened` / `started` / `completed` | Reliable | Server-side |
+
+**Actual delivery, whether the participant saw it, and OS-level suppression are not observable.** Compliance analysis compares `notification_accepted` against `session_completed` and treats the gap as *unattributed*, never as "the participant ignored it".
+
+### 9.4 Push payloads
+
+Push payloads pass through third-party services. They therefore **contain no research content** — title and body are generic, localised, configurable strings. Deep links carry a session identifier only, and the endpoint re-authorises via the credential.
+
+---
+
+## 10. Time Strategy
+
+- All timestamps persisted in UTC.
+- Every study stores an explicit IANA timezone.
+- Participant timezone is captured from the browser, validated server-side against the IANA database, and used **only** to interpret wall-clock anchors. It is never authoritative for whether a window is open.
+- Availability is decided by the server clock exclusively. The browser clock is never consulted for protocol enforcement.
+- All timing arithmetic uses Luxon and lives in `packages/domain`, where `Date.now()` is prohibited by lint rule and a `Clock` is injected.
+
+Timing semantics are expressed structurally, not as free text:
 
 ```text
-trigger = PREVIOUS_SESSION_COMPLETED
-relative_delay = PT72H
-window_duration = PT24H
+trigger            = STEP_COMPLETED(step_key='baseline')
+offset_iso         = PT72H
+window_duration_iso= PT24H
+occurrence_count   = 1
 ```
 
-or an equivalent structured representation.
+---
 
-## API Boundary Examples
+## 11. Privacy Architecture
+
+### 11.1 Pseudonymous, not anonymous
+
+Push endpoints, continuity credentials, optional contact details, and response timing patterns are all re-identification vectors. Under GDPR Article 4(5) and KVKK this remains personal data.
+
+**No interface string, export header, code comment, or generated document may describe this data as anonymous.**
+
+### 11.2 Schema and role separation
 
 ```text
-POST   /api/auth/login
-POST   /api/studies
-POST   /api/studies/:studyId/questionnaires
-POST   /api/studies/:studyId/protocols
-
-POST   /api/public/studies/:studyCode/enroll
-POST   /api/public/participants/consent
-GET    /api/public/participant/current-session
-PUT    /api/public/sessions/:sessionId/responses/:questionId
-POST   /api/public/sessions/:sessionId/complete
-POST   /api/public/push-subscriptions
-
-GET    /api/studies/:studyId/participants
-GET    /api/studies/:studyId/analytics/compliance
-GET    /api/studies/:studyId/exports/long.csv
-GET    /api/studies/:studyId/exports/wide.csv
+role app_readwrite   → CRUD on research, identity, pgboss      (api, worker)
+role app_analytics   → SELECT on research ONLY
+                       NO privileges on identity
+                       ↑ used by every analytics and export code path
 ```
 
-These endpoints are illustrative; preserve domain separation even if exact routes change.
+This makes NFR-03 enforceable rather than aspirational: an export query that accidentally joins a push endpoint fails at the database, in CI, before review.
 
-## PWA Structure
+### 11.3 Participant continuity
 
-The participant application should include:
+1. Enrollment mints a 256-bit CSPRNG token. `identity.participant_credentials` stores a SHA-256 hash and a lookup prefix — never the token.
+2. Delivered as an HttpOnly, Secure, SameSite=Lax cookie, one-year lifetime. The token never appears in a URL, in `localStorage`, or in any log.
+3. **Rotation:** on use, a credential older than 30 days is replaced; the old one stays valid for a 7-day grace period so concurrent requests never fail.
+4. **Recovery:** an 8-character code displayed once at enrollment, rate-limited on redemption, mints a new credential. Optional email where the study collects one.
+5. **Install handoff** — see below.
 
-- Web App Manifest;
-- service worker;
-- installability metadata;
-- notification click handling;
-- safe update behavior;
-- push subscription management.
+### 11.4 The PWA install handoff
 
-Full offline questionnaire completion is not an MVP requirement.
-
-## Internationalization
-
-Use a central i18n layer from the beginning, for example:
+On iOS, a Home-Screen-installed PWA can hold a different storage container than the Safari tab used to enroll. Enrolling in Safari and then installing would otherwise present the participant as a new person — a silent, total loss of their longitudinal chain at the highest-stakes moment.
 
 ```text
-locales/
+Safari tab: consent completes
+  → server mints a ONE-TIME handoff code
+      (128-bit, single-use, 24h TTL, rate-limited)
+  → install screen shows Add-to-Home-Screen guidance
+      + a tappable link  https://app…/r/<code>
+  → participant installs, opens the PWA, taps the link INSIDE it
+  → server redeems the code, mints a credential in the installed
+      context, binds it to the SAME participant, invalidates the code
+  → records credential_context = 'INSTALLED'
+```
+
+The dashboard surfaces participants whose only credential context is `BROWSER` as an at-risk cohort.
+
+### 11.5 Application security controls
+
+| Threat | Control |
+|---|---|
+| SQL injection | Drizzle parameterisation; raw SQL only via `sql` template placeholders — string concatenation of input is a CI-blocked lint rule |
+| Stored XSS | Researcher-entered titles, question text, and consent bodies are plain text, rendered as text. No HTML, no `dangerouslySetInnerHTML` |
+| Participant enumeration | Random `public_code`; uniform response bodies and timing regardless of existence |
+| Rate limiting | Login 5/15min · enrollment 10/h/IP · recovery 5/h/IP · push registration 20/h · answer writes 300/min/session · export 10/h/user |
+| Input validation | Zod at every boundary; answers validated against the schema of the exact question version shown |
+| CSRF | SameSite=Lax + mandatory `Origin`/`Referer` check on state-changing requests + double-submit token |
+| Secrets | Example env file with placeholders only; secret scanning in CI |
+| Logging | pino redaction on cookies, authorization, tokens, endpoints, keys. Response payloads never logged at any level |
+| Transport | HTTPS only, HSTS, secure cookies |
+| At rest | Provider-managed volume encryption. Column-level encryption of responses is **not** used — it would break every analytics and export query for a threat better handled by access control and audit |
+| Backups | Managed PITR, tested by a scheduled restore drill |
+
+---
+
+## 12. API Boundaries
+
+Participant endpoints are **authenticated by the participant credential**. They are `/api/participant/*`, not `/api/public/*`. Only enrollment bootstrap is genuinely public.
+
+```text
+PUBLIC (unauthenticated, strictly rate-limited)
+  GET  /api/public/studies/:code            study info + consent for display
+  POST /api/public/studies/:code/enroll     → participant + credential cookie
+  POST /api/public/participants/recover     redeem recovery code
+  POST /api/public/participants/handoff     redeem one-time install code
+
+PARTICIPANT (credential cookie; identity always derived from the credential)
+  GET  /api/participant/me
+  POST /api/participant/consent
+  GET  /api/participant/sessions
+  GET  /api/participant/sessions/:id
+  POST /api/participant/sessions/:id/start
+  PUT  /api/participant/sessions/:id/answers/:questionVersionId
+  POST /api/participant/sessions/:id/complete          Idempotency-Key
+  POST /api/participant/push-subscriptions
+  DEL  /api/participant/push-subscriptions/:id
+  POST /api/participant/events
+  POST /api/participant/withdraw
+
+RESEARCHER (session cookie + role guard; every query scoped by study_id)
+  /api/auth/*
+  /api/studies                        CRUD, lifecycle, enrollment code, QR
+  /api/studies/:id/members            OWNER
+  /api/studies/:id/consent-versions   EDITOR
+  /api/studies/:id/questionnaires     EDITOR   + /versions /questions /publish
+  /api/studies/:id/protocols          EDITOR   + /versions /steps /publish /preview
+  /api/studies/:id/participants       VIEWER+
+  /api/studies/:id/sessions           VIEWER+
+  /api/studies/:id/analytics/*        ANALYST+
+  /api/studies/:id/exports/*          ANALYST+
+  /api/studies/:id/audit              OWNER
+  /api/ops/*                          admin
+
+INTERNAL
+  GET /health   GET /ready
+```
+
+**Conventions:** Zod validation on every request and response · stable machine-readable error codes (`SESSION_EXPIRED`, `CONSENT_REQUIRED`, `REQUIRED_QUESTIONS_MISSING`) rather than raw messages · cursor pagination on participants, sessions, and audit · `Idempotency-Key` accepted on completion and enrollment · uniform responses on participant lookup regardless of existence.
+
+---
+
+## 13. Missingness Contract
+
+**Specified in full in `docs/export-codebook.md`.** It is not repeated here, because a status table that drifts between two documents is worse than one that lives in a single place.
+
+The architectural constraint it imposes on every component:
+
+- Each cell carries a `response_status` drawn from seven values.
+- The `value` column is populated **only** when that status is `ANSWERED`.
+- **No sentinel numbers, no `NA` strings, never zero.** A zero that means "missed" is the single most damaging silent failure this product can ship.
+- Classification is computed by `packages/domain/src/missingness/` and by nothing else. The dashboard, the response inspector, and both export formats all call the same function.
+
+---
+
+## 14. PWA Structure
+
+The participant application provides a Web App Manifest with `display: standalone`, localised names, and a full icon set; a service worker handling `push`, `notificationclick`, and safe updates; installability metadata; and push subscription management.
+
+Service worker updates never activate silently mid-questionnaire — the user is prompted.
+
+Push permission is requested only after an explanatory screen and in response to an explicit user gesture, per browser requirements.
+
+**The application must degrade safely when push is unavailable.** A participant with notifications denied can still open the study URL, see their current status, and complete every available session.
+
+Full offline questionnaire completion is not an MVP requirement. The autosave outbox provides resilience against transient connectivity loss, which is a different and narrower guarantee.
+
+---
+
+## 15. Internationalization
+
+`next-intl` in both applications, with catalogs in `packages/i18n`:
+
+```text
+packages/i18n/
 ├── en.json
 └── tr.json
 ```
 
-Researcher-entered questionnaire content is application data and should remain separate from interface translations.
+Three separate concerns, modelled separately:
 
-## Testing Layers
+1. **Interface strings** — the catalogs above. A CI check asserts both files have identical key sets.
+2. **Researcher-entered content** — application data in `*_translations` tables keyed by (entity version, locale).
+3. **Consent content** — versioned documents with per-locale bodies. The locale in which consent was accepted is recorded on the enrollment.
 
-```text
-Unit
-├── protocol calculations
-├── state transitions
-├── compliance formulas
-├── notification eligibility
-└── export transforms
+Participant locale resolution: URL parameter → participant preference → study default.
 
-Integration
-├── API + database
-├── enrollment + consent
-├── autosave + resume
-├── scheduler + worker
-└── auth/authorization
+---
 
-E2E
-└── researcher → participant → dashboard → export
-```
-
-Use deterministic/fake clocks for time-dependent tests.
-
-## Suggested Deployment Model
-
-A practical MVP deployment may use:
+## 16. Testing Layers
 
 ```text
-Web frontend   → Vercel or equivalent
-Backend API    → managed/container host
-Worker         → persistent worker service
-PostgreSQL     → managed database
-Redis          → managed queue/cache
-Push           → Web Push / FCM-compatible infrastructure
+Unit  (Vitest, ~400)          all of packages/domain, pure and sub-second
+├── protocol timing, both modes, incl. DST anomalies
+├── recurrence expansion
+├── state transitions — exhaustive over the 8×8 matrix
+├── compliance formulas with worked denominators
+├── missingness classification, all seven statuses
+├── notification eligibility guard chain
+└── export shaping, long and wide
+
+Integration  (Vitest + Testcontainers, ~120)   real PostgreSQL
+├── migrations on a clean database
+├── every constraint verified by attempted violation
+├── enrollment, consent, credential rotation
+├── autosave idempotency and revision ordering
+├── completion under concurrency
+├── completion racing an in-flight reminder
+├── sweeper recovery after simulated outage
+├── duplicate job delivery
+├── authorization matrix, role × endpoint
+├── app_analytics provably cannot read identity
+└── export reconciliation against source rows
+
+E2E  (Playwright, 6 journeys)
+└── researcher → participant → scheduling → notification → dashboard → export
 ```
 
-Specific vendors are not fixed by this document.
+A real PostgreSQL instance is required for integration tests: `SKIP LOCKED`, partial unique indexes, and transactional enqueue have no faithful in-memory equivalent, so a fake would test the wrong thing.
 
-## Architecture Decision Records
+Time-dependent tests use an injected `Clock`. Push tests use a fake transport that records sends and simulates 201/404/410/500.
 
-Record major choices under `docs/adr/`, for example:
+Test fixtures use neutral placeholder content (`Sample question 1`) exclusively. Real psychological instruments are never committed.
+
+---
+
+## 17. Deployment
+
+Single EU region, one provider. See ADR-010.
 
 ```text
-0001-monorepo-structure.md
-0002-backend-framework.md
-0003-authentication-strategy.md
-0004-participant-continuity.md
-0005-job-queue.md
-0006-push-provider.md
-0007-versioning-model.md
+research.example.org  → researcher   Next.js
+app.example.org       → participant  Next.js
+api.example.org       → api          NestJS, always-on web service
+                        worker       NestJS, always-on background worker
+                        postgres     managed, PITR, daily backup
 ```
 
-## Architectural Non-Negotiables
+**The worker must run on an always-on instance.** A tier that spins down when idle stops the sweepers and silently disables the entire scheduling guarantee.
 
-The implementation must not:
+Environments: `local` (Docker Compose with PostgreSQL only) · `test` (ephemeral Testcontainers) · `staging` (full mirror, seeded, with **accelerated protocol timings** so multi-day flows validate in minutes) · `production`.
 
-- depend on in-memory timers for multi-day protocols;
-- mutate historical questionnaire definitions after responses exist;
-- mutate historical protocol definitions after they have been applied;
-- expose participant answers through unauthenticated researcher endpoints;
-- use email/phone as the canonical research participant key;
-- hard-code study-specific question counts or timing intervals;
-- treat push sending as proof of engagement;
-- use the browser clock as the authority for session access.
+Deploy flow: push → CI (lint, typecheck, unit, integration) → build → pre-deploy migration → api and worker → frontends. Migrations are always backward-compatible with the previous release, so a rollback never strands the schema.
+
+Operational baseline: `/health` and `/ready` · Sentry on all four services · heartbeat alerting if sweepers go stale beyond 5 minutes · an admin ops page showing dead-lettered jobs, push failure rates by status code, subscription attrition, and last sweep times · a scheduled restore drill.
+
+---
+
+## 18. Architecture Decision Records
+
+```text
+docs/adr/
+├── ADR-001-monorepo-and-tooling.md
+├── ADR-002-backend-framework.md
+├── ADR-003-database-and-data-access.md
+├── ADR-004-background-jobs.md
+├── ADR-005-scheduling-guarantee.md
+├── ADR-006-push-notifications.md
+├── ADR-007-participant-continuity.md
+├── ADR-008-versioning-model.md
+├── ADR-009-frontend-application-split.md
+└── ADR-010-deployment-platform.md
+```
+
+Each records context, decision, alternatives rejected with reasons, and consequences.
+
+---
+
+## 19. Architectural Constraints
+
+The canonical list of prohibited implementations is **`AGENT.md` §17 — Non-Negotiable Red Flags**. It is not repeated here.
+
+Architecturally, the constraints with the widest blast radius are:
+
+- multi-day scheduling must never depend on an in-memory timer or an open browser tab;
+- published questionnaire and protocol versions must never be mutated;
+- the browser clock must never decide availability;
+- a missing response must never be represented as zero;
+- push acceptance must never be treated as delivery or as engagement.

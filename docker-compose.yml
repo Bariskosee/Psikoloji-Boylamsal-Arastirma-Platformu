@@ -1,0 +1,28 @@
+# Local development dependencies only.
+#
+# PostgreSQL is the only stateful service this platform needs — there is no
+# Redis, because background jobs run on PostgreSQL via pg-boss (ADR-004).
+#
+# Applications run natively (pnpm dev), not in containers.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: lpr-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: lpr
+      POSTGRES_PASSWORD: lpr_local_dev_only
+      POSTGRES_DB: lpr
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lpr -d lpr"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres-data:

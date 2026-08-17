@@ -1,0 +1,15 @@
+{
+  "common": {
+    "appName": "Boylamsal Araştırma Platformu",
+    "loading": "Yükleniyor…",
+    "error": "Bir hata oluştu"
+  },
+  "health": {
+    "title": "Servis durumu",
+    "operational": "Servis çalışıyor",
+    "phase": "Faz 0 — altyapı. Henüz çalışma işlevleri kullanılabilir değil.",
+    "participantApp": "Katılımcı uygulaması",
+    "researcherApp": "Araştırmacı paneli",
+    "switchLanguage": "English"
+  }
+}
