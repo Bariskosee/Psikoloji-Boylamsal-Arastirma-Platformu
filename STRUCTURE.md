@@ -224,6 +224,7 @@ Study lifecycle: `DRAFT → ACTIVE → PAUSED → CLOSED → ARCHIVED`.
 
 ```text
 researcher_users ──< study_members >── studies ──┬─< consent_versions
+                                                 ├─< study_groups          (FR-45)
                                                  │
                                                  ├─< questionnaires ─< questionnaire_versions
                                                  │                        └─< question_versions ─< question_options
@@ -252,7 +253,9 @@ studies ──< audit_events
 
 `public_code` is `P-` plus six uppercase Crockford base-32 characters, from a CSPRNG, unique per study, excluding visually ambiguous characters (I, L, O, U). Never sequential — a sequential code leaks enrollment order and sample size.
 
-**`enrollments`** — binds participant ↔ study ↔ `protocol_version_id` ↔ `consent_version_id` ↔ `consented_at` ↔ `consent_locale`. **This is where protocol version pinning happens** (NFR-17). An enrolled participant remains on their bound version for life.
+**`enrollments`** — binds participant ↔ study ↔ `protocol_version_id` ↔ `consent_version_id` ↔ `consented_at` ↔ `consent_locale` ↔ `group_id`. **This is where protocol version pinning and group assignment happen** (NFR-17, FR-45). Both are decided once, at enrollment, and never change: an enrolled participant remains on their bound version and in their assigned group for life. Re-assigning a group mid-study would invalidate that participant's data.
+
+**`study_groups`** — `study_id`, `key`, `label`, `allocation_weight`, `is_active`. A study with no groups behaves as a single-group study; nothing about that case becomes harder. The participant never sees a group label (FR-45).
 
 **`questionnaire_versions`** — `status ∈ {DRAFT, PUBLISHED, RETIRED}`. One draft per questionnaire. Publishing deep-copies the draft into immutable rows. Published rows are protected by a `BEFORE UPDATE` trigger, not merely by convention.
 
@@ -278,6 +281,9 @@ On `config`: everything queried relationally — order, type, required flag, pag
 | `occurrence_count`, `recurrence_interval_iso` | `7` × `P1D` = daily for a week (FR-38) |
 | `reminder_policy_id` | FK |
 | `counts_toward_compliance` | Excludes exploratory steps from the denominator |
+| `step_kind` | `SCHEDULED` \| `PARTICIPANT_INITIATED` (FR-46) |
+| `min_interval_iso`, `max_per_day`, `max_total` | Rate limits, participant-initiated steps only |
+| `allowed_group_ids` | Empty means all groups; otherwise restricts the step (FR-45) |
 
 **`reminder_policies`** — `initial_delay_iso`, `interval_iso`, `max_reminders` (NOT NULL), `quiet_hours_start`, `quiet_hours_end`, `quiet_hours_behavior ∈ {SKIP, DEFER}` (FR-40).
 
@@ -384,6 +390,8 @@ Every scheduling outcome is derivable from `participant_sessions` and `notificat
 At enrollment, all ParticipantSessions for every step of the bound protocol version are created immediately, expanded across `occurrence_count`. Steps whose time is computable start in `SCHEDULED`; the rest start in `PENDING_TRIGGER`.
 
 Materialising upfront rather than lazily is what makes the compliance denominator and the participant timeline knowable, and pins the protocol version at one well-defined moment.
+
+Two exceptions (FR-45, FR-46). Steps whose `allowed_group_ids` excludes the participant's group are not materialised at all. **Participant-initiated steps are not materialised either** — they have no computable time, so a ParticipantSession is created on demand when the participant starts one, after the server re-checks `min_interval_iso`, `max_per_day` and `max_total` against existing sessions. Those limits are enforced server-side; the client may hide the button, but hiding is not enforcement.
 
 ### 8.3 Timing computation
 

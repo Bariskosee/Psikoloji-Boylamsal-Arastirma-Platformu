@@ -68,13 +68,22 @@ the stack, the job system, the versioning model, or the deployment target.
 If a rule blocks something you believe is legitimate, that is a design
 conversation and an ADR — not a lint-rule edit.
 
-## Two things that will bite you
+## Three things that will bite you
 
 **NestJS injection needs value imports.** Never convert an injected class to
 `import type`. `emitDecoratorMetadata` needs the class at runtime, and a
 type-only import erases it, producing a confusing "Nest can't resolve
 dependencies" error at startup. `consistent-type-imports` is disabled under
 `apps/api` and `apps/worker` for exactly this reason.
+
+**Do not run the backends through esbuild-based runners.** `tsx`, `esbuild`, and
+`bun` cannot emit `emitDecoratorMetadata` — it is an esbuild limitation, not a
+configuration mistake. NestJS then receives no `design:paramtypes`, injects
+`undefined`, and you get `Cannot read properties of undefined` on the *first
+request* rather than at startup, which makes it look like an application bug.
+`apps/api` and `apps/worker` therefore use `nest start --watch`, which compiles
+with tsc. This bit us once already; the symptom is a route that 500s while the
+build and all tests pass.
 
 **The worker must run always-on.** It hosts the reconciliation sweepers that
 guarantee scheduling correctness (ADR-005). On any host that spins services down

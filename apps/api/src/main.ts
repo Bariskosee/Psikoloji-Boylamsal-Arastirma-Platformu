@@ -1,3 +1,5 @@
+// Must be the FIRST import: populates process.env before anything reads it.
+import "./config/load-env.js";
 import "reflect-metadata";
 import * as Sentry from "@sentry/node";
 import { NestFactory } from "@nestjs/core";
@@ -20,6 +22,12 @@ async function bootstrap(): Promise<void> {
   }
 
   const app = await NestFactory.create(AppModule, { bufferLogs: false });
+
+  // Express advertises itself via X-Powered-By by default. Disclosing the
+  // server stack gives an attacker a free hint about which CVEs to try, and
+  // costs us nothing to remove. Next sets poweredByHeader: false for the same
+  // reason on the frontends.
+  app.getHttpAdapter().getInstance().disable("x-powered-by");
 
   // Credentials are cookies on two distinct origins (ADR-009), so the allowed
   // origin list is explicit rather than a wildcard.

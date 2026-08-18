@@ -34,6 +34,9 @@ Terminology is fixed here. These terms are used consistently across all reposito
 | **Response** | One participant's answer to one question within one ParticipantSession. |
 | **Response Window** | The period between `available_from` and `available_until` during which a ParticipantSession may be answered. |
 | **Trigger** | The event that starts a protocol step's timing: enrollment, consent, or another step reaching a state. |
+| **Group** | A named between-subjects condition within a study (e.g. experimental / control). Assigned once at enrollment. See FR-45. |
+| **Scheduled step** | A protocol step whose availability the engine computes from a trigger and offset. |
+| **Participant-initiated step** | A protocol step the participant may start on their own initiative, subject to rate limits. See FR-46. |
 | **Compliance** | Completed ParticipantSessions divided by due ParticipantSessions. Defined precisely in FR-44 and `docs/compliance-formula.md`. |
 | **Pseudonymous** | Identifying data is replaced by a code, but re-identification remains possible through other retained data. **This platform's data is pseudonymous, never anonymous.** |
 
@@ -478,6 +481,59 @@ When the denominator is zero, the system must display "not yet applicable", neve
 
 Full rules and worked examples are in `docs/compliance-formula.md`.
 
+## FR-45 — Participant Group Assignment
+
+Researchers must be able to define named groups within a study, so that
+between-subjects designs — an experimental arm and a control arm, or several
+conditions — can be expressed without code changes.
+
+Requirements:
+
+- A study may define zero or more groups. A study with no groups behaves as a
+  single-group study; nothing about the single-group case may become harder.
+- Group assignment happens **once, at enrollment**, and is recorded immutably on
+  the enrollment alongside the protocol version.
+- Assignment strategies must be configurable. The MVP must support at minimum
+  random allocation with configurable relative weights.
+- A protocol step may be restricted to one or more groups. A participant is
+  never assigned sessions for a step that excludes their group.
+- Group membership must appear in the participant list, the participant detail
+  view, and every export.
+- The participant must not be able to see, choose, or influence their group.
+  Group labels are researcher-facing.
+
+**Why this is specified now rather than later.** Group assignment is a column on
+the enrollment and a filter on protocol steps. Adding it before data collection
+costs almost nothing; adding it afterwards means either re-assigning already
+enrolled participants — which invalidates their data — or running two
+incompatible enrollment models side by side.
+
+## FR-46 — Participant-Initiated Questionnaires
+
+A protocol step must be able to be **participant-initiated** rather than
+scheduled: available on the participant's own initiative rather than opening at
+a computed time. This is the pattern a free-entry diary or an event-contingent
+report requires — "record this whenever it happens", not "record this at 18:00".
+
+Requirements:
+
+- A protocol step is either **scheduled** (FR-11, FR-12) or
+  **participant-initiated**. The two are mutually exclusive per step; one
+  protocol may contain both kinds.
+- For a participant-initiated step, researchers must be able to configure:
+  - an optional local time-of-day window during which it may be started;
+  - an optional minimum interval between consecutive completions, so a
+    participant cannot submit twenty entries in a minute;
+  - an optional maximum number of completions, per day and in total.
+- Starting one creates a `ParticipantSession` exactly as a scheduled step does.
+  These sessions carry the same states, the same autosave and resume behaviour,
+  and appear in the timeline and in exports identically.
+- Participant-initiated steps generate no scheduled availability notification.
+  Reminder policies do not apply to them.
+- Because a participant cannot "miss" work that was never due, participant-
+  initiated steps must default to `counts_toward_compliance = false`, and the
+  compliance denominator rules in FR-44 apply unchanged.
+
 ---
 
 # 7. Non-Functional Requirements
@@ -585,15 +641,15 @@ Database backups must support point-in-time recovery, and the restore procedure 
 
 ## Participant
 
-Enrollment link · QR code · configurable consent content · `public_code` generation · device continuity including PWA install handoff · baseline questionnaire · scheduled questionnaires · recurring steps · PWA installation · compatible iOS/Android push notifications · reminder notifications · autosave and resume · completion flow · withdrawal · Turkish/English UI.
+Enrollment link · QR code · configurable consent content · `public_code` generation · device continuity including PWA install handoff · baseline questionnaire · scheduled questionnaires · recurring steps · participant-initiated questionnaires · PWA installation · compatible iOS/Android push notifications · reminder notifications · autosave and resume · completion flow · withdrawal · Turkish/English UI.
 
 ## Researcher
 
-Login · study creation and lifecycle · questionnaire and question creation · question reordering · required/optional configuration · questionnaire publishing and versioning · protocol and step configuration including recurrence · reminder policy configuration · protocol timeline preview · participant list · daily completion and compliance view · participant timeline · response inspection · descriptive dashboard · long/wide/codebook CSV export.
+Login · study creation and lifecycle · questionnaire and question creation · question reordering · required/optional configuration · questionnaire publishing and versioning · protocol and step configuration including recurrence, group restriction and participant-initiated steps · group definition and allocation · reminder policy configuration · protocol timeline preview · participant list · daily completion and compliance view · participant timeline · response inspection · descriptive dashboard · long/wide/codebook CSV export.
 
 ## Backend
 
-Participant management · study, questionnaire, and protocol management with versioning · durable protocol scheduler · notification scheduler with reminder cancellation · response persistence including partial responses · compliance calculation · authentication and authorization · audit logging · operational health visibility.
+Participant management · study, questionnaire, and protocol management with versioning · group assignment at enrollment · durable protocol scheduler · notification scheduler with reminder cancellation · response persistence including partial responses · compliance calculation · authentication and authorization · audit logging · operational health visibility.
 
 ---
 

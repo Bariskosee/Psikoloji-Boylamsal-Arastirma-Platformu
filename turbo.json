@@ -2,6 +2,7 @@
   "$schema": "https://turbo.build/schema.json",
   "ui": "stream",
   "globalDependencies": ["tsconfig.base.json", ".env.example"],
+  "globalEnv": ["NODE_ENV", "CI"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
@@ -15,11 +16,28 @@
     },
     "test:integration": {
       "dependsOn": ["^build"],
-      "cache": false
+      "cache": false,
+      // Turborepo 2 runs tasks in a filtered environment: variables not
+      // declared here are STRIPPED. Without this, DATABASE_URL never reaches
+      // the integration tests, and they quietly connect somewhere else.
+      "env": ["DATABASE_URL"]
     },
     "dev": {
       "cache": false,
-      "persistent": true
+      "persistent": true,
+      // Same trap as test:integration: Turborepo strips undeclared variables,
+      // so without this `pnpm dev` starts the backends with no configuration
+      // and they exit immediately on env validation.
+      "env": [
+        "DATABASE_URL",
+        "API_PORT",
+        "PARTICIPANT_ORIGIN",
+        "RESEARCHER_ORIGIN",
+        "SENTRY_DSN",
+        "LOG_LEVEL",
+        "SWEEP_INTERVAL_SECONDS",
+        "NEXT_PUBLIC_API_URL"
+      ]
     }
   }
 }

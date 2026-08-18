@@ -1,3 +1,5 @@
+// Must be the FIRST import: populates process.env before anything reads it.
+import "./config/load-env.js";
 import "reflect-metadata";
 import * as Sentry from "@sentry/node";
 import PgBoss from "pg-boss";
