@@ -6,8 +6,7 @@ import {
   type HealthResponse,
   type ReadyResponse,
 } from "@lpr/contracts";
-
-export const DB_POOL = Symbol("DB_POOL");
+import { DB_POOL } from "../database/database.module.js";
 
 const SERVICE_NAME = "api";
 const VERSION = process.env["npm_package_version"] ?? "0.0.0";

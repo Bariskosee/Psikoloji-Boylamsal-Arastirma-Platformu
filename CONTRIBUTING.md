@@ -26,9 +26,26 @@ Alternatively, run pnpm through corepack without installing a shim:
 cp .env.example .env        # placeholders are fine for local work
 pnpm install
 pnpm db:up                  # starts PostgreSQL 16 in Docker
+pnpm --filter=@lpr/db migrate:up
 pnpm build
 pnpm test
 ```
+
+### Creating your first researcher account
+
+There is no sign-up screen, and there will not be one: self-service registration
+on a platform holding psychological research data would let anyone who finds the
+dashboard create a study. Accounts are created deliberately, by whoever
+administers the deployment.
+
+```bash
+RESEARCHER_PASSWORD='a passphrase of several words' \
+  pnpm --filter=@lpr/api researcher:create -- --email you@example.org --name "Your Name"
+```
+
+Then sign in at `http://localhost:3002/en/login`. The password is read from the
+environment or from stdin, never from an argument — an argument would be visible
+in `ps` and in shell history.
 
 ## Everyday commands
 
@@ -42,6 +59,8 @@ pnpm test
 | `pnpm typecheck` | TypeScript across the workspace |
 | `pnpm format` | Prettier |
 | `pnpm db:up` / `db:down` | Start / stop local PostgreSQL |
+| `pnpm --filter=@lpr/db migrate:up` | Apply migrations |
+| `pnpm --filter=@lpr/api researcher:create` | Create a researcher account |
 
 Ports: participant `3000`, API `3001`, researcher `3002`, PostgreSQL `5432`.
 

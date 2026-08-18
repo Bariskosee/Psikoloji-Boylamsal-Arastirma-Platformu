@@ -6,9 +6,16 @@ packages:
 # genuinely needs one: esbuild fetches its platform binary (used by Vitest),
 # sharp fetches native image bindings (used by Next.js image optimisation).
 # Anything not listed here cannot execute code at install time.
+#
+# @swc/core is explicitly DENIED rather than merely unlisted. Vitest needs SWC
+# to emit the decorator metadata NestJS DI depends on — esbuild cannot emit it
+# at all — but SWC ships its native binding as a platform-specific optional
+# dependency and runs correctly without its install script. Recording the "no"
+# keeps `pnpm install` clean without granting code execution at install time.
 allowBuilds:
   esbuild: true
   sharp: true
+  "@swc/core": false
 
 # Refuse to install on an unsupported Node version rather than only warning.
 # pnpm 11 reads these settings here, not from .npmrc.

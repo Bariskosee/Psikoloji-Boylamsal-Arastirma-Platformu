@@ -1,33 +1,16 @@
-import { getTranslations, setRequestLocale } from "next-intl/server";
-import { Link } from "@/i18n/navigation";
+import { redirect } from "next/navigation";
+import { setRequestLocale } from "next-intl/server";
 
 /**
- * Phase 0 health page.
+ * The dashboard root.
  *
- * The real dashboard — login, study list, builders, monitoring — arrives from
- * Phase 2 onward.
+ * Redirects to the study list, which is the only screen a signed-in researcher
+ * ever wants first. The list itself redirects to /login when the session has
+ * expired — that decision belongs on the client, where the API's answer is
+ * known, rather than here where the session cookie is not readable (ADR-009).
  */
-export default async function ResearcherHealthPage({
-  params,
-}: {
-  params: Promise<{ locale: string }>;
-}) {
+export default async function ResearcherHome({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const t = await getTranslations("health");
-
-  return (
-    <>
-      <h1>{t("researcherApp")}</h1>
-      <p>
-        <strong>{t("operational")}</strong>
-      </p>
-      <p>{t("phase")}</p>
-      <p>
-        <Link href="/" locale={locale === "en" ? "tr" : "en"}>
-          {t("switchLanguage")}
-        </Link>
-      </p>
-    </>
-  );
+  redirect(`/${locale}/studies`);
 }

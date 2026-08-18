@@ -1,14 +1,28 @@
 /**
  * Drizzle schema definitions.
  *
- * Phase 0 intentionally defines NO tables. The complete schema for both the
- * `research` and `identity` schemas — with every uniqueness constraint,
- * foreign key, enum check, and published-version immutability trigger — is
- * authored in Phase 1 as migration 0001.
+ * ─────────────────────────────────────────────────────────────────────────────
+ * MERGE NOTE — Phase 1 owns the complete schema.
  *
- * Writing tables here before Phase 1 would skip the review boundary that
- * exists precisely because this schema is where research integrity is won or
- * lost. See PLAN.md Phase 1.
+ * PLAN.md authors the full model for both PostgreSQL schemas in Phase 1, in
+ * migration 0001. This branch defines only the five tables Phase 2 needs to
+ * function — `researcher_users`, `researcher_sessions`, `studies`,
+ * `study_members`, `audit_events` — because Phase 2 cannot authenticate anyone
+ * against a schema that does not exist yet.
+ *
+ * When Phase 1 merges, ITS definitions are authoritative for anything that
+ * disagrees. The migration here is written idempotently (`IF NOT EXISTS`
+ * throughout) so the two can be reconciled without a destructive reset.
+ * ─────────────────────────────────────────────────────────────────────────────
  */
 
-export {};
+export * from "./schemas";
+
+// identity — re-identifying data and authentication secrets.
+export * from "./identity/researcher-users";
+export * from "./identity/researcher-sessions";
+
+// research — canonical research data.
+export * from "./research/studies";
+export * from "./research/study-members";
+export * from "./research/audit-events";

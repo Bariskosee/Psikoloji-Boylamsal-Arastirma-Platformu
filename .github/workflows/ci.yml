@@ -67,10 +67,22 @@ jobs:
       - name: Unit tests
         run: pnpm test
 
+      # The integration lane asserts real constraints, real privileges, and the
+      # append-only audit trigger, so the schema has to exist first. Running
+      # this as its own step also proves migrations apply cleanly to an EMPTY
+      # database on every push — the check PLAN.md asks of Phase 1.
+      - name: Apply migrations
+        run: pnpm --filter=@lpr/db migrate:up
+        env:
+          DATABASE_URL: postgresql://lpr:lpr_ci@localhost:5432/lpr_test
+
       - name: Integration tests
         run: pnpm test:integration
         env:
           DATABASE_URL: postgresql://lpr:lpr_ci@localhost:5432/lpr_test
+          SESSION_SECRET: ci-session-secret-not-used-in-any-deployment
+          RESEARCHER_ORIGIN: http://localhost:3002
+          PARTICIPANT_ORIGIN: http://localhost:3000
 
   secrets:
     name: Secret scan

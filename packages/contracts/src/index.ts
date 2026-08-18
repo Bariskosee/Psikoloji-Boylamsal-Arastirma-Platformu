@@ -8,8 +8,18 @@
  *
  * This package must not import any other workspace package (enforced by lint).
  *
- * Phase 0 scope: health contracts only. Domain contracts arrive in Phase 1.
+ * Secret material — password hashes, session token hashes, credential hashes,
+ * push endpoints and keys — is deliberately absent. Those columns exist only in
+ * `packages/db`, so nothing can serialise one by reaching for a shared type.
+ *
+ * Phase 0 scope: health and locale.
+ * Phase 2 adds: errors, roles, auth, study, audit.
  */
 
 export * from "./health.js";
 export * from "./locale.js";
+export * from "./errors.js";
+export * from "./roles.js";
+export * from "./auth.js";
+export * from "./study.js";
+export * from "./audit.js";
