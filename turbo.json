@@ -24,7 +24,20 @@
     },
     "dev": {
       "cache": false,
-      "persistent": true
+      "persistent": true,
+      // Same trap as test:integration: Turborepo strips undeclared variables,
+      // so without this `pnpm dev` starts the backends with no configuration
+      // and they exit immediately on env validation.
+      "env": [
+        "DATABASE_URL",
+        "API_PORT",
+        "PARTICIPANT_ORIGIN",
+        "RESEARCHER_ORIGIN",
+        "SENTRY_DSN",
+        "LOG_LEVEL",
+        "SWEEP_INTERVAL_SECONDS",
+        "NEXT_PUBLIC_API_URL"
+      ]
     }
   }
 }

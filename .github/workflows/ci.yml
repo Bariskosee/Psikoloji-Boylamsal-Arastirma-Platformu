@@ -53,6 +53,11 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      # Prettier is configured and there is a format script; without this step
+      # formatting drifts and nothing ever notices.
+      - name: Format check
+        run: pnpm format:check
+
       - name: Typecheck
         run: pnpm typecheck
 
