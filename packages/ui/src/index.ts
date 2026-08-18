@@ -10,4 +10,12 @@
  * before there are screens produces components nobody uses.
  */
 
-export * from "./tokens.js";
+/**
+ * Extensionless, unlike the backend packages.
+ *
+ * @lpr/ui is consumed as SOURCE through Next's `transpilePackages`, so webpack
+ * resolves this specifier — and webpack under bundler resolution cannot map
+ * `./tokens.js` onto `tokens.ts` the way `tsc` does for the CommonJS packages.
+ * The `.js` form built cleanly only while nothing imported this package.
+ */
+export * from "./tokens";

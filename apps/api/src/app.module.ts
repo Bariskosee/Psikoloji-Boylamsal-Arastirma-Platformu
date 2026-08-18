@@ -1,5 +1,15 @@
 import { Module } from "@nestjs/common";
+import { APP_FILTER, APP_GUARD } from "@nestjs/core";
+import { ApiExceptionFilter } from "./common/api-exception.filter.js";
+import { CoreModule } from "./common/core.module.js";
+import { AuditModule } from "./modules/audit/audit.module.js";
+import { AuthModule } from "./modules/auth/auth.module.js";
+import { CsrfGuard } from "./modules/auth/guards/csrf.guard.js";
+import { SessionAuthGuard } from "./modules/auth/guards/session-auth.guard.js";
+import { StudyPermissionGuard } from "./modules/auth/guards/study-permission.guard.js";
+import { DatabaseModule } from "./modules/database/database.module.js";
 import { HealthModule } from "./modules/health/health.module.js";
+import { StudyModule } from "./modules/study/study.module.js";
 
 /**
  * Root module.
@@ -8,11 +18,29 @@ import { HealthModule } from "./modules/health/health.module.js";
  * so the boundaries in STRUCTURE.md §5 are enforced by the compiler rather
  * than maintained by convention (ADR-002).
  *
- * Phase 0 registers only HealthModule. The domain modules — auth, study,
- * consent, questionnaire, protocol, participant, session, response,
- * notification, analytics, export, audit — arrive in Phases 2 onward.
+ * ── Why the guards are GLOBAL ────────────────────────────────────────────────
+ * Authentication and CSRF are opt-out (`@Public()`), not opt-in. A controller
+ * added in a later phase is protected the moment it exists. The inverse — a
+ * `@UseGuards` on each controller — fails open: one forgotten decorator serves
+ * participant responses to anyone, and nothing about the code looks wrong.
+ *
+ * Order is significant. Nest runs global guards in registration order:
+ *
+ *   SessionAuthGuard      resolves the session cookie → request.auth
+ *   CsrfGuard             needs request.auth for the double-submit comparison
+ *   StudyPermissionGuard  needs request.auth for the membership lookup
+ *
+ * The remaining domain modules — consent, questionnaire, protocol, participant,
+ * session, response, notification, analytics, export — arrive in Phases 3
+ * onward.
  */
 @Module({
-  imports: [HealthModule],
+  imports: [CoreModule, DatabaseModule, HealthModule, AuthModule, AuditModule, StudyModule],
+  providers: [
+    { provide: APP_FILTER, useClass: ApiExceptionFilter },
+    { provide: APP_GUARD, useClass: SessionAuthGuard },
+    { provide: APP_GUARD, useClass: CsrfGuard },
+    { provide: APP_GUARD, useClass: StudyPermissionGuard },
+  ],
 })
 export class AppModule {}

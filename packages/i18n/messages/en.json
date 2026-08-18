@@ -11,5 +11,84 @@
     "participantApp": "Participant application",
     "researcherApp": "Researcher dashboard",
     "switchLanguage": "Türkçe"
+  },
+  "auth": {
+    "signIn": "Sign in",
+    "signingIn": "Signing in…",
+    "email": "Email",
+    "password": "Password",
+    "signOut": "Sign out",
+    "noSelfService": "Accounts are created by your platform administrator. There is no self-service sign-up.",
+    "errors": {
+      "invalidCredentials": "Email or password is incorrect.",
+      "rateLimited": "Too many attempts. Please wait a few minutes and try again.",
+      "network": "Could not reach the server. Check your connection.",
+      "validation": "Please check the form and try again.",
+      "unknown": "Something went wrong. Please try again."
+    }
+  },
+  "studies": {
+    "title": "Studies",
+    "create": "New study",
+    "creating": "Creating…",
+    "loading": "Loading…",
+    "empty": "You are not a member of any study yet.",
+    "name": "Name",
+    "description": "Description",
+    "status": "Status",
+    "code": "Enrollment code",
+    "yourRole": "Your role",
+    "timezone": "Study timezone",
+    "timezoneHint": "Wall-clock schedules resolve in this zone. It cannot be guessed safely later.",
+    "locales": "Languages offered to participants",
+    "defaultLocale": "Default language",
+    "capacity": "Enrollment capacity",
+    "capacityHint": "Leave empty for no limit.",
+    "uncapped": "No limit",
+    "enrollment": "Enrollment",
+    "qrAlt": "QR code linking to this study's enrollment page",
+    "settings": "Settings",
+    "save": "Save",
+    "saving": "Saving…",
+    "lifecycle": "Lifecycle",
+    "lifecycleHint": "Only an ACTIVE study accepts new participants. Closing a study cannot be undone.",
+    "lifecycleTerminal": "This study is archived and cannot change further.",
+    "manageMembers": "Manage members",
+    "backToList": "All studies",
+    "transitions": {
+      "ACTIVE": "Activate",
+      "PAUSED": "Pause",
+      "CLOSED": "Close",
+      "ARCHIVED": "Archive",
+      "DRAFT": "Draft"
+    },
+    "errors": {
+      "load": "Could not load your studies.",
+      "create": "Could not create the study.",
+      "save": "Could not save your changes.",
+      "validation": "Please check the form and try again.",
+      "notFound": "This study does not exist, or you do not have access to it.",
+      "transition": "That status change is not allowed."
+    }
+  },
+  "members": {
+    "title": "Study members",
+    "current": "Current members",
+    "add": "Add member",
+    "email": "Email",
+    "name": "Name",
+    "role": "Role",
+    "remove": "Remove",
+    "loading": "Loading…",
+    "backToStudy": "Back to study",
+    "accountRequired": "The person must already have an account on this platform.",
+    "errors": {
+      "load": "Could not load the member list.",
+      "noAccount": "No account exists for that email address.",
+      "alreadyMember": "That researcher is already a member of this study.",
+      "lastOwner": "A study must keep at least one OWNER.",
+      "forbidden": "Only an OWNER can manage members.",
+      "unknown": "Something went wrong. Please try again."
+    }
   }
 }

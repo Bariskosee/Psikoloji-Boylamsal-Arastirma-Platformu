@@ -4,6 +4,8 @@ import "reflect-metadata";
 import * as Sentry from "@sentry/node";
 import { NestFactory } from "@nestjs/core";
 import { Logger } from "@nestjs/common";
+import cookieParser from "cookie-parser";
+import { CSRF_HEADER } from "@lpr/contracts";
 import { AppModule } from "./app.module.js";
 import { loadEnv } from "./config/env.js";
 
@@ -23,6 +25,25 @@ async function bootstrap(): Promise<void> {
 
   const app = await NestFactory.create(AppModule, { bufferLogs: false });
 
+  /**
+   * Session and CSRF cookies are read on every request, so the parser runs
+   * before any guard. It is NOT signed: the session cookie's value is a
+   * 256-bit random token whose authority comes from matching a database row,
+   * and a signature would add a second secret to rotate for no gain.
+   */
+  app.use(cookieParser());
+
+  /**
+   * Trust exactly ONE proxy hop — Render's load balancer (ADR-010).
+   *
+   * `true` would trust the whole X-Forwarded-For chain, letting any client
+   * prepend an address of its choosing: the login rate limiter would then see
+   * a fresh IP on every attempt, and every audit row's ip_hash would be
+   * attacker-controlled. One hop takes the address the load balancer itself
+   * observed.
+   */
+  app.getHttpAdapter().getInstance().set("trust proxy", 1);
+
   // Express advertises itself via X-Powered-By by default. Disclosing the
   // server stack gives an attacker a free hint about which CVEs to try, and
   // costs us nothing to remove. Next sets poweredByHeader: false for the same
@@ -34,6 +55,9 @@ async function bootstrap(): Promise<void> {
   app.enableCors({
     origin: [env.PARTICIPANT_ORIGIN, env.RESEARCHER_ORIGIN],
     credentials: true,
+    // The double-submit CSRF token travels in this header, so the browser has
+    // to be told it is allowed on a cross-origin request (ADR-009).
+    allowedHeaders: ["Content-Type", CSRF_HEADER],
   });
 
   app.enableShutdownHooks();

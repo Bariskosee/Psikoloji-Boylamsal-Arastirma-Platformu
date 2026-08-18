@@ -323,6 +323,14 @@ Typed columns rather than a single `value_json`: every analytics query and every
 
 **`audit_events`** — `actor_type`, `actor_id`, `study_id`, `action`, `entity_type`, `entity_id`, `metadata` (redacted jsonb), `ip_hash`, `occurred_at`. Never contains response payloads.
 
+**`researcher_users`, `researcher_sessions`** *(identity schema)* — researcher accounts and their server-side sessions.
+
+These live in `identity`, not `research`, even though the domain-model diagram above draws `researcher_users` alongside the study graph. `app_analytics` holds `SELECT` on the whole of `research` (§11.2), so a researcher's email address and argon2id password hash would otherwise sit one accidental join away from an export code path. The privacy boundary is drawn around re-identifying and secret data, and these tables are both.
+
+`researcher_users` — `email` (unique, lowercase-enforced), `password_hash`, `display_name`, `locale`, `is_admin`, `is_active`, `password_changed_at`, `last_login_at`. Accounts are deactivated, never deleted, so the audit trail stays interpretable.
+
+`researcher_sessions` — `token_hash` (SHA-256; the token itself is never stored), `csrf_token_hash`, `user_id`, `expires_at` (absolute), `last_seen_at` (idle timeout), `revoked_at`, `ip_hash`, `user_agent`. Server-side rather than stateless, because revocation must take effect on the next request.
+
 ---
 
 ## 7. ParticipantSession State Machine
@@ -579,6 +587,10 @@ role app_analytics   → SELECT on research ONLY
                        ↑ used by every analytics and export code path
 ```
 
+`identity` holds participant credentials, push subscriptions, contacts and recovery codes — and also `researcher_users` and `researcher_sessions`, so that no analytics or export path can reach a password hash or a session token either.
+
+`research.audit_events` additionally has `UPDATE` and `DELETE` revoked from `app_readwrite` and a row trigger that rejects both. The trigger is the load-bearing control: migration and maintenance connections are superusers, and superusers bypass `GRANT`.
+
 This makes NFR-03 enforceable rather than aspirational: an export query that accidentally joins a push endpoint fails at the database, in CI, before review.
 
 ### 11.3 Participant continuity
@@ -658,7 +670,7 @@ RESEARCHER (session cookie + role guard; every query scoped by study_id)
   /api/studies/:id/protocols          EDITOR   + /versions /steps /publish /preview
   /api/studies/:id/participants       VIEWER+
   /api/studies/:id/sessions           VIEWER+
-  /api/studies/:id/analytics/*        ANALYST+
+  /api/studies/:id/analytics/*        VIEWER+  (aggregate monitoring only)
   /api/studies/:id/exports/*          ANALYST+
   /api/studies/:id/audit              OWNER
   /api/ops/*                          admin
@@ -666,6 +678,8 @@ RESEARCHER (session cookie + role guard; every query scoped by study_id)
 INTERNAL
   GET /health   GET /ready
 ```
+
+**On the analytics line.** REQUIREMENTS.md §5.2 defines VIEWER as "view aggregate monitoring only; no response-level access", and aggregate monitoring is exactly what the compliance dashboard shows (FR-27, FR-28). The line VIEWER must not cross is individual responses and exports, which stay ANALYST+. The authoritative table is `PERMISSION_MINIMUM_ROLE` in `packages/domain/src/authz/permissions.ts`, asserted exhaustively in its tests.
 
 **Conventions:** Zod validation on every request and response · stable machine-readable error codes (`SESSION_EXPIRED`, `CONSENT_REQUIRED`, `REQUIRED_QUESTIONS_MISSING`) rather than raw messages · cursor pagination on participants, sessions, and audit · `Idempotency-Key` accepted on completion and enrollment · uniform responses on participant lookup regardless of existence.
 

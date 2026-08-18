@@ -11,5 +11,84 @@
     "participantApp": "Katılımcı uygulaması",
     "researcherApp": "Araştırmacı paneli",
     "switchLanguage": "English"
+  },
+  "auth": {
+    "signIn": "Giriş yap",
+    "signingIn": "Giriş yapılıyor…",
+    "email": "E-posta",
+    "password": "Parola",
+    "signOut": "Çıkış yap",
+    "noSelfService": "Hesaplar platform yöneticiniz tarafından oluşturulur. Kendi kendine kayıt yoktur.",
+    "errors": {
+      "invalidCredentials": "E-posta veya parola hatalı.",
+      "rateLimited": "Çok fazla deneme yapıldı. Lütfen birkaç dakika sonra tekrar deneyin.",
+      "network": "Sunucuya ulaşılamadı. Bağlantınızı kontrol edin.",
+      "validation": "Lütfen formu kontrol edip tekrar deneyin.",
+      "unknown": "Bir şeyler ters gitti. Lütfen tekrar deneyin."
+    }
+  },
+  "studies": {
+    "title": "Çalışmalar",
+    "create": "Yeni çalışma",
+    "creating": "Oluşturuluyor…",
+    "loading": "Yükleniyor…",
+    "empty": "Henüz hiçbir çalışmanın üyesi değilsiniz.",
+    "name": "Ad",
+    "description": "Açıklama",
+    "status": "Durum",
+    "code": "Katılım kodu",
+    "yourRole": "Rolünüz",
+    "timezone": "Çalışma saat dilimi",
+    "timezoneHint": "Duvar saati temelli zamanlamalar bu dilimde hesaplanır. Sonradan güvenle tahmin edilemez.",
+    "locales": "Katılımcılara sunulan diller",
+    "defaultLocale": "Varsayılan dil",
+    "capacity": "Katılımcı kapasitesi",
+    "capacityHint": "Sınır olmaması için boş bırakın.",
+    "uncapped": "Sınırsız",
+    "enrollment": "Katılım",
+    "qrAlt": "Bu çalışmanın katılım sayfasına yönlendiren QR kodu",
+    "settings": "Ayarlar",
+    "save": "Kaydet",
+    "saving": "Kaydediliyor…",
+    "lifecycle": "Yaşam döngüsü",
+    "lifecycleHint": "Yalnızca ETKİN bir çalışma yeni katılımcı kabul eder. Kapatma işlemi geri alınamaz.",
+    "lifecycleTerminal": "Bu çalışma arşivlendi ve artık değiştirilemez.",
+    "manageMembers": "Üyeleri yönet",
+    "backToList": "Tüm çalışmalar",
+    "transitions": {
+      "ACTIVE": "Etkinleştir",
+      "PAUSED": "Duraklat",
+      "CLOSED": "Kapat",
+      "ARCHIVED": "Arşivle",
+      "DRAFT": "Taslak"
+    },
+    "errors": {
+      "load": "Çalışmalarınız yüklenemedi.",
+      "create": "Çalışma oluşturulamadı.",
+      "save": "Değişiklikleriniz kaydedilemedi.",
+      "validation": "Lütfen formu kontrol edip tekrar deneyin.",
+      "notFound": "Bu çalışma mevcut değil veya erişim yetkiniz yok.",
+      "transition": "Bu durum değişikliğine izin verilmiyor."
+    }
+  },
+  "members": {
+    "title": "Çalışma üyeleri",
+    "current": "Mevcut üyeler",
+    "add": "Üye ekle",
+    "email": "E-posta",
+    "name": "Ad",
+    "role": "Rol",
+    "remove": "Çıkar",
+    "loading": "Yükleniyor…",
+    "backToStudy": "Çalışmaya dön",
+    "accountRequired": "Kişinin bu platformda zaten bir hesabı olmalıdır.",
+    "errors": {
+      "load": "Üye listesi yüklenemedi.",
+      "noAccount": "Bu e-posta adresine ait bir hesap yok.",
+      "alreadyMember": "Bu araştırmacı zaten bu çalışmanın üyesi.",
+      "lastOwner": "Bir çalışmada en az bir SAHİP kalmalıdır.",
+      "forbidden": "Üyeleri yalnızca bir SAHİP yönetebilir.",
+      "unknown": "Bir şeyler ters gitti. Lütfen tekrar deneyin."
+    }
   }
 }

@@ -10,9 +10,15 @@
  * database and without waiting for real time. Everything else in the system is
  * plumbing around this package. See STRUCTURE.md §3 and ADR-001.
  *
- * Phase 0 scope: the Clock port only.
+ * Phase 0 scope: the Clock port.
+ * Phase 2 adds: authz/ — the researcher permission matrix and password policy;
+ *               study/ — lifecycle transitions and enrollment codes.
  * Phase 1 adds: scheduling/, state-machine/, compliance/, missingness/,
  *               export/, question-types/.
  */
 
 export * from "./clock.js";
+export * from "./authz/permissions.js";
+export * from "./authz/password-policy.js";
+export * from "./study/lifecycle.js";
+export * from "./study/enrollment-code.js";

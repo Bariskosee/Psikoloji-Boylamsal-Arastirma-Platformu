@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1787040806179,
+      "tag": "0000_phase2_auth_studies_audit",
+      "breakpoints": true
+    }
+  ]
+}

@@ -20,7 +20,17 @@
       // Turborepo 2 runs tasks in a filtered environment: variables not
       // declared here are STRIPPED. Without this, DATABASE_URL never reaches
       // the integration tests, and they quietly connect somewhere else.
-      "env": ["DATABASE_URL"]
+      "env": [
+        "DATABASE_URL",
+        "SESSION_SECRET",
+        "RESEARCHER_ORIGIN",
+        "PARTICIPANT_ORIGIN",
+        "LOGIN_RATE_LIMIT_MAX",
+        "LOGIN_RATE_LIMIT_WINDOW_MINUTES",
+        "SESSION_ABSOLUTE_TTL_HOURS",
+        "SESSION_IDLE_TIMEOUT_MINUTES",
+        "COOKIE_SECURE"
+      ]
     },
     "dev": {
       "cache": false,
