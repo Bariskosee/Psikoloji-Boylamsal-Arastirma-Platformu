@@ -3,8 +3,8 @@ packages:
   - "packages/*"
 
 # pnpm blocks postinstall scripts by default. Only these are permitted, and each
-# genuinely needs one: esbuild fetches its platform binary (used by Vitest and
-# tsx), sharp fetches native image bindings (used by Next.js image optimisation).
+# genuinely needs one: esbuild fetches its platform binary (used by Vitest),
+# sharp fetches native image bindings (used by Next.js image optimisation).
 # Anything not listed here cannot execute code at install time.
 allowBuilds:
   esbuild: true
