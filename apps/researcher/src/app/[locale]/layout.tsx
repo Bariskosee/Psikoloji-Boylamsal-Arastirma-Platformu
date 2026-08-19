@@ -35,7 +35,10 @@ export default async function LocaleLayout({
         }}
       >
         <NextIntlClientProvider messages={messages}>
-          <main style={{ maxWidth: 640, margin: "0 auto" }}>{children}</main>
+          {/* Wider than the participant app on purpose: the questionnaire
+              builder places the editor and the phone-width preview side by
+              side, and 640px would force them to stack on every desktop. */}
+          <main style={{ maxWidth: 1100, margin: "0 auto" }}>{children}</main>
         </NextIntlClientProvider>
       </body>
     </html>

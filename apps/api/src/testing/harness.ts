@@ -77,7 +77,10 @@ export async function createHarness(): Promise<Harness> {
  */
 export async function resetDatabase(db: Database): Promise<void> {
   await db.execute(
-    `TRUNCATE research.audit_events, research.study_members, research.studies,
+    `TRUNCATE research.audit_events, research.question_option_translations,
+             research.question_options, research.question_version_translations,
+             research.question_versions, research.questionnaire_versions,
+             research.questionnaires, research.study_members, research.studies,
              identity.researcher_sessions, identity.researcher_users
      RESTART IDENTITY CASCADE` as never,
   );

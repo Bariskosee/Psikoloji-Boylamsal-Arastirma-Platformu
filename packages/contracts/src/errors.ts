@@ -37,6 +37,12 @@ export const API_ERROR_CODES = [
   "INVALID_STUDY_TRANSITION",
   "ENROLLMENT_CODE_UNAVAILABLE",
   "LAST_OWNER_REQUIRED",
+
+  // Questionnaire (Phase 3)
+  "QUESTIONNAIRE_NOT_FOUND",
+  "QUESTION_NOT_FOUND",
+  "QUESTION_OPTION_NOT_FOUND",
+  "INVALID_REORDER",
 ] as const;
 
 export const apiErrorCodeSchema = z.enum(API_ERROR_CODES);

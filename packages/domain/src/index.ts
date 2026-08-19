@@ -13,8 +13,10 @@
  * Phase 0 scope: the Clock port.
  * Phase 2 adds: authz/ — the researcher permission matrix and password policy;
  *               study/ — lifecycle transitions and enrollment codes.
- * Phase 1 adds: scheduling/, state-machine/, compliance/, missingness/,
- *               export/, question-types/.
+ * Phase 3 adds: question-types/ — the question-type registry; questionnaire/ —
+ *               entity-key generation, reorder validation, publish eligibility.
+ * Later phases add: scheduling/, state-machine/, compliance/, missingness/,
+ *                    export/.
  */
 
 export * from "./clock.js";
@@ -22,3 +24,7 @@ export * from "./authz/permissions.js";
 export * from "./authz/password-policy.js";
 export * from "./study/lifecycle.js";
 export * from "./study/enrollment-code.js";
+export * from "./question-types/registry.js";
+export * from "./questionnaire/entity-key.js";
+export * from "./questionnaire/reorder.js";
+export * from "./questionnaire/publish.js";

@@ -14,6 +14,7 @@
  *
  * Phase 0 scope: health and locale.
  * Phase 2 adds: errors, roles, auth, study, audit.
+ * Phase 3 adds: question-types, questionnaire.
  */
 
 export * from "./health.js";
@@ -23,3 +24,5 @@ export * from "./roles.js";
 export * from "./auth.js";
 export * from "./study.js";
 export * from "./audit.js";
+export * from "./question-types.js";
+export * from "./questionnaire.js";

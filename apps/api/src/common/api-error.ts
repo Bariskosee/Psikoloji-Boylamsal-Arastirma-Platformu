@@ -103,6 +103,18 @@ export const ApiErrors = {
       "Could not allocate a unique enrollment code",
     ),
 
+  questionnaireNotFound: () =>
+    new ApiException("QUESTIONNAIRE_NOT_FOUND", HttpStatus.NOT_FOUND, "Questionnaire not found"),
+
+  questionNotFound: () =>
+    new ApiException("QUESTION_NOT_FOUND", HttpStatus.NOT_FOUND, "Question not found"),
+
+  questionOptionNotFound: () =>
+    new ApiException("QUESTION_OPTION_NOT_FOUND", HttpStatus.NOT_FOUND, "Option not found"),
+
+  invalidReorder: (reason: string) =>
+    new ApiException("INVALID_REORDER", HttpStatus.CONFLICT, `Invalid reorder request: ${reason}`),
+
   rateLimited: (retryAfterSeconds: number) =>
     new ApiException(
       "RATE_LIMITED",
