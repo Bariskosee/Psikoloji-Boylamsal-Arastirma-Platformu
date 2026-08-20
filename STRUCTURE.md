@@ -246,6 +246,8 @@ researcher_users ──< study_members >── studies ──┬─< consent_ver
                                                                                participant_contacts
                                                                                recovery_codes
 studies ──< audit_events
+
+system_heartbeats          (standalone: operational, no relationships)
 ```
 
 ### Key entities
@@ -321,6 +323,12 @@ Typed columns rather than a single `value_json`: every analytics query and every
 **`session_submissions`** — 1:1 with a completed session: `completed_at`, `answered_count`, `required_count`, `content_hash`, `idempotency_key`. Draft responses are distinguished from a final submission by this row's existence plus the `COMPLETED` status — the answers themselves are never duplicated.
 
 **`notification_attempts`** — `session_id`, `kind ∈ {INITIAL, REMINDER}`, `occurrence_index`, `push_subscription_id`, `scheduled_for`, `attempted_at`, `outcome`, `push_status_code`, `error_detail`. **Unique on `(session_id, kind, occurrence_index)`** — the primary duplicate-reminder guard.
+
+**`system_heartbeats`** *(research schema)* — `worker_id` (PK), `started_at`, `swept_at`, `sweep_interval_seconds`, `consecutive_failures`, `last_error`. Operational evidence that the reconciliation loop in §8.4 is running (ADR-005).
+
+Every other table records something that happened; this one exists so that something *not* happening becomes visible — a stopped sweep loop is indistinguishable from a loop with nothing to do. Two signals, deliberately separate: `swept_at` going stale means the loop stopped, while `consecutive_failures` rising means it runs and the work inside it fails. A worker whose sweepers all throw still completes its cycles, so a liveness-only heartbeat would read as healthy while nothing was reconciled.
+
+Contains no participant data and no secret. Rows are never pruned automatically: a decommissioned worker leaves a permanently stale row, and removing it is an operator's deliberate act, because code that tidies away stale heartbeats is code that deletes the evidence of an outage.
 
 **`audit_events`** — `actor_type`, `actor_id`, `study_id`, `action`, `entity_type`, `entity_id`, `metadata` (redacted jsonb), `ip_hash`, `occurred_at`. Never contains response payloads.
 
@@ -454,6 +462,12 @@ FOR UPDATE SKIP LOCKED LIMIT 500;
 ```
 
 These four queries mean the system converges on correct state from any starting condition: queue wiped, worker down for hours, database restored from backup, jobs duplicated. Recovery requires no manual intervention.
+**Exclusion is a PostgreSQL advisory lock, not a job `singletonKey`** (ADR-005 implementation notes). A singleton key collapses duplicate *enqueues*; the property wanted here is that overlapping *execution* is excluded. It also holds for the configurable `SWEEP_INTERVAL_SECONDS`, which cron's one-minute granularity cannot express, and it is released by the database when the session ends however it ends — so a worker killed mid-sweep leaves nothing behind, where a lock row would survive and be indistinguishable from a sweep still in progress.
+
+The exclusion is an efficiency measure, not a correctness one. Correctness comes from `SKIP LOCKED` plus re-deriving every decision under a row lock, so replicas sweeping simultaneously duplicate work and still produce correct results. Any sweeper that would misbehave when two run at once is a broken sweeper.
+
+`sweep.heartbeat` and the loop itself are built (`apps/worker/src/sweepers/`). The three session sweepers are registered once `participant_sessions` and `notification_attempts` exist; each supplies four functions — `claim`, `lock`, `decide`, `apply` — to the shared `reconcile()` that implements the §8.5 handler contract.
+
 
 ### 8.5 Jobs
 
