@@ -188,6 +188,10 @@ export default function StudyPage() {
         </section>
       ) : null}
 
+      <p>
+        <Link href={`/studies/${studyId}/questionnaires`}>{t("manageQuestionnaires")} →</Link>
+      </p>
+
       {canAdminister ? (
         <p>
           <Link href={`/studies/${studyId}/members`}>{t("manageMembers")} →</Link>

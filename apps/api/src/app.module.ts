@@ -9,6 +9,7 @@ import { SessionAuthGuard } from "./modules/auth/guards/session-auth.guard.js";
 import { StudyPermissionGuard } from "./modules/auth/guards/study-permission.guard.js";
 import { DatabaseModule } from "./modules/database/database.module.js";
 import { HealthModule } from "./modules/health/health.module.js";
+import { QuestionnaireModule } from "./modules/questionnaire/questionnaire.module.js";
 import { StudyModule } from "./modules/study/study.module.js";
 
 /**
@@ -30,12 +31,19 @@ import { StudyModule } from "./modules/study/study.module.js";
  *   CsrfGuard             needs request.auth for the double-submit comparison
  *   StudyPermissionGuard  needs request.auth for the membership lookup
  *
- * The remaining domain modules — consent, questionnaire, protocol, participant,
- * session, response, notification, analytics, export — arrive in Phases 3
- * onward.
+ * The remaining domain modules — consent, protocol, participant, session,
+ * response, notification, analytics, export — arrive in Phase 4 onward.
  */
 @Module({
-  imports: [CoreModule, DatabaseModule, HealthModule, AuthModule, AuditModule, StudyModule],
+  imports: [
+    CoreModule,
+    DatabaseModule,
+    HealthModule,
+    AuthModule,
+    AuditModule,
+    StudyModule,
+    QuestionnaireModule,
+  ],
   providers: [
     { provide: APP_FILTER, useClass: ApiExceptionFilter },
     { provide: APP_GUARD, useClass: SessionAuthGuard },

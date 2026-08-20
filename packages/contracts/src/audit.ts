@@ -37,8 +37,12 @@ export const AUDIT_ACTIONS = [
   "study.member.role.changed",
   "study.member.removed",
 
-  // Later phases — declared, not yet emitted
+  // Questionnaire (Phase 3)
+  "questionnaire.created",
+  "questionnaire.updated",
   "questionnaire.version.published",
+
+  // Later phases — declared, not yet emitted
   "protocol.version.published",
   "consent.version.published",
   "participant.withdrawn",
@@ -53,6 +57,7 @@ export const AUDIT_ENTITY_TYPES = [
   "researcher_user",
   "study",
   "study_member",
+  "questionnaire",
   "questionnaire_version",
   "protocol_version",
   "consent_version",
