@@ -36,6 +36,7 @@ export function QuestionPreview({
   index,
   requiredLabel,
   untranslatedLabel,
+  exclusiveLabel,
 }: {
   question: QuestionResponse;
   locale: Locale;
@@ -43,6 +44,8 @@ export function QuestionPreview({
   index: number;
   requiredLabel: string;
   untranslatedLabel: string;
+  /** Marks an option flagged mutually exclusive, e.g. "Prefer not to say". */
+  exclusiveLabel: string;
 }) {
   const text = localizedText(question.translations, locale);
 
@@ -63,7 +66,12 @@ export function QuestionPreview({
           </span>
         ) : null}
       </p>
-      <QuestionControl question={question} locale={locale} untranslatedLabel={untranslatedLabel} />
+      <QuestionControl
+        question={question}
+        locale={locale}
+        untranslatedLabel={untranslatedLabel}
+        exclusiveLabel={exclusiveLabel}
+      />
     </li>
   );
 }
@@ -72,10 +80,12 @@ function QuestionControl({
   question,
   locale,
   untranslatedLabel,
+  exclusiveLabel,
 }: {
   question: QuestionResponse;
   locale: Locale;
   untranslatedLabel: string;
+  exclusiveLabel: string;
 }) {
   switch (question.type) {
     case "SINGLE_CHOICE":
@@ -109,6 +119,14 @@ function QuestionControl({
                   disabled
                 />
                 <span>{label ? label.text : <em>{untranslatedLabel}</em>}</span>
+                {/*
+                  Marked so the researcher can see which options they flagged as
+                  mutually exclusive. Enforcing that at answer time belongs to
+                  the participant runtime, which Phase 3 does not build.
+                */}
+                {option.isExclusive && question.type === "MULTI_CHOICE" ? (
+                  <span style={{ fontSize: 12, color: "#5b6472" }}>({exclusiveLabel})</span>
+                ) : null}
               </label>
             );
           })}

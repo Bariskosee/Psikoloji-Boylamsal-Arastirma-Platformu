@@ -72,10 +72,13 @@ export function PublishDialog({
           type="button"
           disabled={!acknowledged || publishing}
           onClick={onPublish}
+          // `border` in full rather than overriding `borderColor` on top of the
+          // shared shorthand — React warns about the mix, and the warning is
+          // right: the two do not compose predictably across re-renders.
           style={{
             ...styles.button,
             ...(acknowledged && !publishing
-              ? { background: "#b42318", borderColor: "#b42318" }
+              ? { background: "#b42318", border: "1px solid #b42318" }
               : { opacity: 0.6, cursor: "not-allowed" }),
           }}
         >

@@ -20,16 +20,6 @@ export const questionTypeSchema = z.enum(QUESTION_TYPES);
 export type QuestionType = z.infer<typeof questionTypeSchema>;
 
 /**
- * Option-based types render from `question_options` rows and require at
- * least two of them at publish time. The other three types never have
- * options at all — the API rejects creating one under them.
- */
-export const OPTION_BASED_QUESTION_TYPES: readonly QuestionType[] = [
-  "SINGLE_CHOICE",
-  "MULTI_CHOICE",
-];
-
-/**
  * Per-type `config` schemas.
  *
  * `config` holds only presentation parameters that are never filtered or
@@ -105,15 +95,6 @@ export const QUESTION_CONFIG_SCHEMAS = {
 
 export type QuestionConfig =
   SingleChoiceConfig | MultiChoiceConfig | LikertConfig | NumericConfig | FreeTextConfig;
-
-/** Any one of the five config shapes, before it is known which type it belongs to. */
-export const questionConfigSchema = z.union([
-  singleChoiceConfigSchema,
-  multiChoiceConfigSchema,
-  likertConfigSchema,
-  numericConfigSchema,
-  freeTextConfigSchema,
-]);
 
 /**
  * `question_key` / `option_key` — stable, opaque identifiers.

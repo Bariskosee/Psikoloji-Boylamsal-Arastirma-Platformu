@@ -377,6 +377,54 @@ function OptionEditor({
                 }}
               />
             ))}
+
+            <div
+              style={{
+                display: "flex",
+                gap: tokens.spacing.md,
+                alignItems: "center",
+                flexWrap: "wrap",
+                marginTop: tokens.spacing.xs,
+              }}
+            >
+              {/*
+                The numeric coding this option exports as. Nullable on purpose:
+                an unset value must stay unset, never become 0 — a 0 that meant
+                "not coded" is exactly the missing-as-zero mistake AGENT.md §17
+                forbids.
+              */}
+              <NumberField
+                label={t("optionValue")}
+                value={option.valueNumber}
+                nullable
+                disabled={disabled}
+                onCommit={(valueNumber) =>
+                  void mutate(() => api.patch(`${optionPath}/${option.id}`, { valueNumber }))
+                }
+              />
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: tokens.spacing.sm,
+                  fontSize: 14,
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={option.isExclusive}
+                  disabled={disabled || question.type !== "MULTI_CHOICE"}
+                  onChange={(event) =>
+                    void mutate(() =>
+                      api.patch(`${optionPath}/${option.id}`, {
+                        isExclusive: event.target.checked,
+                      }),
+                    )
+                  }
+                />
+                {t("optionExclusive")}
+              </label>
+            </div>
           </div>
 
           <button
@@ -413,8 +461,11 @@ function OptionEditor({
 /**
  * A text input that holds its own value while focused and commits on blur.
  *
- * `key`ed on the incoming value by the caller where a reload can change it
- * underneath — otherwise the local state would win over fresher server data.
+ * The local draft is seeded once and then owns the field, so a reload
+ * triggered by a sibling control cannot yank half-typed text out from under
+ * the cursor. The trade-off is that a value changed by a CO-EDITOR mid-edit
+ * will not appear until the field is remounted; at builder scale that is the
+ * better failure, and the server holds the last write either way.
  */
 function TextCommit({
   id,

@@ -198,7 +198,77 @@ describe("question and option CRUD", () => {
         translations: { en: "Sample option" },
       })
       .expect(409);
-    expect(response.body.error.code).toBe("CONFLICT");
+    expect(response.body.error.code).toBe("QUESTION_TYPE_HAS_NO_OPTIONS");
+  });
+
+  it("updates an option's label, numeric value, and exclusive flag", async () => {
+    const f = await fixture();
+    const question = await addQuestion(f, "MULTI_CHOICE");
+    const optionId = question.optionIds[0];
+
+    const updated = await f.client
+      .patch(`${base(f)}/questions/${question.id}/options/${optionId}`, {
+        translations: { en: "Prefer not to say", tr: "Belirtmek istemiyorum" },
+        valueNumber: 99,
+        isExclusive: true,
+      })
+      .expect(200);
+
+    expect(updated.body.translations).toEqual({
+      en: "Prefer not to say",
+      tr: "Belirtmek istemiyorum",
+    });
+    expect(updated.body.valueNumber).toBe(99);
+    expect(updated.body.isExclusive).toBe(true);
+    // The key is identity, not content — editing must never regenerate it.
+    expect(updated.body.optionKey).toMatch(/^o_[0-9a-z]{10}$/);
+  });
+
+  it("keeps an unset numeric value null rather than defaulting it to zero", async () => {
+    const f = await fixture();
+    const question = await addQuestion(f, "SINGLE_CHOICE");
+
+    const created = await f.client
+      .post(`${base(f)}/questions/${question.id}/options`, {
+        translations: { en: "Sample option C" },
+      })
+      .expect(201);
+    // A 0 that meant "not coded" is the missing-as-zero mistake AGENT.md §17
+    // forbids; it has to stay null all the way through.
+    expect(created.body.valueNumber).toBeNull();
+  });
+
+  it("deletes a single option without touching its siblings", async () => {
+    const f = await fixture();
+    const question = await addQuestion(f, "SINGLE_CHOICE");
+
+    await f.client
+      .delete(`${base(f)}/questions/${question.id}/options/${question.optionIds[0]}`)
+      .expect(204);
+
+    const detail = await f.client.get(base(f)).expect(200);
+    const options = detail.body.draft.questions[0].options;
+    expect(options).toHaveLength(1);
+    expect(options[0].id).toBe(question.optionIds[1]);
+  });
+
+  it("persists a config change and carries it into the published version", async () => {
+    const f = await fixture();
+    const question = await addQuestion(f, "LIKERT");
+
+    await f.client
+      .patch(`${base(f)}/questions/${question.id}`, {
+        config: { minValue: 0, maxValue: 10, minLabel: "Not at all", maxLabel: "Completely" },
+      })
+      .expect(200);
+
+    const published = await f.client.post(`${base(f)}/publish`).expect(201);
+    expect(published.body.questions[0].config).toMatchObject({
+      minValue: 0,
+      maxValue: 10,
+      minLabel: "Not at all",
+      maxLabel: "Completely",
+    });
   });
 
   it("stores Turkish and English text for a question and its options", async () => {
@@ -318,13 +388,43 @@ describe("reordering", () => {
       .expect(200);
     expect(response.body.options.map((o: { id: string }) => o.id)).toEqual(reversed);
   });
+
+  it("rejects an option reorder that is not a permutation, leaving the order intact", async () => {
+    const f = await fixture();
+    const question = await addQuestion(f, "MULTI_CHOICE");
+    const [first, second] = question.optionIds;
+
+    for (const optionIds of [
+      [first],
+      [first, first],
+      [first, "00000000-0000-4000-8000-000000000000"],
+    ]) {
+      const response = await f.client.put(`${base(f)}/questions/${question.id}/options/order`, {
+        optionIds,
+      });
+      expect(response.status).toBe(409);
+      expect(response.body.error.code).toBe("INVALID_REORDER");
+    }
+
+    const detail = await f.client.get(base(f)).expect(200);
+    expect(detail.body.draft.questions[0].options.map((o: { id: string }) => o.id)).toEqual([
+      first,
+      second,
+    ]);
+  });
 });
 
 describe("publish", () => {
+  /**
+   * Every refusal carries its OWN code, and the tests assert the code rather
+   * than the message. The message is developer-facing English (`api-error.ts`)
+   * — a frontend that has to read it cannot render a Turkish interface, so a
+   * test that pinned the message would be locking in the wrong contract.
+   */
   it("refuses to publish an empty questionnaire", async () => {
     const f = await fixture();
     const response = await f.client.post(`${base(f)}/publish`).expect(409);
-    expect(response.body.error.code).toBe("CONFLICT");
+    expect(response.body.error.code).toBe("QUESTIONNAIRE_EMPTY");
   });
 
   it("refuses to publish a choice question with fewer than two options", async () => {
@@ -341,7 +441,48 @@ describe("publish", () => {
       })
       .expect(201);
 
-    await f.client.post(`${base(f)}/publish`).expect(409);
+    const response = await f.client.post(`${base(f)}/publish`).expect(409);
+    expect(response.body.error.code).toBe("QUESTION_OPTIONS_REQUIRED");
+    // The 1-based position, so the interface can name the question without
+    // parsing the English sentence.
+    expect(response.body.error.details[0].path).toBe("questions.1");
+  });
+
+  /**
+   * A required MULTI_CHOICE question asking for more selections than it has
+   * options is unanswerable, and publishing freezes it that way forever.
+   */
+  it("refuses to publish a multi-choice question that asks for more selections than it has options", async () => {
+    const f = await fixture();
+    await addQuestion(f, "FREE_TEXT");
+    const question = await addQuestion(f, "MULTI_CHOICE");
+
+    await f.client
+      .patch(`${base(f)}/questions/${question.id}`, {
+        config: { minSelections: 5, maxSelections: null },
+      })
+      .expect(200);
+
+    const response = await f.client.post(`${base(f)}/publish`).expect(409);
+    expect(response.body.error.code).toBe("QUESTION_SELECTION_BOUNDS_UNSATISFIABLE");
+    expect(response.body.error.details[0].path).toBe("questions.2");
+
+    // Nothing was published — the refusal happens before the version exists.
+    const detail = await f.client.get(base(f)).expect(200);
+    expect(detail.body.publishedVersions).toEqual([]);
+  });
+
+  it("publishes once the selection bounds fit the option count", async () => {
+    const f = await fixture();
+    const question = await addQuestion(f, "MULTI_CHOICE");
+    await f.client
+      .patch(`${base(f)}/questions/${question.id}`, {
+        config: { minSelections: 1, maxSelections: 2 },
+      })
+      .expect(200);
+
+    const published = await f.client.post(`${base(f)}/publish`).expect(201);
+    expect(published.body.versionNumber).toBe(1);
   });
 
   it("deep-copies the draft, including translations and options", async () => {
@@ -426,6 +567,61 @@ describe("publish", () => {
 
     const published = await f.client.post(`${base(f)}/publish`).expect(201);
     expect(published.body.questions.map((q: { pageIndex: number }) => q.pageIndex)).toEqual([0, 1]);
+  });
+
+  it("publishes a second identical version when nothing changed in between", async () => {
+    const f = await fixture();
+    await addQuestion(f, "FREE_TEXT");
+
+    const v1 = await f.client.post(`${base(f)}/publish`).expect(201);
+    const v2 = await f.client.post(`${base(f)}/publish`).expect(201);
+
+    expect([v1.body.versionNumber, v2.body.versionNumber]).toEqual([1, 2]);
+    // Two distinct versions holding two distinct rows with the same key —
+    // republishing is deliberately not deduplicated, because "what was
+    // published when" is itself the record.
+    expect(v2.body.id).not.toBe(v1.body.id);
+    expect(v2.body.questions[0].id).not.toBe(v1.body.questions[0].id);
+    expect(v2.body.questions[0].questionKey).toBe(v1.body.questions[0].questionKey);
+
+    const detail = await f.client.get(base(f)).expect(200);
+    expect(
+      detail.body.publishedVersions.map((v: { versionNumber: number }) => v.versionNumber),
+    ).toEqual([2, 1]);
+  });
+
+  it("keeps a published question after the draft's copy is deleted", async () => {
+    const f = await fixture();
+    const drafted = await addQuestion(f, "FREE_TEXT");
+    const published = await f.client.post(`${base(f)}/publish`).expect(201);
+
+    await f.client.delete(`${base(f)}/questions/${drafted.id}`).expect(204);
+
+    const reread = await f.client.get(`${base(f)}/versions/${published.body.id}`).expect(200);
+    expect(reread.body.questions).toHaveLength(1);
+    expect(reread.body.questions[0].questionKey).toBe(drafted.questionKey);
+
+    const detail = await f.client.get(base(f)).expect(200);
+    expect(detail.body.draft.questions).toEqual([]);
+  });
+
+  it("will not serve a version through a questionnaire that does not own it", async () => {
+    const owning = await fixture();
+    await addQuestion(owning, "FREE_TEXT");
+    const published = await owning.client.post(`${base(owning)}/publish`).expect(201);
+
+    // A second questionnaire in the SAME study — the guard passes, so this
+    // tests the ownership check in the service rather than the permission.
+    const other = await owning.client
+      .post(`/api/studies/${owning.studyId}/questionnaires`, { name: "Another questionnaire" })
+      .expect(201);
+
+    const response = await owning.client
+      .get(
+        `/api/studies/${owning.studyId}/questionnaires/${other.body.id}/versions/${published.body.id}`,
+      )
+      .expect(404);
+    expect(response.body.error.code).toBe("QUESTIONNAIRE_NOT_FOUND");
   });
 });
 

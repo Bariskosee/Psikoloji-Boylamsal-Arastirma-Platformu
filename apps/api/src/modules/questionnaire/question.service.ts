@@ -49,6 +49,14 @@ import { QuestionnaireService, toLocaleRecord, toOptionResponse } from "./questi
  * trail to cover creation and publication, not every keystroke of drafting.
  * `questionnaire.version.published` is where the drafted content becomes an
  * auditable fact.
+ *
+ * ── On `updatedAt: now` in the UPDATE statements ─────────────────────────────
+ * It is passed for symmetry with the INSERTs and is then OVERWRITTEN: migration
+ * 0000's `public.set_updated_at()` trigger sets `updated_at = now()` from the
+ * database clock on every UPDATE, so the injected `Clock` governs `created_at`
+ * and the audit trail but not this column. Nothing depends on it doing
+ * otherwise. Do not write a test that expects a fake clock to show up in
+ * `updated_at` — it will not.
  */
 @Injectable()
 export class QuestionService {
@@ -68,6 +76,18 @@ export class QuestionService {
     if (!validation.ok) throw ApiErrors.validationFailed(validation.errors ?? []);
 
     const questionId = await this.db.transaction(async (tx) => {
+      // Lock the draft version row FIRST. `max(display_order)` read without it
+      // is a lost update: two concurrent creates both see the same maximum and
+      // both claim the next position, and no unique constraint catches it —
+      // the questionnaire's order is then silently ambiguous until someone
+      // reorders. Serialising on the parent row costs nothing at builder
+      // scale, and `publish` already takes exactly this lock.
+      await tx
+        .select({ id: questionnaireVersions.id })
+        .from(questionnaireVersions)
+        .where(eq(questionnaireVersions.id, draft.id))
+        .for("update");
+
       // `max + 1`, not `count`: deleting a question leaves a gap, and a
       // count-based order would then collide with a surviving row, making the
       // questionnaire's order ambiguous until the next reorder.
@@ -217,10 +237,18 @@ export class QuestionService {
     const draft = await this.requireDraft(studyId, questionnaireId);
     const question = await this.requireDraftQuestion(draft.id, questionId);
     if (!requiresOptions(question.type as QuestionType)) {
-      throw ApiErrors.conflict(`${question.type} questions do not support options`);
+      throw ApiErrors.questionTypeHasNoOptions(question.type);
     }
 
     const optionId = await this.db.transaction(async (tx) => {
+      // The same lost update as in `createQuestion`, one level down: the
+      // question row is the parent whose option ordering must be serialised.
+      await tx
+        .select({ id: questionVersions.id })
+        .from(questionVersions)
+        .where(eq(questionVersions.id, questionId))
+        .for("update");
+
       const orderRows = await tx
         .select({ max: sql<number | null>`max(${questionOptions.displayOrder})` })
         .from(questionOptions)

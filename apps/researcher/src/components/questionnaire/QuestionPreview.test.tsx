@@ -14,6 +14,7 @@ const LABELS = {
   next: "Next",
   required: "Required",
   untranslated: "Not translated yet",
+  exclusive: "Exclusive",
   submit: "Submit",
 };
 
@@ -43,6 +44,7 @@ function renderQuestion(overrides: Partial<QuestionResponse> = {}) {
         index={1}
         requiredLabel={LABELS.required}
         untranslatedLabel={LABELS.untranslated}
+        exclusiveLabel={LABELS.exclusive}
       />
     </ul>,
   );

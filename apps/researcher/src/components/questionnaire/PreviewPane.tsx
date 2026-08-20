@@ -35,6 +35,7 @@ export function PreviewPane({
     next: string;
     required: string;
     untranslated: string;
+    exclusive: string;
     submit: string;
   };
 }) {
@@ -80,6 +81,7 @@ export function PreviewPane({
                   index={index + 1}
                   requiredLabel={labels.required}
                   untranslatedLabel={labels.untranslated}
+                  exclusiveLabel={labels.exclusive}
                 />
               ))}
             </ul>

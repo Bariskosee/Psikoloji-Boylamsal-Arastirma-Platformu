@@ -99,6 +99,7 @@
     "loading": "Loading…",
     "empty": "This study has no questionnaires yet.",
     "name": "Name",
+    "description": "Description",
     "nameHint": "The questionnaire's label for your team. Published versions are unaffected by a rename.",
     "draft": "Draft",
     "draftBadge": "Draft",
@@ -125,6 +126,8 @@
     "moveDown": "Move down",
     "options": "Options",
     "optionLabel": "Option label",
+    "optionExclusive": "Exclusive — clears every other selection",
+    "optionValue": "Numeric value (optional)",
     "addOption": "Add an option",
     "newOption": "Sample option",
     "optionsMinimum": "This question needs at least two options before the questionnaire can be published.",
@@ -172,7 +175,10 @@
       "save": "Could not save your changes.",
       "reorder": "Could not save the new order.",
       "publish": "Could not publish this version.",
-      "notFound": "This questionnaire does not exist, or you do not have access to it."
+      "notFound": "This questionnaire does not exist, or you do not have access to it.",
+      "publishEmpty": "Add at least one question before publishing.",
+      "publishNeedsOptions": "Question {position} needs at least two options before you can publish.",
+      "publishSelectionBounds": "Question {position} asks for more selections than it has options."
     }
   }
 }

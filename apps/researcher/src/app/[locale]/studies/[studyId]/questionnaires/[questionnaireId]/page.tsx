@@ -117,15 +117,15 @@ export default function QuestionnaireBuilderPage() {
   }
 
   /**
-   * Renames the questionnaire — the researcher-facing label, not content.
+   * Edits the questionnaire's own label and description — not its content.
    *
-   * Allowed even after versions are published, because the name is never part
-   * of what a participant is shown; the published VERSIONS stay untouched.
+   * Allowed even after versions are published, because neither is part of what
+   * a participant is shown; the published VERSIONS stay untouched.
    */
-  async function rename(name: string) {
+  async function editQuestionnaire(fields: { name?: string; description?: string }) {
     setError(null);
     try {
-      await api.patch(basePath, { name });
+      await api.patch(basePath, fields);
       await load();
     } catch {
       setError(t("errors.save"));
@@ -164,11 +164,7 @@ export default function QuestionnaireBuilderPage() {
       setPublishedNotice(t("publishedNotice", { version: published.versionNumber ?? 0 }));
       await load();
     } catch (caught) {
-      setError(
-        caught instanceof ApiError && caught.code === "CONFLICT"
-          ? caught.message
-          : t("errors.publish"),
-      );
+      setError(publishErrorMessage(caught, t));
       setShowPublish(false);
     } finally {
       setPublishing(false);
@@ -188,23 +184,40 @@ export default function QuestionnaireBuilderPage() {
 
       {canEdit ? (
         <section style={styles.card}>
-          <label htmlFor="questionnaire-name" style={styles.label}>
-            {t("name")}
-          </label>
-          <div style={{ display: "flex", gap: tokens.spacing.sm, flexWrap: "wrap" }}>
+          <div style={styles.field}>
+            <label htmlFor="questionnaire-name" style={styles.label}>
+              {t("name")}
+            </label>
             <input
               id="questionnaire-name"
               defaultValue={questionnaire.name}
               onBlur={(event) => {
                 const value = event.target.value.trim();
-                if (value && value !== questionnaire.name) void rename(value);
+                if (value && value !== questionnaire.name) void editQuestionnaire({ name: value });
               }}
-              style={{ ...styles.input, flex: "1 1 240px" }}
+              style={styles.input}
             />
           </div>
-          <p style={{ fontSize: 13, color: "#5b6472", margin: `${tokens.spacing.xs}px 0 0` }}>
-            {t("nameHint")}
-          </p>
+          <div style={styles.field}>
+            <label htmlFor="questionnaire-description" style={styles.label}>
+              {t("description")}
+            </label>
+            <textarea
+              id="questionnaire-description"
+              rows={2}
+              defaultValue={questionnaire.description}
+              onBlur={(event) => {
+                // Unlike the name, an empty description is a legitimate value —
+                // the contract allows "" and clearing it is a real intent.
+                const value = event.target.value.trim();
+                if (value !== questionnaire.description) {
+                  void editQuestionnaire({ description: value });
+                }
+              }}
+              style={{ ...styles.input, minHeight: 60 }}
+            />
+          </div>
+          <p style={{ fontSize: 13, color: "#5b6472", margin: 0 }}>{t("nameHint")}</p>
         </section>
       ) : null}
 
@@ -433,6 +446,7 @@ export default function QuestionnaireBuilderPage() {
               next: t("nextPage"),
               required: t("required"),
               untranslated: t("untranslated"),
+              exclusive: t("optionExclusive"),
               submit: t("previewSubmit"),
             }}
           />
@@ -440,6 +454,40 @@ export default function QuestionnaireBuilderPage() {
       </div>
     </div>
   );
+}
+
+/**
+ * Turns a failed publish into a sentence in the researcher's own language.
+ *
+ * The server's `message` is deliberately NOT used. `api-error.ts` is explicit
+ * that it is developer-facing English for logs — rendering it here would put an
+ * English sentence in a Turkish interface. Every publish refusal therefore has
+ * its own code, and the position of the offending question rides along in
+ * `details` so the text can name it.
+ */
+function publishErrorMessage(
+  caught: unknown,
+  t: (key: string, values?: Record<string, string | number>) => string,
+): string {
+  if (!(caught instanceof ApiError)) return t("errors.publish");
+
+  switch (caught.code) {
+    case "QUESTIONNAIRE_EMPTY":
+      return t("errors.publishEmpty");
+    case "QUESTION_OPTIONS_REQUIRED":
+      return t("errors.publishNeedsOptions", { position: questionPosition(caught) });
+    case "QUESTION_SELECTION_BOUNDS_UNSATISFIABLE":
+      return t("errors.publishSelectionBounds", { position: questionPosition(caught) });
+    default:
+      return t("errors.publish");
+  }
+}
+
+/** The 1-based question position the server put in `details`, or 0 if absent. */
+function questionPosition(error: ApiError): number {
+  const path = error.details?.[0]?.path ?? "";
+  const parsed = Number(path.split(".")[1]);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 /**

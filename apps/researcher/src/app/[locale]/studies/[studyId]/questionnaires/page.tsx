@@ -30,6 +30,7 @@ export default function QuestionnairesPage() {
   const [questionnaires, setQuestionnaires] = useState<QuestionnaireSummary[] | null>(null);
   const [study, setStudy] = useState<StudyResponse | null>(null);
   const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -61,7 +62,7 @@ export default function QuestionnairesPage() {
     try {
       const created = await api.post<QuestionnaireDetail>(
         `/api/studies/${studyId}/questionnaires`,
-        { name: name.trim() },
+        { name: name.trim(), description: description.trim() },
       );
       router.push(`/studies/${studyId}/questionnaires/${created.id}`);
     } catch {
@@ -92,6 +93,18 @@ export default function QuestionnairesPage() {
               value={name}
               onChange={(event) => setName(event.target.value)}
               style={styles.input}
+            />
+          </div>
+          <div style={styles.field}>
+            <label htmlFor="questionnaire-description" style={styles.label}>
+              {t("description")}
+            </label>
+            <textarea
+              id="questionnaire-description"
+              rows={2}
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              style={{ ...styles.input, minHeight: 60 }}
             />
           </div>
           <button

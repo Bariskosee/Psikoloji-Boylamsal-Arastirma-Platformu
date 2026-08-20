@@ -12,7 +12,7 @@ import {
   type QuestionVersionRow,
   type QuestionnaireVersionRow,
 } from "@lpr/db";
-import { canPublishQuestionnaire } from "@lpr/domain";
+import { canPublishQuestionnaire, type PublishEligibility } from "@lpr/domain";
 import type {
   CreateQuestionnaireRequest,
   Locale,
@@ -28,7 +28,7 @@ import type {
   ResearcherProfile,
   UpdateQuestionnaireRequest,
 } from "@lpr/contracts";
-import { ApiErrors } from "../../common/api-error.js";
+import { ApiErrors, type ApiException } from "../../common/api-error.js";
 import { DATABASE } from "../database/database.module.js";
 import { AuditService } from "../audit/audit.service.js";
 import type { RequestContext } from "../auth/session.service.js";
@@ -104,11 +104,9 @@ export class QuestionnaireService {
       .sort((a, b) => (b.versionNumber ?? 0) - (a.versionNumber ?? 0));
 
     const draftDetail = await this.loadVersionDetail(this.db, draft);
-    const publishedSummaries = await Promise.all(
-      published.map(async (version) => {
-        const count = await this.questionCount(version.id);
-        return toVersionSummary(version, count);
-      }),
+    const countByVersion = await this.questionCountsByVersion(published.map((v) => v.id));
+    const publishedSummaries = published.map((version) =>
+      toVersionSummary(version, countByVersion.get(version.id) ?? 0),
     );
 
     return {
@@ -249,14 +247,18 @@ export class QuestionnaireService {
     if (!draft) throw new Error(`questionnaire ${questionnaireId} has no draft version`);
     const published = latestPublished(versions);
 
+    const countByVersion = await this.questionCountsByVersion(
+      published ? [draft.id, published.id] : [draft.id],
+    );
+
     return {
       id: updated.id,
       studyId: updated.studyId,
       name: updated.name,
       description: updated.description,
-      draft: toVersionSummary(draft, await this.questionCount(draft.id)),
+      draft: toVersionSummary(draft, countByVersion.get(draft.id) ?? 0),
       latestPublished: published
-        ? toVersionSummary(published, await this.questionCount(published.id))
+        ? toVersionSummary(published, countByVersion.get(published.id) ?? 0)
         : null,
       createdAt: updated.createdAt.toISOString(),
       updatedAt: updated.updatedAt.toISOString(),
@@ -302,7 +304,7 @@ export class QuestionnaireService {
         .where(eq(questionVersions.questionnaireVersionId, draft.id))
         .orderBy(questionVersions.displayOrder);
 
-      const optionCounts = await this.questionCountsPerQuestion(
+      const optionCounts = await this.optionCountsByQuestion(
         tx,
         draftQuestions.map((q) => q.id),
       );
@@ -310,17 +312,10 @@ export class QuestionnaireService {
         draftQuestions.map((q) => ({
           type: q.type as QuestionType,
           optionCount: optionCounts.get(q.id) ?? 0,
+          config: q.config,
         })),
       );
-      if (!eligibility.ok) {
-        throw eligibility.reason === "EMPTY_QUESTIONNAIRE"
-          ? ApiErrors.conflict(
-              "A questionnaire needs at least one question before it can be published",
-            )
-          : ApiErrors.conflict(
-              `Question ${(eligibility.questionIndex ?? 0) + 1} needs at least two options before this questionnaire can be published`,
-            );
-      }
+      if (!eligibility.ok) throw publishRefusal(eligibility);
 
       const highestRows = await tx
         .select({ max: sql<number | null>`max(${questionnaireVersions.versionNumber})` })
@@ -457,14 +452,14 @@ export class QuestionnaireService {
     return row;
   }
 
-  private async questionCount(versionId: string): Promise<number> {
-    const rows = await this.db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(questionVersions)
-      .where(eq(questionVersions.questionnaireVersionId, versionId));
-    return rows[0]?.count ?? 0;
-  }
-
+  /**
+   * Question counts for a set of versions, in ONE grouped query.
+   *
+   * Every caller that needs a count needs several — a questionnaire's draft
+   * plus each of its published versions — so there is deliberately no
+   * single-version variant to reach for: one existed and turned `get()` into a
+   * query per published version, which grows with the study's history.
+   */
   private async questionCountsByVersion(versionIds: string[]): Promise<Map<string, number>> {
     if (versionIds.length === 0) return new Map();
     const rows = await this.db
@@ -478,7 +473,8 @@ export class QuestionnaireService {
     return new Map(rows.map((row) => [row.versionId, row.count]));
   }
 
-  private async questionCountsPerQuestion(
+  /** Option counts per question — named for what it counts, which is options. */
+  private async optionCountsByQuestion(
     tx: Database,
     questionIds: string[],
   ): Promise<Map<string, number>> {
@@ -560,6 +556,28 @@ export class QuestionnaireService {
         toOptionResponse(option, optionTranslationsByOption.get(option.id) ?? []),
       ),
     }));
+  }
+}
+
+/**
+ * Turns a publish refusal into the error the client branches on.
+ *
+ * One code per blocking condition, never a shared `CONFLICT`. Publishing is
+ * irreversible, so the researcher has to be told exactly what to fix — and a
+ * frontend with only `CONFLICT` to go on ends up rendering the server's
+ * English `message`, which `api-error.ts` forbids in a bilingual interface.
+ */
+function publishRefusal(eligibility: PublishEligibility): ApiException {
+  const position = (eligibility.questionIndex ?? 0) + 1;
+
+  switch (eligibility.reason) {
+    case "INSUFFICIENT_OPTIONS":
+      return ApiErrors.questionOptionsRequired(position, eligibility.requiredOptions ?? 2);
+    case "SELECTION_BOUNDS_EXCEED_OPTIONS":
+      return ApiErrors.questionSelectionBoundsUnsatisfiable(position);
+    case "EMPTY_QUESTIONNAIRE":
+    default:
+      return ApiErrors.questionnaireEmpty();
   }
 }
 

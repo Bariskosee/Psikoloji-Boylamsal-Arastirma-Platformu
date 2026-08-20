@@ -1,9 +1,4 @@
-import type {
-  Locale,
-  QuestionResponse,
-  QuestionType,
-  QuestionnaireVersionDetail,
-} from "@lpr/contracts";
+import type { Locale, QuestionResponse, QuestionType } from "@lpr/contracts";
 
 /**
  * Pure helpers behind the questionnaire builder.
@@ -94,16 +89,4 @@ export function localizedText(
 
   const fallback = Object.values(translations).find((value) => Boolean(value));
   return fallback ? { text: fallback, isFallback: true } : null;
-}
-
-/** Every locale that has at least one translation anywhere in the version. */
-export function localesInUse(version: QuestionnaireVersionDetail): Locale[] {
-  const seen = new Set<Locale>();
-  for (const question of version.questions) {
-    for (const locale of Object.keys(question.translations) as Locale[]) seen.add(locale);
-    for (const option of question.options) {
-      for (const locale of Object.keys(option.translations) as Locale[]) seen.add(locale);
-    }
-  }
-  return [...seen].sort();
 }

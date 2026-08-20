@@ -43,6 +43,21 @@ export const API_ERROR_CODES = [
   "QUESTION_NOT_FOUND",
   "QUESTION_OPTION_NOT_FOUND",
   "INVALID_REORDER",
+  "QUESTION_TYPE_HAS_NO_OPTIONS",
+
+  /**
+   * Publish refusals. Each blocking condition gets its OWN code rather than a
+   * shared `CONFLICT`, because publishing is irreversible and the researcher
+   * has to be told exactly what to fix — and told it in their own language.
+   * A frontend that has only `CONFLICT` to branch on ends up rendering the
+   * server's English `message`, which this file's contract forbids.
+   *
+   * The two that name a specific question carry its 1-based position in
+   * `details`, so the interface can point at it without parsing English.
+   */
+  "QUESTIONNAIRE_EMPTY",
+  "QUESTION_OPTIONS_REQUIRED",
+  "QUESTION_SELECTION_BOUNDS_UNSATISFIABLE",
 ] as const;
 
 export const apiErrorCodeSchema = z.enum(API_ERROR_CODES);

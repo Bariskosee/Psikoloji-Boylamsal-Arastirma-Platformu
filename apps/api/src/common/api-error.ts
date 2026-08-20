@@ -115,6 +115,40 @@ export const ApiErrors = {
   invalidReorder: (reason: string) =>
     new ApiException("INVALID_REORDER", HttpStatus.CONFLICT, `Invalid reorder request: ${reason}`),
 
+  questionTypeHasNoOptions: (type: string) =>
+    new ApiException(
+      "QUESTION_TYPE_HAS_NO_OPTIONS",
+      HttpStatus.CONFLICT,
+      `${type} questions do not support options`,
+    ),
+
+  questionnaireEmpty: () =>
+    new ApiException(
+      "QUESTIONNAIRE_EMPTY",
+      HttpStatus.CONFLICT,
+      "A questionnaire needs at least one question before it can be published",
+    ),
+
+  /**
+   * `position` is 1-based and matches the number the builder shows beside the
+   * question, so "question 3" means the same thing on both sides.
+   */
+  questionOptionsRequired: (position: number, minimum: number) =>
+    new ApiException(
+      "QUESTION_OPTIONS_REQUIRED",
+      HttpStatus.CONFLICT,
+      `Question ${position} needs at least ${minimum} options before this questionnaire can be published`,
+      [{ path: `questions.${position}`, message: `Minimum ${minimum} options` }],
+    ),
+
+  questionSelectionBoundsUnsatisfiable: (position: number) =>
+    new ApiException(
+      "QUESTION_SELECTION_BOUNDS_UNSATISFIABLE",
+      HttpStatus.CONFLICT,
+      `Question ${position} asks for more selections than it has options`,
+      [{ path: `questions.${position}`, message: "Selection bounds exceed the option count" }],
+    ),
+
   rateLimited: (retryAfterSeconds: number) =>
     new ApiException(
       "RATE_LIMITED",

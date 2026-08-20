@@ -99,6 +99,7 @@
     "loading": "Yükleniyor…",
     "empty": "Bu çalışmada henüz anket yok.",
     "name": "Ad",
+    "description": "Açıklama",
     "nameHint": "Ekibiniz için anketin etiketi. Yeniden adlandırma yayımlanmış sürümleri etkilemez.",
     "draft": "Taslak",
     "draftBadge": "Taslak",
@@ -125,6 +126,8 @@
     "moveDown": "Aşağı taşı",
     "options": "Seçenekler",
     "optionLabel": "Seçenek metni",
+    "optionExclusive": "Dışlayıcı — diğer tüm seçimleri kaldırır",
+    "optionValue": "Sayısal değer (isteğe bağlı)",
     "addOption": "Seçenek ekle",
     "newOption": "Örnek seçenek",
     "optionsMinimum": "Anketin yayımlanabilmesi için bu sorunun en az iki seçeneği olmalı.",
@@ -172,7 +175,10 @@
       "save": "Değişiklikleriniz kaydedilemedi.",
       "reorder": "Yeni sıralama kaydedilemedi.",
       "publish": "Bu sürüm yayımlanamadı.",
-      "notFound": "Bu anket mevcut değil veya erişim yetkiniz yok."
+      "notFound": "Bu anket mevcut değil veya erişim yetkiniz yok.",
+      "publishEmpty": "Yayımlamadan önce en az bir soru ekleyin.",
+      "publishNeedsOptions": "{position}. sorunun yayımlanabilmesi için en az iki seçeneği olmalı.",
+      "publishSelectionBounds": "{position}. soru, seçenek sayısından fazla seçim istiyor."
     }
   }
 }

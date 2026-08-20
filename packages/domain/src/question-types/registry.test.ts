@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { QUESTION_TYPES } from "@lpr/contracts";
-import { ALL_QUESTION_TYPES, requiresOptions, validateQuestionConfig } from "./registry.js";
+import { QUESTION_TYPE_METADATA, requiresOptions, validateQuestionConfig } from "./registry.js";
 
 describe("question type metadata", () => {
+  // Guards the promise in the registry's header: adding a type is one enum
+  // value plus one entry here. A type declared without metadata would throw on
+  // `QUESTION_TYPE_METADATA[type]` at publish time, not at compile time.
   it("covers every declared question type exactly once", () => {
-    expect([...ALL_QUESTION_TYPES].sort()).toEqual([...QUESTION_TYPES].sort());
+    expect(Object.keys(QUESTION_TYPE_METADATA).sort()).toEqual([...QUESTION_TYPES].sort());
   });
 
   it("only the two choice types require options", () => {

@@ -1,10 +1,4 @@
-import {
-  OPTION_BASED_QUESTION_TYPES,
-  QUESTION_CONFIG_SCHEMAS,
-  QUESTION_TYPES,
-  type QuestionConfig,
-  type QuestionType,
-} from "@lpr/contracts";
+import { QUESTION_CONFIG_SCHEMAS, type QuestionConfig, type QuestionType } from "@lpr/contracts";
 
 /**
  * The question-type registry (PLAN.md Phase 3, STRUCTURE.md §3).
@@ -37,8 +31,6 @@ export function requiresOptions(type: QuestionType): boolean {
   return QUESTION_TYPE_METADATA[type].requiresOptions;
 }
 
-export const ALL_QUESTION_TYPES: readonly QuestionType[] = QUESTION_TYPES;
-
 export interface ConfigValidationResult {
   ok: boolean;
   /** Parsed and defaulted config, present only when `ok`. */
@@ -69,5 +61,3 @@ export function validateQuestionConfig(
     })),
   };
 }
-
-export { OPTION_BASED_QUESTION_TYPES };
