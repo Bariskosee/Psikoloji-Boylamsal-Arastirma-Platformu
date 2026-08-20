@@ -258,7 +258,11 @@ export default function QuestionnaireBuilderPage() {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
+          // `min(340px, 100%)`, not a bare 340px: a bare minimum is a hard
+          // floor, so on a 320px phone the track stays 340px wide and the whole
+          // page scrolls sideways. Phase 3 requires previewing the builder at
+          // phone width, which is exactly where the bare value fails.
+          gridTemplateColumns: "repeat(auto-fit, minmax(min(340px, 100%), 1fr))",
           gap: tokens.spacing.lg,
           alignItems: "start",
         }}
