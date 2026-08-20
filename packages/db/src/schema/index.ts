@@ -26,6 +26,7 @@ export * from "./identity/researcher-sessions";
 export * from "./research/studies";
 export * from "./research/study-members";
 export * from "./research/audit-events";
+export * from "./research/system-heartbeats";
 export * from "./research/questionnaires";
 export * from "./research/questionnaire-versions";
 export * from "./research/question-versions";

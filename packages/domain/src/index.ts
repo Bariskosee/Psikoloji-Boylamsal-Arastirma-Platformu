@@ -15,8 +15,10 @@
  *               study/ — lifecycle transitions and enrollment codes.
  * Phase 3 adds: question-types/ — the question-type registry; questionnaire/ —
  *               entity-key generation, reorder validation, publish eligibility.
- * Later phases add: scheduling/, state-machine/, compliance/, missingness/,
- *                    export/.
+ * ADR-005 adds: scheduling/ — sweeper-liveness classification and the
+ *               staleness guard that stops a post-outage notification burst.
+ * Later phases add: the rest of scheduling/ (protocol timing), state-machine/,
+ *                    compliance/, missingness/, export/.
  */
 
 export * from "./clock.js";
@@ -28,3 +30,4 @@ export * from "./question-types/registry.js";
 export * from "./questionnaire/entity-key.js";
 export * from "./questionnaire/reorder.js";
 export * from "./questionnaire/publish.js";
+export * from "./scheduling/index.js";

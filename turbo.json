@@ -46,6 +46,7 @@
         "SENTRY_DSN",
         "LOG_LEVEL",
         "SWEEP_INTERVAL_SECONDS",
+        "WORKER_ID",
         "NEXT_PUBLIC_API_URL"
       ]
     }

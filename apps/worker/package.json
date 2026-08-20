@@ -2,12 +2,13 @@
   "name": "@lpr/worker",
   "version": "0.0.0",
   "private": true,
-  "description": "Background worker — job handlers and reconciliation sweepers. Same NestJS codebase as the API, deployed as a separate always-on process.",
+  "description": "Background worker \u2014 job handlers and reconciliation sweepers. Same NestJS codebase as the API, deployed as a separate always-on process.",
   "main": "dist/main.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --passWithNoTests",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "dev": "nest start --watch",
     "start": "node dist/main.js"
   },

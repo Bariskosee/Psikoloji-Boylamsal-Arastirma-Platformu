@@ -14,6 +14,20 @@ const workerEnvSchema = z.object({
    * Raising it directly widens that window, so it is capped.
    */
   SWEEP_INTERVAL_SECONDS: z.coerce.number().int().min(10).max(300).default(60),
+
+  /**
+   * This worker instance's identity in `research.system_heartbeats` (ADR-005).
+   *
+   * Must be STABLE ACROSS RESTARTS for a given instance, and distinct between
+   * instances. Both halves matter: an id that changes on restart leaves a trail
+   * of orphaned rows that are permanently stale and therefore permanently
+   * alerting, while an id shared by two replicas makes them overwrite each
+   * other's heartbeat, so either one going down is invisible.
+   *
+   * Defaulted from the hostname, which is what a container platform assigns per
+   * instance. Set explicitly wherever the hostname is random per start.
+   */
+  WORKER_ID: z.string().min(1).optional(),
 });
 
 export type WorkerEnv = z.infer<typeof workerEnvSchema>;
