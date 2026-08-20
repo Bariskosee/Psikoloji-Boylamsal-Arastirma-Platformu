@@ -112,10 +112,20 @@ export async function withSweepLock<T>(
       // is a no-op that returns false. Failing to unlock is not fatal — the
       // lock dies with the session — but it would hold the sweeper off for as
       // long as this pooled connection lives, so it is worth the round trip.
-      await client.query("SELECT pg_advisory_unlock($1::int, $2::int)", [
-        SWEEP_LOCK_NAMESPACE | 0,
-        key,
-      ]);
+      //
+      // Swallowed deliberately. When the sweep itself failed, it failed for a
+      // reason worth reading, and a connection that died mid-sweep will also
+      // fail to unlock — rethrowing here would replace the diagnosis with its
+      // own symptom. The lock is released by the database when the session
+      // ends either way.
+      try {
+        await client.query("SELECT pg_advisory_unlock($1::int, $2::int)", [
+          SWEEP_LOCK_NAMESPACE | 0,
+          key,
+        ]);
+      } catch {
+        /* the session is going away, and with it the lock */
+      }
     }
   } finally {
     client.release();

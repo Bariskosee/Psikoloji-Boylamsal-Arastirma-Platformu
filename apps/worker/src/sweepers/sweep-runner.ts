@@ -109,6 +109,13 @@ export class ReconciliationRunner {
     // report of the cycle already in progress is an honest answer.
     if (this.#inFlight) return await this.#inFlight;
 
+    // A cycle started after shutdown began would open transactions on a pool
+    // that is about to close, and `stop()` — which has already looked at
+    // `#inFlight` and found nothing — would not wait for it.
+    if (this.#stopping) {
+      return { startedAt: new Date(), durationMs: 0, outcomes: {}, skipped: [], failures: [] };
+    }
+
     const abort = new AbortController();
     this.#abort = abort;
 

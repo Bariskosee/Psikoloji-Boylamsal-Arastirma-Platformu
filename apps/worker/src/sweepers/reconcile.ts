@@ -1,5 +1,5 @@
 import type { Pool } from "@lpr/db";
-import type { SweepContext, SweepOutcome } from "./sweeper.js";
+import { SWEEP_LOCK_TIMEOUT_MS, type SweepContext, type SweepOutcome } from "./sweeper.js";
 
 /**
  * The universal handler contract, as executable code (ADR-005, STRUCTURE.md §8.5).
@@ -137,6 +137,10 @@ export async function reconcile<TRow>(
   sweeperName: string,
   handlers: ReconcileHandlers<TRow>,
 ): Promise<SweepOutcome> {
+  // Checked before the claim, not only inside the loop: during shutdown there
+  // is no point paying for a round trip whose every result would be discarded.
+  if (context.signal.aborted) return { claimed: 0, acted: 0, skipped: {}, failed: 0 };
+
   const ids = await claimBatch(context.pool, handlers);
 
   let acted = 0;
@@ -183,6 +187,9 @@ async function claimBatch<TRow>(
   try {
     await client.query("BEGIN");
     try {
+      // `SKIP LOCKED` never waits on a ROW lock, but the claim can still block
+      // on a table-level lock — a migration mid-deploy is the realistic case.
+      await setLockTimeout(client);
       const ids = await handlers.claim(client);
       await client.query("ROLLBACK");
       return ids;
@@ -213,6 +220,7 @@ async function reconcileOne<TRow>(
   try {
     await client.query("BEGIN");
     try {
+      await setLockTimeout(client);
       const row = await handlers.lock(client, id);
 
       if (row === null) {
@@ -239,6 +247,14 @@ async function reconcileOne<TRow>(
   } finally {
     client.release();
   }
+}
+
+/**
+ * `SET LOCAL`, so it reverts when the transaction ends and cannot leak onto the
+ * pooled connection and quietly govern unrelated queries later.
+ */
+async function setLockTimeout(client: SweepClient): Promise<void> {
+  await client.query(`SET LOCAL lock_timeout = '${String(SWEEP_LOCK_TIMEOUT_MS)}ms'`);
 }
 
 function describeError(error: unknown): string {

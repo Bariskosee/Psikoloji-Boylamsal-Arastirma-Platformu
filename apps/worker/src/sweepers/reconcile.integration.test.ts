@@ -393,6 +393,79 @@ describe("reconcile against PostgreSQL", () => {
     expect(await statuses(batch)).toEqual({ AVAILABLE: backlog });
   }, 30_000);
 
+  /**
+   * The failure that would end the guarantee outright.
+   *
+   * `lock()` blocks on purpose — waiting for a participant's completion is how
+   * the sweeper comes to see it — but a transaction nobody closes has no upper
+   * bound. Without `lock_timeout` this test hangs forever, and so would the
+   * real sweep loop: every later cycle queues behind the stuck row while the
+   * worker still reports itself alive.
+   *
+   * With it, the wedged row costs one row one cycle, and everything else in the
+   * batch is reconciled normally.
+   */
+  it("gives up on a row wedged by an abandoned transaction instead of hanging forever", async () => {
+    const batch = nextBatch();
+    const ids = await seed(batch, 4);
+    const wedged = ids[0]!;
+    const handlers = activateDue(batch);
+    const abandoned = await pool.connect();
+
+    try {
+      // Claim first, so the row is claimable, and only then wedge it — that is
+      // the window `lock()` has to survive.
+      const claimed = await reconcile(context(), "sweep.activate_due", {
+        ...handlers,
+        claim: async (client) => {
+          const rows = await handlers.claim(client);
+          return rows;
+        },
+        lock: async (client, id) => {
+          if (id === wedged && abandoned) {
+            await abandoned.query("BEGIN");
+            await abandoned.query(
+              `SELECT id FROM ${TEST_SCHEMA}.sessions WHERE id = $1 FOR UPDATE`,
+              [id],
+            );
+            // Never committed, never rolled back — an idle-in-transaction
+            // session, which is what a wedged connection actually looks like.
+          }
+          return await handlers.lock(client, id);
+        },
+      });
+
+      expect(claimed.claimed).toBe(4);
+      expect(claimed.acted).toBe(3);
+      expect(claimed.failed).toBe(1);
+    } finally {
+      await abandoned.query("ROLLBACK");
+      abandoned.release();
+    }
+
+    // And the row is not lost: once the wedge clears, the next cycle takes it.
+    const next = await reconcile(context(), "sweep.activate_due", activateDue(batch));
+    expect(next.acted).toBe(1);
+    expect(await statuses(batch)).toEqual({ AVAILABLE: 4 });
+  }, 30_000);
+
+  /**
+   * `SET LOCAL` reverts with its transaction. `SET` would not: it would ride the
+   * pooled connection and quietly impose a five-second lock timeout on every
+   * later query that borrowed it — including a participant's completion.
+   */
+  it("does not leave its lock timeout on the connection it returns to the pool", async () => {
+    const batch = nextBatch();
+    await seed(batch, 2);
+
+    await reconcile(context(), "sweep.activate_due", activateDue(batch));
+
+    // Same pool, and with max: 8 and nothing else running, the same physical
+    // connections the sweep just used.
+    const { rows } = await pool.query<{ lock_timeout: string }>("SHOW lock_timeout");
+    expect(rows[0]?.lock_timeout).toBe("0");
+  });
+
   it("stops mid-batch when the worker is shutting down and finishes the rest next cycle", async () => {
     const batch = nextBatch();
     await seed(batch, 10);

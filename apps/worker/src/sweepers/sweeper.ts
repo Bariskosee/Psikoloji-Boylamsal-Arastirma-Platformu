@@ -74,6 +74,31 @@ export interface Sweeper {
   run(context: SweepContext): Promise<SweepOutcome>;
 }
 
+/**
+ * How long any statement in a sweep may wait for a lock before giving up.
+ *
+ * Without this the sweep loop can stop permanently, which is the one outcome
+ * ADR-005 exists to prevent. `lock()` takes a BLOCKING `SELECT … FOR UPDATE` on
+ * purpose — it is how the sweeper waits for a participant's completion and then
+ * correctly declines to act — but "blocking" has no upper bound. A transaction
+ * left open by a wedged connection, an idle-in-transaction session, or a
+ * migration holding `ACCESS EXCLUSIVE` would park `reconcileOne` inside the
+ * driver forever. The abort signal cannot help: the process is not in
+ * JavaScript, it is waiting on the database. Every later cycle would then
+ * schedule behind it, and the guarantee would be silently switched off while
+ * the worker still looked alive.
+ *
+ * Five seconds is far longer than the transactions this system actually takes —
+ * a completion is a handful of statements — and far shorter than the sixty
+ * seconds until the next cycle re-derives the row from scratch. Timing out
+ * costs one row one cycle. Not timing out costs everything.
+ *
+ * `lock_timeout` and not `statement_timeout`: waiting for a lock is the hazard,
+ * and a slow query that is genuinely making progress should be allowed to
+ * finish.
+ */
+export const SWEEP_LOCK_TIMEOUT_MS = 5_000;
+
 export const EMPTY_SWEEP: SweepOutcome = Object.freeze({
   claimed: 0,
   acted: 0,

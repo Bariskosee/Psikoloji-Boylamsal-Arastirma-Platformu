@@ -120,10 +120,38 @@ outage backlog collapses to the single most recent notification: the participant
 gets one nudge, and the rest are recorded as suppressed rather than sent late or
 silently dropped.
 
+**Every sweep transaction bounds how long it will wait for a lock**
+(`lock_timeout`, five seconds). `lock()` blocks on purpose — waiting for a
+participant's completion is how the sweeper comes to see it and correctly
+declines to act — but "blocking" has no upper bound. One session left idle in a
+transaction, or a migration holding `ACCESS EXCLUSIVE`, would park the sweep
+inside the driver indefinitely; the abort signal cannot reach it, because the
+process is waiting on the database rather than on JavaScript. Every later cycle
+would queue behind it while the worker still reported itself alive. Timing out
+costs one row one cycle; not timing out costs the guarantee. The heartbeat write
+is bounded for the same reason, and more sharply: a heartbeat that hung would
+leave the loop both stopped and unable to report that it stopped.
+
+**A queue that will not start does not take the sweepers down with it.** Letting
+`boss.start()` throw would exit the process, the platform would restart it, and
+it would fail again — a crash loop in which nothing ever reconciles, which is
+operationally identical to the idle-spin-down tier ADR-010 warns about. So the
+failure is logged, reported, and survived: the worker runs with sweepers only.
+This follows directly from the decision above. Jobs make the system prompt;
+sweepers make it correct. A worker with a broken queue is degraded — every
+activation, expiry and reminder is up to one interval late — not useless, and
+staying up while loudly broken strictly dominates restarting quietly forever.
+
 **Recovery is tested, and the tests are the gating ones.** Against real
 PostgreSQL: two sweeps running concurrently activate every row exactly once; a
 completion landing between the claim and the lock makes the sweeper wait and
 then decline; a row that fails permanently does not stall the rows behind it; a
-backlog larger than the batch limit converges over successive cycles. `SKIP
-LOCKED`, blocking row locks and per-row transaction isolation have no faithful
-in-memory equivalent, so none of this is tested against a fake.
+backlog larger than the batch limit converges over successive cycles; and a row
+wedged by an abandoned transaction is abandoned after the lock timeout instead of
+hanging the loop. `SKIP LOCKED`, blocking row locks and per-row transaction
+isolation have no faithful in-memory equivalent, so none of this is tested
+against a fake.
+
+The worker was also run end to end against a database whose role cannot create
+the `pgboss` schema: it logged the queue failure, kept sweeping, and wrote
+heartbeats throughout.

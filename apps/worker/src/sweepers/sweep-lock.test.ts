@@ -1,5 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { sweepLockKey } from "./sweep-lock.js";
+import type { Pool } from "@lpr/db";
+import { sweepLockKey, withSweepLock } from "./sweep-lock.js";
+
+/** A pool that grants the lock and then fails to release it. */
+function unlockFailsPool(): Pool {
+  return {
+    connect: () =>
+      Promise.resolve({
+        query: (text: string) => {
+          if (text.includes("pg_advisory_unlock")) {
+            return Promise.reject(new Error("connection terminated unexpectedly"));
+          }
+          return Promise.resolve({ rows: [{ locked: true }] });
+        },
+        release: () => undefined,
+      }),
+  } as unknown as Pool;
+}
 
 /**
  * The key derivation, without a database.
@@ -46,5 +63,28 @@ describe("sweepLockKey", () => {
 
   it("distinguishes names that differ only in their last character", () => {
     expect(sweepLockKey("sweep.expire_due")).not.toBe(sweepLockKey("sweep.expire_dud"));
+  });
+});
+
+/**
+ * A dying connection fails the sweep AND fails the unlock. If the unlock's
+ * error won, every incident of this kind would be reported as "connection
+ * terminated" with the actual cause discarded — and the lock is released by the
+ * database when the session ends regardless, so there is nothing to gain by
+ * raising it.
+ */
+describe("withSweepLock when releasing the lock fails", () => {
+  it("still reports the sweep's own failure, not the unlock's", async () => {
+    await expect(
+      withSweepLock(unlockFailsPool(), "sweep.activate_due", () =>
+        Promise.reject(new Error("malformed reminder policy")),
+      ),
+    ).rejects.toThrow("malformed reminder policy");
+  });
+
+  it("still returns the sweep's result when the sweep succeeded", async () => {
+    await expect(
+      withSweepLock(unlockFailsPool(), "sweep.activate_due", () => Promise.resolve("swept")),
+    ).resolves.toBe("swept");
   });
 });

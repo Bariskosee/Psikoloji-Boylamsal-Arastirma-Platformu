@@ -8,7 +8,7 @@ import {
   type ReconcileDecision,
   type SweepClient,
 } from "./reconcile.js";
-import type { SweepContext, SweepLogger } from "./sweeper.js";
+import { SWEEP_LOCK_TIMEOUT_MS, type SweepContext, type SweepLogger } from "./sweeper.js";
 
 /**
  * The universal handler contract (ADR-005), without a database.
@@ -49,6 +49,10 @@ function fakePool(): { pool: Pool; statements: string[]; released: number } {
     },
   };
 }
+
+/** `SET LOCAL`, so the timeout reverts with the transaction rather than
+ * leaking onto the pooled connection and governing unrelated queries later. */
+const LOCK_TIMEOUT_STATEMENT = `SET LOCAL lock_timeout = '${String(SWEEP_LOCK_TIMEOUT_MS)}ms'`;
 
 function silentLogger(): SweepLogger & { errors: string[] } {
   const errors: string[] = [];
@@ -107,7 +111,22 @@ describe("reconcile", () => {
     // The claim's own transaction rolls back — it read, it wrote nothing — and
     // each row then commits separately. One transaction spanning the batch
     // would hold every row lock for the length of the sweep.
-    expect(statements).toEqual(["BEGIN", "ROLLBACK", "BEGIN", "COMMIT", "BEGIN", "COMMIT"]);
+    //
+    // Every transaction sets `lock_timeout` first. Asserted on the statement
+    // sequence rather than trusted, because a missing one does not fail — it
+    // hangs, and only against a database that happens to have a wedged
+    // transaction at that moment.
+    expect(statements).toEqual([
+      "BEGIN",
+      LOCK_TIMEOUT_STATEMENT,
+      "ROLLBACK",
+      "BEGIN",
+      LOCK_TIMEOUT_STATEMENT,
+      "COMMIT",
+      "BEGIN",
+      LOCK_TIMEOUT_STATEMENT,
+      "COMMIT",
+    ]);
   });
 
   it("returns every connection to the pool", async () => {
@@ -139,7 +158,17 @@ describe("reconcile", () => {
     expect(outcome.acted).toBe(1);
     expect(outcome.skipped).toEqual({ ALREADY_COMPLETED: 1 });
     expect(applied).toEqual(["b"]);
-    expect(statements).toEqual(["BEGIN", "ROLLBACK", "BEGIN", "ROLLBACK", "BEGIN", "COMMIT"]);
+    expect(statements).toEqual([
+      "BEGIN",
+      LOCK_TIMEOUT_STATEMENT,
+      "ROLLBACK",
+      "BEGIN",
+      LOCK_TIMEOUT_STATEMENT,
+      "ROLLBACK",
+      "BEGIN",
+      LOCK_TIMEOUT_STATEMENT,
+      "COMMIT",
+    ]);
   });
 
   it("aggregates repeated no-op reasons into counts rather than a list of rows", async () => {

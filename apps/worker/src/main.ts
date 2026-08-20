@@ -92,9 +92,37 @@ async function bootstrap(): Promise<void> {
     Sentry.captureException(error);
   });
 
-  await boss.start();
+  /**
+   * A queue that will not start must NOT take the sweepers down with it.
+   *
+   * Letting this throw would exit the process, the platform would restart it,
+   * and it would fail again — a crash loop in which nothing ever reconciles.
+   * Operationally that is indistinguishable from the always-on tier ADR-010
+   * warns about: the scheduling guarantee is switched off and the only visible
+   * symptom is a restarting container.
+   *
+   * ADR-005's whole argument is that jobs make the system prompt while sweepers
+   * make it correct. A worker with a broken queue is therefore degraded, not
+   * useless — questionnaires still open, windows still expire, reminders still
+   * go out, each up to one sweep interval late. Staying up and loudly broken
+   * strictly dominates restarting quietly forever.
+   */
+  let queueReady = false;
+  try {
+    await boss.start();
+    queueReady = true;
+  } catch (error) {
+    console.error(
+      `worker could not start pg-boss: ${describe(error)}. ` +
+        "Continuing WITHOUT the queue: reconciliation sweepers still run, so scheduling " +
+        "stays correct but loses its sub-interval timing (ADR-005). Fix the queue.",
+    );
+    Sentry.captureException(error);
+  }
+
   console.log(
-    `worker started (${env.NODE_ENV}) as "${workerId}"; pg-boss connected; ` +
+    `worker started (${env.NODE_ENV}) as "${workerId}"; ` +
+      `pg-boss ${queueReady ? "connected" : "UNAVAILABLE"}; ` +
       `0 handlers; reconciliation sweeping every ${env.SWEEP_INTERVAL_SECONDS}s`,
   );
 
@@ -117,9 +145,13 @@ async function bootstrap(): Promise<void> {
 
     // Graceful stop lets in-flight handlers finish, which matters once handlers
     // exist: a handler killed mid-transaction must not leave partial state.
-    await boss.stop({ graceful: true }).catch((error: unknown) => {
-      console.error(`worker failed to stop pg-boss cleanly: ${describe(error)}`);
-    });
+    // Skipped when the queue never started, so shutdown does not report a
+    // second failure that only restates the first.
+    if (queueReady) {
+      await boss.stop({ graceful: true }).catch((error: unknown) => {
+        console.error(`worker failed to stop pg-boss cleanly: ${describe(error)}`);
+      });
+    }
 
     await pool.end().catch((error: unknown) => {
       console.error(`worker failed to close the pool: ${describe(error)}`);

@@ -400,6 +400,30 @@ describe("ReconciliationRunner", () => {
     expect(observedAbort).toBe(true);
   });
 
+  /**
+   * `stop()` inspects `#inFlight`, finds nothing, and returns. A `runCycle()`
+   * arriving afterwards would open transactions on a pool that is about to
+   * close, with nothing left to wait for it.
+   */
+  it("does not start a cycle when runCycle() is called after stop()", async () => {
+    const { sweeper, calls } = countingSweeper("sweep.activate_due");
+    const { recorder, observations } = fakeHeartbeat();
+    const runner = new ReconciliationRunner({
+      pool: lockGrantingPool(),
+      sweepers: [sweeper],
+      heartbeat: recorder,
+      intervalMs: 60_000,
+      logger: collectingLogger(),
+    });
+
+    await runner.stop();
+    const report = await runner.runCycle();
+
+    expect(calls.count).toBe(0);
+    expect(observations).toEqual([]);
+    expect(report.outcomes).toEqual({});
+  });
+
   it("refuses to be restarted, because a stopped runner is a process that is going away", () => {
     const { recorder } = fakeHeartbeat();
     const runner = new ReconciliationRunner({

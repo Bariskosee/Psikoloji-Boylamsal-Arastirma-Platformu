@@ -1,6 +1,6 @@
 import { classifySweeperHeartbeat, fixedClock, type SweeperHealth } from "@lpr/domain";
 import type { Pool } from "@lpr/db";
-import type { SweepLogger } from "./sweeper.js";
+import { SWEEP_LOCK_TIMEOUT_MS, type SweepLogger } from "./sweeper.js";
 
 /**
  * `sweep.heartbeat` — the fourth sweeper (ADR-005, STRUCTURE.md §8.4).
@@ -107,6 +107,12 @@ export class HeartbeatWriter implements HeartbeatRecorder {
     try {
       await client.query("BEGIN");
       try {
+        // Bounded for the same reason every sweep transaction is: the `FOR
+        // UPDATE` below blocks, and a heartbeat that hangs would hang the cycle
+        // that writes it — leaving the loop stopped AND unable to report that
+        // it stopped, which is the worst of both failures.
+        await client.query(`SET LOCAL lock_timeout = '${String(SWEEP_LOCK_TIMEOUT_MS)}ms'`);
+
         // Read before write, under the row lock, so the previous cycle's
         // timestamp is observed rather than overwritten. `ON CONFLICT DO
         // UPDATE … RETURNING` cannot give both values: in RETURNING the table
