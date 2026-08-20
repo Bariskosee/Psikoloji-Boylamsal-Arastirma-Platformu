@@ -3,8 +3,7 @@ import "./config/load-env.js";
 import "reflect-metadata";
 import { hostname } from "node:os";
 import * as Sentry from "@sentry/node";
-import PgBoss from "pg-boss";
-import { createPool } from "@lpr/db";
+import { createJobQueue, createPool, type JobQueue, type Pool } from "@lpr/db";
 import { loadWorkerEnv } from "./config/env.js";
 import { startReconciliation } from "./sweepers/index.js";
 
@@ -22,14 +21,24 @@ import { startReconciliation } from "./sweepers/index.js";
  * If scheduling ever looks wrong, check `system_heartbeats` first.
  * ─────────────────────────────────────────────────────────────────────────────
  *
- * The reconciliation loop starts here and runs for the life of the process. It
- * is what makes the scheduling guarantee real, and it does not depend on
+ * The worker is the OWNER of the job system (ADR-004): it installs and migrates
+ * the `pgboss` schema, runs pg-boss maintenance, and is the only process
+ * permitted to consume jobs. The API attaches to the same queue as a client and
+ * enqueues only.
+ *
+ * The reconciliation loop starts here too and runs for the life of the process.
+ * It is what makes the scheduling guarantee real, and it does not depend on
  * pg-boss: it asks the database what is true rather than what the queue
  * remembers. `sweep.heartbeat` is registered today; the three session sweepers
  * join the same loop once `participant_sessions` exists (see `sweepers/`).
  *
- * Job handlers are still absent — they arrive in Phase 7 against the handler
- * contract in ADR-005, which `sweepers/reconcile.ts` already implements.
+ * Current job scope: the queue itself, with ZERO job definitions and ZERO
+ * handlers registered. `session.activate`, `session.expire`,
+ * `notification.send`, `protocol.materialize` and the four sweepers arrive in
+ * Phase 7 against the handler contract in ADR-005, which
+ * `sweepers/reconcile.ts` already implements — every one of them re-derives its
+ * decision from canonical state and is safe to run twice, out of order, or a
+ * week late.
  */
 async function bootstrap(): Promise<void> {
   const env = loadWorkerEnv();
@@ -44,12 +53,15 @@ async function bootstrap(): Promise<void> {
   }
 
   /**
-   * One pool for the process. The sweep loop runs on it, and it is separate
-   * from pg-boss's own connection deliberately in this phase: a queue that
-   * cannot connect must not be able to stop the sweepers, because the sweepers
-   * are the mechanism that survives the queue failing (ADR-005).
+   * One pool for the process, shared with pg-boss. A queue that opened its own
+   * pool would double this process's connection count against a database whose
+   * connection limit is the binding constraint (ADR-003).
+   *
+   * Sharing the pool does not couple the sweepers to the queue: what keeps a
+   * broken queue from stopping reconciliation is that `queue.start()` below is
+   * allowed to fail, not that the two hold separate connections (ADR-005).
    */
-  const pool = createPool({
+  const pool: Pool = createPool({
     connectionString: env.DATABASE_URL,
     max: 5,
     // Log and carry on. The pool reconnects on its own; the process must
@@ -80,16 +92,10 @@ async function bootstrap(): Promise<void> {
     onError: (error) => Sentry.captureException(error),
   });
 
-  const boss = new PgBoss({
-    connectionString: env.DATABASE_URL,
-    // pg-boss owns its own schema. It is infrastructure, not domain data,
-    // and is deliberately kept out of `research` and `identity` (ADR-003).
-    schema: "pgboss",
-  });
-
-  boss.on("error", (error) => {
-    console.error("pg-boss error:", error);
-    Sentry.captureException(error);
+  const queue: JobQueue = createJobQueue({
+    pool,
+    role: "owner",
+    onError: (error) => Sentry.captureException(error),
   });
 
   /**
@@ -109,11 +115,11 @@ async function bootstrap(): Promise<void> {
    */
   let queueReady = false;
   try {
-    await boss.start();
+    await queue.start();
     queueReady = true;
   } catch (error) {
     console.error(
-      `worker could not start pg-boss: ${describe(error)}. ` +
+      `worker could not start the job queue: ${describe(error)}. ` +
         "Continuing WITHOUT the queue: reconciliation sweepers still run, so scheduling " +
         "stays correct but loses its sub-interval timing (ADR-005). Fix the queue.",
     );
@@ -122,8 +128,9 @@ async function bootstrap(): Promise<void> {
 
   console.log(
     `worker started (${env.NODE_ENV}) as "${workerId}"; ` +
-      `pg-boss ${queueReady ? "connected" : "UNAVAILABLE"}; ` +
-      `0 handlers; reconciliation sweeping every ${env.SWEEP_INTERVAL_SECONDS}s`,
+      `pg-boss ${queueReady ? "connected as queue owner" : "UNAVAILABLE"}; ` +
+      `${String(queue.registeredQueues.length)} queues, 0 handlers, 0 sweepers registered; ` +
+      `reconciliation sweeping every ${String(env.SWEEP_INTERVAL_SECONDS)}s`,
   );
 
   let shuttingDown = false;
@@ -148,11 +155,13 @@ async function bootstrap(): Promise<void> {
     // Skipped when the queue never started, so shutdown does not report a
     // second failure that only restates the first.
     if (queueReady) {
-      await boss.stop({ graceful: true }).catch((error: unknown) => {
-        console.error(`worker failed to stop pg-boss cleanly: ${describe(error)}`);
+      await queue.stop({ graceful: true }).catch((error: unknown) => {
+        console.error(`worker failed to stop the job queue cleanly: ${describe(error)}`);
       });
     }
 
+    // The pool belongs to the process, not to pg-boss, so it is closed last and
+    // by us — `queue.stop()` deliberately leaves it open.
     await pool.end().catch((error: unknown) => {
       console.error(`worker failed to close the pool: ${describe(error)}`);
     });
@@ -169,6 +178,6 @@ function describe(error: unknown): string {
 }
 
 void bootstrap().catch((error: unknown) => {
-  console.error("worker failed to start:", error);
+  console.error(`worker failed to start: ${describe(error)}`);
   process.exit(1);
 });
