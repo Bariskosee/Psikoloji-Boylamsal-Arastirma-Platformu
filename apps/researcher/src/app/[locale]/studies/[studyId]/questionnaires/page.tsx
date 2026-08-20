@@ -11,7 +11,7 @@ import type {
   StudyResponse,
 } from "@lpr/contracts";
 import { ApiError, api } from "@/lib/api";
-import { ErrorBanner, StatusBadge, styles } from "@/lib/ui";
+import { ErrorBanner, StatusBadge, TableScroll, styles } from "@/lib/ui";
 
 /**
  * The study's questionnaires.
@@ -33,6 +33,13 @@ export default function QuestionnairesPage() {
   const [description, setDescription] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /**
+   * Tracked separately from `questionnaires`, not derived from it being null.
+   * A failed load leaves the list null forever, so "null means still loading"
+   * renders the error banner and a spinner together and never resolves — the
+   * screen a VIEWER used to get, since this resource requires EDITOR.
+   */
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
 
   const load = useCallback(async () => {
     try {
@@ -42,12 +49,19 @@ export default function QuestionnairesPage() {
       ]);
       setQuestionnaires(list.questionnaires);
       setStudy(loadedStudy);
+      setError(null);
+      setStatus("ready");
     } catch (caught) {
       if (caught instanceof ApiError && caught.status === 401) {
         router.push("/login");
         return;
       }
-      setError(t("errors.load"));
+      // 403 and 404 are the same answer here: the guard collapses "not a
+      // member" into "no such study" deliberately, so tell the researcher they
+      // lack access rather than implying the platform is broken.
+      const denied = caught instanceof ApiError && (caught.status === 403 || caught.status === 404);
+      setError(denied ? t("errors.forbidden") : t("errors.load"));
+      setStatus("error");
     }
   }, [router, studyId, t]);
 
@@ -118,43 +132,45 @@ export default function QuestionnairesPage() {
         </section>
       ) : null}
 
-      {questionnaires === null ? (
+      {status === "error" ? null : questionnaires === null ? (
         <p>{t("loading")}</p>
       ) : questionnaires.length === 0 ? (
         <p>{t("empty")}</p>
       ) : (
-        <table style={styles.table}>
-          <thead>
-            <tr>
-              <th style={styles.cell}>{t("name")}</th>
-              <th style={styles.cell}>{t("draft")}</th>
-              <th style={styles.cell}>{t("published")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {questionnaires.map((questionnaire) => (
-              <tr key={questionnaire.id}>
-                <td style={styles.cell}>
-                  <Link href={`/studies/${studyId}/questionnaires/${questionnaire.id}`}>
-                    {questionnaire.name}
-                  </Link>
-                </td>
-                <td style={styles.cell}>
-                  {t("questionCount", { count: questionnaire.draft.questionCount })}
-                </td>
-                <td style={styles.cell}>
-                  {questionnaire.latestPublished ? (
-                    <StatusBadge
-                      status={`v${questionnaire.latestPublished.versionNumber ?? "?"}`}
-                    />
-                  ) : (
-                    <span style={{ color: "#5b6472" }}>{t("neverPublished")}</span>
-                  )}
-                </td>
+        <TableScroll label={t("title")}>
+          <table style={styles.table}>
+            <thead>
+              <tr>
+                <th style={styles.cell}>{t("name")}</th>
+                <th style={styles.cell}>{t("draft")}</th>
+                <th style={styles.cell}>{t("published")}</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {questionnaires.map((questionnaire) => (
+                <tr key={questionnaire.id}>
+                  <td style={styles.cell}>
+                    <Link href={`/studies/${studyId}/questionnaires/${questionnaire.id}`}>
+                      {questionnaire.name}
+                    </Link>
+                  </td>
+                  <td style={styles.cell}>
+                    {t("questionCount", { count: questionnaire.draft.questionCount })}
+                  </td>
+                  <td style={styles.cell}>
+                    {questionnaire.latestPublished ? (
+                      <StatusBadge
+                        status={`v${questionnaire.latestPublished.versionNumber ?? "?"}`}
+                      />
+                    ) : (
+                      <span style={{ color: "#5b6472" }}>{t("neverPublished")}</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </TableScroll>
       )}
     </div>
   );
