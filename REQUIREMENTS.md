@@ -85,6 +85,21 @@ The platform should support:
 
 Randomized ESM scheduling is not required for the first MVP. Fixed-time recurring steps (FR-38) are required, because daily diary and multi-wave designs depend on them.
 
+### The reference design
+
+The first study the platform must serve combines three of the types above:
+
+```text
+Day 0                  baseline assessment          ~100 items
+designated start day   daily set, unchanged          10 items × 30 consecutive days
+Day 31                 endline assessment            the same ~100 items as Day 0
+                       total elapsed ≈ 35–36 days
+```
+
+It is worked through in full — steps, triggers, windows, computed instants, session volume — in **`docs/reference-protocol.md`**, which is the fixture every phase builds and tests against.
+
+That document is a **configuration example, not a specification**. Every count in it (100, 10, 30, 31) is researcher-configurable and none may appear as a literal in application code. The requirements it exposed, which apply to every study, are FR-38, FR-44, FR-47, and FR-48.
+
 ---
 
 ## 5. User Roles
@@ -195,13 +210,17 @@ The application must not ship real psychology questionnaire items unless explici
 
 Researchers must be able to define the order and timing of questionnaire sets. Timing must be configuration-driven, not hard-coded.
 
+Each step carries a trigger, an offset, a response window, an optional recurrence, a reminder policy, and a compliance flag. Where a step's trigger references another step, the reference must be unambiguous and its behavioural dependency must be visible to the researcher — see FR-48.
+
 Example only:
 
 | Step | Questionnaire | Trigger |
 |---|---|---|
 | 1 | Baseline | enrollment |
 | 2 | Follow-up | step 1 completed + 72h |
-| 3 | Daily Set | step 2 completed + 24h, ×7 daily |
+| 3 | Daily Set | fixed start date, ×7 daily at 20:00 local |
+
+A complete worked protocol, with computed instants, is in `docs/reference-protocol.md`.
 
 ## FR-12 — Participant-Relative Timing
 
@@ -209,9 +228,13 @@ The system must support rules such as:
 
 - `enrollment + 3 days`;
 - `baseline completion + 48 hours`;
-- `previous session completion + 24 hours`.
+- `a fixed cohort start date + 30 days`.
 
-Participants therefore receive the same protocol on different calendar dates.
+Participants therefore receive the same protocol on different calendar dates, unless a step is deliberately anchored to a fixed datetime so that a cohort shares one calendar.
+
+Both anchoring modes are first-class. A study must be able to run a recurring block from a shared start date **or** from each participant's own progress through the protocol, by configuration alone.
+
+Chaining an occurrence to the *previous occurrence's* completion is expressly not supported; see FR-38.
 
 ## FR-13 — Availability Windows
 
@@ -293,9 +316,18 @@ Participant screens must be responsive, simple, readable, low-friction, and suit
 
 Large questionnaires must be splittable into pages or sections rather than forcing long-page scrolling.
 
+An instrument of roughly a hundred items is an ordinary case, not an edge case (§4). For questionnaires of that size:
+
+- page composition is researcher-controlled, not derived from a fixed page size in code;
+- **autosave is per answer and independent of page boundaries** (FR-23). Moving between pages must never be the thing that saves, or a participant who leaves mid-page loses that page;
+- a participant resuming an open session returns to the first page containing an unanswered question, not to page one;
+- required-question validation reports which page each unanswered required item is on, so the participant is never told "something is missing" without being told where.
+
 ## FR-22 — Progress Indicator
 
 Participants must see progress, for example `18 / 60` or `30% completed`.
+
+Progress is measured over the whole questionnaire, not the current page, and is derived from persisted answers so that it survives a refresh.
 
 ## FR-23 — Autosave
 
@@ -399,11 +431,17 @@ A protocol step must be able to produce more than one ParticipantSession.
 
 Researchers must be able to configure:
 
-- an occurrence count (e.g. 7);
+- an occurrence count (e.g. 30);
 - a recurrence interval (e.g. one day);
-- optionally, a local wall-clock anchor time (e.g. 18:00).
+- optionally, a local wall-clock anchor time (e.g. 20:00).
 
 Each occurrence is anchored on the step's own trigger plus *n* × interval, not chained from the previous occurrence, so that a missed occurrence does not delay the ones after it.
+
+The platform must support blocks of **at least 60 occurrences** on a single step. A thirty-day block is the reference design; sixty is the headroom that keeps a two-month diary study from requiring a schema or engine change.
+
+All occurrences of a step pin the same questionnaire version. A daily instrument that must not vary across the study is therefore guaranteed not to vary, by construction rather than by discipline.
+
+**Occurrences already closed at enrollment.** A block anchored to a fixed datetime can have occurrences whose window closed before a given participant enrolled. Those must be materialised as `CANCELLED` with a reason distinguishing them from withdrawal, never as `EXPIRED_UNSTARTED`. A measurement that was never offered must not enter the participant's compliance denominator (FR-44), and the participant timeline must show why it is absent. An occurrence whose window is open at the moment of enrollment materialises normally.
 
 This requirement exists because daily diary and multi-wave designs — two of the seven target study types in §4 — cannot be expressed without it.
 
@@ -479,6 +517,10 @@ A **strict** variant using every step in the protocol as the denominator must al
 
 When the denominator is zero, the system must display "not yet applicable", never 0%.
 
+**Compliance must also be reportable per protocol step**, not only as one overall figure, in the participant list, the participant detail view, and every export.
+
+A single percentage is misleading whenever a protocol mixes step sizes. In the reference design (§4) a participant has thirty daily occurrences against two anchor measurements: a participant who completed the baseline, the endline, and half the dailies reports the same overall number as one who completed neither anchor and almost every daily, though the second dataset is unusable for the study's primary analysis. Adherence to a recurring block and completion of an anchor measurement are different research facts and must be readable separately.
+
 Full rules and worked examples are in `docs/compliance-formula.md`.
 
 ## FR-45 — Participant Group Assignment
@@ -533,6 +575,69 @@ Requirements:
 - Because a participant cannot "miss" work that was never due, participant-
   initiated steps must default to `counts_toward_compliance = false`, and the
   compliance denominator rules in FR-44 apply unchanged.
+
+## FR-47 — Repeated Instrument Across Protocol Steps
+
+The same questionnaire version must be usable by more than one protocol step, so that an
+instrument administered at baseline and again at the end of a study is **one** questionnaire
+referenced twice — never two questionnaires whose content has to be kept in step by hand.
+
+Requirements:
+
+- A protocol may point any number of steps at the same `questionnaire_version_id`. Nothing in
+  the schema, the builder, or the publish validation may require duplicating a questionnaire to
+  measure it twice.
+- ParticipantSessions, the participant timeline, dashboards, and exports must distinguish the
+  administrations by `step_key` and `occurrence_index`, never by questionnaire identity.
+- The same `question_key` appearing under two steps denotes **the same item measured at two
+  points**, which is exactly what a pre/post analysis joins on (FR-43).
+- The export must make that pairing machine-readable, so an analyst working from the CSV files
+  alone can tell that two column groups are the same instrument rather than inferring it from
+  column names (see `docs/export-codebook.md`).
+- Deleting or retiring a questionnaire referenced by a published protocol version is
+  prohibited, as it already is for a single reference.
+
+**Why this is stated explicitly.** A pre/post design is the most common longitudinal shape
+there is, and duplicating the instrument is the obvious way to build one. Duplication produces
+two sets of `question_key`s that drift the first time anyone edits one and not the other, and
+the drift is undetectable in the export — the columns still line up, they just no longer mean
+the same thing.
+
+## FR-48 — Trigger Determinacy and Outcome Independence
+
+Where a protocol step's trigger references another step, the reference must be unambiguous, and
+a measurement must not be lost because of a participant's compliance with an earlier one.
+
+**(a) Determinacy.** A step whose trigger references a step with `occurrence_count > 1` must
+name the occurrence it refers to. Publishing a protocol with an unqualified reference to a
+recurring step is rejected, with an error naming the offending step.
+
+**(b) Dependency visibility.** At publish and in the timeline preview, every step must be
+classified by resolving its anchor chain:
+
+```text
+unconditional   the chain reaches enrollment, consent, or a fixed datetime
+                through offsets and wall-clock anchors only
+conditional     the chain contains at least one "step completed" link
+```
+
+Conditional steps must be labelled in the builder together with the steps they depend on, and
+with a plain statement that missing those steps makes this step unreachable. The label is
+informational: conditioning a follow-up on a baseline is legitimate.
+
+**(c) Outcome independence.** A step may **not** be triggered by the *completion* of a
+recurring step. This is rejected at publish, whichever occurrence is named.
+
+Two supported ways to express "after the block" remain: anchor the later step on the block's own
+origin plus a duration — the recommended form — or trigger on a named occurrence becoming
+*available*, which is server-computed and independent of participant behaviour.
+
+**Why (c) is a prohibition and not a warning.** In the reference design (§4), triggering the
+endline on the last daily report's completion means a participant who misses one evening never
+receives the study's primary outcome measurement at all: the session waits in `PENDING_TRIGGER`
+until the trigger is unreachable, then cancels. The loss is silent, appears thirty days after
+the configuration mistake, and cannot be repaired — the window has passed and a retrospective
+answer is not the measurement. Rationale in `docs/adr/ADR-011-recurring-block-anchoring.md`.
 
 ---
 
@@ -596,6 +701,19 @@ The platform must support iPhone, Android phones, tablets, and desktop browsers.
 ## NFR-11 — Initial Scale
 
 The MVP must support at least several hundred active participants without architectural redesign.
+
+Concretely, none of the following may require a schema or engine change, and each must be exercised at this size rather than at demo size:
+
+| Dimension | Minimum |
+|---|---|
+| Active participants per study | 500 |
+| Questions in one questionnaire version | 200 |
+| Occurrences on one protocol step | 60 |
+| ParticipantSessions materialised per enrollment, in one transaction | 40 |
+| Responses per participant over a full protocol | 500 |
+| Columns in a wide-format export | 2 000 |
+
+These follow from the reference design in §4 with headroom: it produces 32 sessions and ~500 responses per participant, and ~1 000 wide-format columns.
 
 ## NFR-12 — Durable Response Storage
 
@@ -677,7 +795,16 @@ Unless a maintainer explicitly changes scope:
 
 The following are intentionally configurable and must never be hard-coded. The software must work without knowing them.
 
-**Configurable study content and timing:** questionnaire content and item counts · consent wording and versioning cadence · number of protocol steps and their triggers · exact delays between steps · response window lengths · reminder cadence, cap, and quiet hours · which steps count toward compliance · study and default participant timezone · whether email is collected · recurrence counts for daily/ESM steps · enrollment capacity · target sample size.
+**Configurable study content and timing:** questionnaire content and item counts · consent wording and versioning cadence · number of protocol steps and their triggers · exact delays between steps · response window lengths · reminder cadence, cap, and quiet hours · which steps count toward compliance · study and default participant timezone · whether email is collected · recurrence counts for daily/ESM steps · which questionnaire each step administers, including reuse of one instrument at several steps · enrollment capacity · target sample size.
+
+**Reference-design parameters still to be fixed by the research team.** The values in `docs/reference-protocol.md` are placeholders chosen to make the document computable. None is a platform default, and each must be confirmed before the pilot:
+
+1. **Anchor mode for the daily block** — a fixed cohort start date, or each participant's own baseline completion. Both are supported; the choice changes recruitment logistics, not code.
+2. **The designated start day** — which calendar date, or how many days after baseline completion.
+3. **Daily anchor time and window length** — the placeholder is 20:00 participant-local with a 12-hour window. A window shorter than the recurrence interval is required if each report must belong to exactly one day.
+4. **Endline on day 31 or day 32**, and its window length. The placeholder is day 31 with a 3-day window.
+5. **Baseline window length** — the placeholder is 3 days.
+6. **Reminder cadence and cap across a thirty-day block** — the value at which reminders stop helping and start being ignored is a research judgement, and FR-40 requires a cap.
 
 **Decisions required before the pilot (not before implementation begins):**
 
@@ -720,6 +847,8 @@ Researcher logs in
 ```
 
 All timing, question counts, intervals, and reminder values in this scenario must be configuration-driven.
+
+The scenario is deliberately stated with two measurement points, the smallest shape that proves the mechanism. The pilot runs it as the reference design of §4 — a recurring block between two administrations of one instrument — at compressed timings on staging and at real timings with participants.
 
 Additionally, the following must hold for the MVP to be released:
 

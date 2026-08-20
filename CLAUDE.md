@@ -14,6 +14,7 @@ Also consult the following documents when relevant:
 - `REQUIREMENTS.md` — normative functional and non-functional requirements.
 - `STRUCTURE.md` — target repository and system architecture.
 - `PLAN.md` — phased implementation plan and definition of done.
+- `docs/reference-protocol.md` — the study design the platform is built for, expressed as configuration and used as the shared test fixture. Read it before working on protocols, scheduling, compliance, or export. Every value in it is researcher-configurable and none may be hard-coded.
 
 ## Priority of project documentation
 

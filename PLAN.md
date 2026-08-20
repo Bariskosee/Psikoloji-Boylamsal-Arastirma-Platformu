@@ -330,6 +330,7 @@ Unit: configuration validation per type, reorder correctness. Integration: publi
 - The XSS payload test passes.
 - Reordering twenty questions persists correctly and is idempotent.
 - Turkish and English question text both persist and render.
+- **A ~100-item, ~10-page questionnaire — the reference design's `core` instrument (`docs/reference-protocol.md`) — is built, reordered, previewed on a phone viewport, and published in one transaction.** This is the size the platform is actually for; a builder that is pleasant with twelve questions and unusable with a hundred has not met the requirement (FR-21, NFR-11).
 
 ## What NOT to build yet
 
@@ -349,7 +350,9 @@ Phase 3.
 
 ## Technical work
 
-`protocol` module: protocol CRUD, draft version, step CRUD and ordering · all five trigger types · duration and wall-clock timing modes · window duration · recurrence · reminder policies including the reminder cap and quiet hours · the compliance-exclusion flag · validation that the trigger graph is acyclic with no dangling references · publish to an immutable version · researcher UI with a step list, per-step editor, reminder policy editor, and a **timeline preview** that renders the protocol for a hypothetical participant using the real domain timing functions.
+`protocol` module: protocol CRUD, draft version, step CRUD and ordering · all five trigger types · duration and wall-clock timing modes · window duration · recurrence · reminder policies including the reminder cap and quiet hours · the compliance-exclusion flag · validation that the trigger graph is acyclic with no dangling references · **the FR-48 trigger rules: `trigger_occurrence_index` required against a recurring step, `STEP_COMPLETED` against a recurring step rejected, and the derived unconditional/conditional classification** · publish to an immutable version · researcher UI with a step list, per-step editor, reminder policy editor, and a **timeline preview** that renders the protocol for a hypothetical participant using the real domain timing functions and labels which steps depend on participant compliance.
+
+Reusing one questionnaire version at two steps (FR-47) must work through the ordinary path — no special case in the builder, no warning, no duplication prompt.
 
 ## Data-model impact
 
@@ -373,12 +376,15 @@ Protocol publication is audited. Reminder cadence is validated against a minimum
 
 ## Testing
 
-Unit: cycle and dangling-reference rejection; the preview matches hand-computed times for a fixture protocol including a recurring step and a daylight-saving-crossing wall-clock step. Integration: publish immutability; a step cannot reference a draft questionnaire version.
+Unit: cycle and dangling-reference rejection; unqualified and completion-based triggers against a recurring step are rejected; the unconditional/conditional classification is correct for both reference anchor modes; the preview matches hand-computed times for a fixture protocol including a recurring step and a daylight-saving-crossing wall-clock step. Integration: publish immutability; a step cannot reference a draft questionnaire version; two steps referencing one published questionnaire version publish cleanly.
 
 ## Acceptance criteria
 
-- A researcher builds and publishes: baseline at enrollment with a 24-hour window; follow-up 72 hours after baseline completion with a 24-hour window; a daily step 24 hours after follow-up completion, seven occurrences at daily intervals anchored to 18:00 participant-local, each with a 24-hour window.
-- The preview shows exactly the expected instants, verified against a hand-computed fixture.
+- A researcher builds and publishes **the reference protocol** (`docs/reference-protocol.md`): baseline at enrollment; a thirty-occurrence daily block at daily intervals anchored to a local wall-clock time; an endline anchored on the block's own origin, administering the same questionnaire version as the baseline.
+- The preview shows exactly the instants tabulated in that document, verified against the hand-computed fixture, for both the fixed-date and participant-relative anchor modes.
+- A step triggered by the *completion* of the recurring daily step is rejected at publish, with an error that names the step and says why (FR-48c).
+- A step triggered by a recurring step without an occurrence index is rejected (FR-48a).
+- The preview labels each step unconditional or conditional, and names what a conditional step depends on.
 - A cyclic protocol is rejected with a clear error.
 - A reminder interval below the minimum is rejected.
 
@@ -529,7 +535,8 @@ All timing is server-computed. A participant cannot influence availability or ex
 
 The most demanding test phase.
 
-- With a fake clock: enroll, materialise, and verify the exact expected session set including recurrence; complete baseline and verify the dependent session moves to scheduled at the correct instant; advance the clock and verify activation; advance past the window and verify the correct expiry state.
+- With a fake clock: enroll on the reference protocol, materialise, and verify the exact expected session set — 32 sessions at the instants tabulated in `docs/reference-protocol.md`; complete baseline and verify the dependent session moves to scheduled at the correct instant; advance the clock across the full 36 days and verify each activation and expiry.
+- Enrolling into a fixed-date block after it has started materialises the already-closed occurrences as `CANCELLED` with reason `ENROLLED_AFTER_WINDOW`, the currently-open one as `AVAILABLE`, and the rest as `SCHEDULED` — and the cancelled ones stay out of the compliance denominator.
 - Two participants enrolling on different dates get independent, correct timelines.
 - **Recovery tests, non-negotiable:** delete every pending job, run sweepers, assert full convergence · stop the worker for a simulated six hours, restart, assert convergence with no duplicate side effects · deliver the same job twice, assert one effect · kill a handler mid-transaction, assert no partial state.
 - A wall-clock step crossing both daylight-saving transitions produces the documented instants.
@@ -537,8 +544,9 @@ The most demanding test phase.
 
 ## Acceptance criteria
 
-- Completing baseline causes the follow-up to become available at exactly the configured participant-relative instant, with no manual intervention.
-- A seven-occurrence daily step produces exactly seven sessions at the correct local times.
+- Completing baseline causes the dependent step to become available at exactly the configured participant-relative instant, with no manual intervention.
+- Enrolling on the reference protocol materialises exactly 32 sessions in one transaction, and the thirty-occurrence daily block lands on the correct local times.
+- A participant who misses every daily occurrence still receives the endline at the correct instant. This is the acceptance criterion the FR-48c prohibition exists for.
 - **Wiping the job queue entirely and running the sweepers restores fully correct state.**
 - A six-hour worker outage self-heals on restart with no duplicates.
 - Two participants enrolling five days apart have correct independent timelines.
@@ -653,6 +661,7 @@ E2E: reminder cancellation on completion.
 
 - A session becoming available produces exactly one initial attempt.
 - Reminders fire at the configured interval and stop at the cap.
+- The cap holds per session across a thirty-occurrence daily block: a participant who ignores the block entirely receives at most `max_reminders` per occurrence and no accumulation across occurrences.
 - **Completing mid-chain stops all further reminders, with a suppression record proving the guard fired.**
 - No duplicate notification is produced under duplicate jobs or concurrent workers.
 - An eight-hour outage does not produce a notification burst on recovery.
@@ -708,7 +717,8 @@ Integration: metrics reconcile exactly against hand-counted fixture data; missin
 ## Acceptance criteria
 
 - A researcher can answer all four daily-compliance questions.
-- A participant timeline shows every step with its correct state, including recurring occurrences.
+- A participant timeline shows every step with its correct state, including all thirty occurrences of a recurring block and any cancelled by late enrollment, which read as not applicable rather than as missed.
+- **Compliance is readable per step as well as overall** (FR-44): for a reference-protocol participant the dashboard shows daily-block adherence separately from baseline and endline completion, since one figure covering thirty occurrences and two anchors hides the number that matters most.
 - The response inspector visually distinguishes all seven statuses.
 - Dashboard numbers reconcile exactly with a hand-counted fixture study.
 - The displayed denominator matches `docs/compliance-formula.md`.
@@ -758,7 +768,7 @@ Export requires the analyst role or above, is rate-limited, and writes an audit 
 
 ## Testing
 
-Unit: long-format shaping across all seven statuses; wide-format column naming with recurring steps; codebook generation.
+Unit: long-format shaping across all seven statuses; wide-format column naming with a thirty-occurrence recurring step; two steps sharing one questionnaire version producing distinct column groups with identical question keys; codebook generation including the step section.
 
 Integration: **the export reconciles row-for-row against the source responses** for a fixture study containing every missingness case; a missed session appears with the correct status and an empty value in both formats; wide columns stay stable across a questionnaire version bump; an unauthorised export is rejected and audited.
 
@@ -768,7 +778,8 @@ Integration: **the export reconciles row-for-row against the source responses** 
 - All seven missingness situations appear correctly in a fixture export.
 - No cell anywhere contains zero for a missing value.
 - Wide export column names are stable across a version bump.
-- The codebook fully describes every column, code, and missingness value.
+- **A reference-protocol export is produced and inspected**: ~1 000 wide columns, thirty daily occurrence groups, and the baseline and endline column groups carrying identical `question_key`s so a pre/post comparison is a direct join (FR-47).
+- The codebook fully describes every column, code, and missingness value, **including the step section that identifies which column groups are the same instrument administered twice**.
 - Every export produced an audit event.
 
 ## What NOT to build yet
@@ -844,7 +855,7 @@ Phase 12.
 
 ## Technical work
 
-Deploy to staging with **accelerated protocol timings** and run the full acceptance scenario · an internal dry run with five to ten team members on real iPhones and Androids across a compressed protocol · a **closed participant pilot** of ten to twenty participants at real timings for at least a week · instrument and **measure missed notifications separately from missed questionnaires**, because conflating them would misattribute a technical failure to participant behaviour · reconcile every pilot record end to end, from displayed value to database row to dashboard metric to CSV cell · collect participant feedback · triage and fix critical issues.
+Deploy to staging with **accelerated protocol timings** and run the full acceptance scenario against the reference protocol (`docs/reference-protocol.md`), compressing its 36 days into minutes · an internal dry run with five to ten team members on real iPhones and Androids across that compressed protocol · a **closed participant pilot** of ten to twenty participants at real timings for at least a week, long enough to exercise the daily block rather than only the baseline · instrument and **measure missed notifications separately from missed questionnaires**, because conflating them would misattribute a technical failure to participant behaviour · reconcile every pilot record end to end, from displayed value to database row to dashboard metric to CSV cell · collect participant feedback · triage and fix critical issues.
 
 ## Data-model impact
 

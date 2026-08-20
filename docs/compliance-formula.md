@@ -73,9 +73,36 @@ When the denominator is zero — a participant enrolled minutes ago, or a study 
 
 It must never display or export `0%`. Zero percent means "had opportunities and took none", which is a materially different claim about a participant.
 
+Sessions cancelled because the participant enrolled after an occurrence's window had already closed (`ENROLLED_AFTER_WINDOW`, `STRUCTURE.md` §8.2) are `CANCELLED` and therefore leave both terms by the §2 rule. No special case is needed here — but it is the reason the state was chosen, so it is worth stating: those measurements were never offered, and charging them as missed would make compliance depend on enrollment date rather than on behaviour.
+
 ---
 
-## 6. Study-level aggregates
+## 6. Per-step compliance
+
+Both metrics above are also computed **restricted to a single protocol step**, over that step's occurrences:
+
+```text
+step_compliance(participant, step_key) =
+      count(sessions of that step in COMPLETED)
+    ÷ count(sessions of that step in COMPLETED ∪ EXPIRED_UNSTARTED ∪ EXPIRED_PARTIAL)
+```
+
+The same exclusions apply unchanged: cancelled sessions, not-yet-due sessions, open windows, and steps flagged `counts_toward_compliance = false`.
+
+**Why this is required and not merely nice** (FR-44). A protocol that mixes a long recurring block with a small number of anchor measurements produces an overall figure dominated by the block. In the reference design — a baseline, thirty daily occurrences, an endline — these two participants report the same overall compliance:
+
+| | Baseline | Daily (30) | Endline | Overall | Usable for the primary analysis? |
+|---|---|---|---|---|---|
+| P-AAA111 | completed | 14 / 30 | completed | 16/32 = 50% | **Yes** |
+| P-BBB222 | missed | 16 / 30 | missed | 16/32 = 50% | **No** |
+
+One number, two entirely different research situations. The dashboard, the participant list, and the exports must therefore report per-step figures alongside the overall one, and a protocol's anchor measurements should be legible at a glance.
+
+Naming in the interface distinguishes the two kinds of question a researcher is asking: **adherence** for a recurring block ("how many of the daily reports did they file?") and **completion** for a single-occurrence step ("did they do the endline, yes or no?"). A percentage is a poor rendering of a one-in-one measurement and must not be used for it — a step with `occurrence_count = 1` displays completed or missed, never 100% or 0%.
+
+---
+
+## 7. Study-level aggregates
 
 **Average compliance** is the unweighted mean of participants' elapsed compliance, over participants with a non-zero denominator:
 
@@ -95,7 +122,7 @@ The interface must display the participant count behind any average.
 
 ---
 
-## 7. Daily compliance view (FR-28)
+## 8. Daily compliance view (FR-28)
 
 For a given calendar date in the **study timezone**, over ParticipantSessions whose response window overlapped that date:
 
@@ -121,7 +148,7 @@ Windows still open:     M
 
 ---
 
-## 8. Worked examples
+## 9. Worked examples
 
 **Example A — mid-study participant**
 
@@ -168,17 +195,45 @@ as withdrawn in the overview.
 
 A protocol includes an optional exit-interview step with `counts_toward_compliance = false`. Whether the participant completes it never affects either metric, though it still appears in the timeline and the export.
 
+**Example E — the reference design, mid-block**
+
+Protocol: `baseline` ×1, `daily` ×30, `endline` ×1 — 32 sessions (`docs/reference-protocol.md`). The participant enrolled 12 days ago into a fixed-date block that had already run for 2 days when they joined, and today's daily window is still open.
+
+| Sessions | State | Count |
+|---|---|---|
+| `baseline` | `COMPLETED` | 1 |
+| `daily` #0–#1 | `CANCELLED` (`ENROLLED_AFTER_WINDOW`) | 2 |
+| `daily` #2–#10 | `COMPLETED` 7, `EXPIRED_UNSTARTED` 1, `EXPIRED_PARTIAL` 1 | 9 |
+| `daily` #11 | `AVAILABLE`, window open | 1 |
+| `daily` #12–#29 | `SCHEDULED` | 18 |
+| `endline` | `SCHEDULED` | 1 |
+
+```text
+Denominator = 10   (1 baseline + 7 completed + 1 unstarted + 1 partial dailies)
+Numerator   =  8
+elapsed_compliance      = 8/10 = 80%
+strict_compliance       = 8/30 = 27%      ← the 2 cancelled leave the denominator
+daily adherence         = 7/9  = 78%
+baseline completion     = completed
+endline completion      = not yet due
+```
+
+Three things this example is here to pin down: the two `ENROLLED_AFTER_WINDOW` sessions are absent from every denominator, including the strict one, so a late enrollment is not penalised; the open window is excluded; and the endline reports "not yet due" rather than a percentage, per §6.
+
 ---
 
-## 9. Required tests
+## 10. Required tests
 
 Each of these must exist as a named test in `packages/domain`:
 
 - every state's bucket assignment matches the table in §2;
 - zero denominator returns "not applicable", not zero;
 - `counts_toward_compliance = false` removes a session from both terms;
-- `CANCELLED` removes a session from both terms;
-- worked examples A–D reproduce exactly the numbers above;
+- `CANCELLED` removes a session from both terms, whatever the cancellation reason;
+- `ENROLLED_AFTER_WINDOW` sessions leave the strict denominator too, so late enrollment does not depress strict compliance;
+- worked examples A–E reproduce exactly the numbers above;
+- per-step compliance over a recurring block matches a hand-counted fixture, and the two participants in §6 with equal overall compliance produce different per-step figures;
+- a single-occurrence step reports completed or missed, never a percentage;
 - study average excludes withdrawn participants and zero-denominator participants;
-- daily view categories sum to the window totals as shown in §7;
+- daily view categories sum to the window totals as shown in §8;
 - elapsed and strict converge once every session is terminal.

@@ -111,6 +111,17 @@ Leading columns: `participant_public_code`, `enrolled_at`, `participant_status`,
 
 **Stability guarantee.** Column names depend on `step_key`, `occurrence_index`, and `question_key` — all stable across versions (FR-43). Publishing a new questionnaire version that rewords a question does **not** change any column name. Adding a question adds a column; removing one leaves the historical column populated for participants who saw it and `NOT_APPLICABLE` for those who did not.
 
+**One instrument, two administrations.** When a protocol administers the same questionnaire version at two steps — the pre/post shape of the reference design (FR-47) — the two appear as separate column groups distinguished by `step_key`, carrying **identical `question_key` suffixes**:
+
+```text
+baseline_0__mood_1   baseline_0__mood_1__status   …
+endline_0__mood_1    endline_0__mood_1__status    …
+```
+
+That is the intended layout: a pre/post comparison is then a direct column pair, with no key reconciliation. Which column groups are the same instrument is stated explicitly in the steps section of the codebook (§5) rather than left to be inferred from naming.
+
+**Column count.** The reference design produces 500 column groups — 100 baseline, 300 daily (30 occurrences × 10 items), 100 endline — and roughly 1 000 columns once status columns are paired in. This is well inside spreadsheet limits, but wide format degrades as a working format long before it becomes invalid: long format remains authoritative and is the format to reach for with a long recurring block.
+
 **Known limitation.** Wide format is well-defined only when `question_key` values are unique and stable. If a study reuses a key for a semantically different question, the wide file silently merges them. The platform prevents this by prohibiting key changes after data collection (FR-43), but a study that was misconfigured before its first response can still produce this. Long format is always authoritative.
 
 ---
@@ -133,6 +144,22 @@ Emitted with every export so the dataset is self-describing and reproducible wit
 
 The codebook also includes a fixed trailer section listing all seven `response_status` values with the definitions from §2, so an analyst who receives only the CSV files can interpret missingness correctly.
 
+### Steps section — `steps.csv`
+
+Emitted alongside the codebook. One row per protocol step in the exported protocol version, so the design is reconstructible from the files alone.
+
+| Column | Notes |
+|---|---|
+| `step_key`, `step_index` | The wide-format column prefix and the protocol order |
+| `questionnaire_key`, `questionnaire_version` | **The instrument administered at this step** |
+| `occurrence_count` | 1 for a single measurement; 30 for the reference design's daily block |
+| `trigger_description` | Human-readable, e.g. `enrollment + PT0S` or `fixed start + P30D` |
+| `window_duration_iso` | |
+| `counts_toward_compliance` | So a reader can reproduce the denominator in §3 of `docs/compliance-formula.md` |
+| `repeats_step_key` | Empty, or the earlier `step_key` administering the same `questionnaire_version_id` |
+
+`repeats_step_key` is what makes a pre/post design **machine-readable**: an analyst's script reads `endline` → `repeats_step_key = baseline` and pairs the two column groups without anyone hard-coding step names or trusting that two similarly-named columns measure the same thing. Without it, "are `baseline_0__mood_1` and `endline_0__mood_1` the same item?" is answerable only by asking the research team, and the CSV set stops being self-describing (FR-47).
+
 ---
 
 ## 6. Export integrity rules
@@ -154,6 +181,8 @@ The codebook also includes a fixed trailer section listing all seven `response_s
 - long-format output reconciles row-for-row against the `responses` table for a fixture study;
 - wide-format column names are unchanged after publishing a questionnaire version that rewords a question;
 - a recurring step with 7 occurrences produces 7 distinct occurrence indices in long format and 7 column groups in wide format;
+- a 30-occurrence block exports all 30 occurrence indices, with `NOT_APPLICABLE` for any cancelled by late enrollment;
+- two steps administering the same questionnaire version produce two distinct column groups whose `question_key` suffixes are identical, and `steps.csv` records the second step's `repeats_step_key`;
 - multiple-choice values round-trip through the `;` separator;
 - the codebook lists every question version referenced by the long file;
 - an export attempted by a `VIEWER` is rejected and audited;
