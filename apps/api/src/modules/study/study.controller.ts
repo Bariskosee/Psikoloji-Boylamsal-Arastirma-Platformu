@@ -30,13 +30,26 @@ import {
   type UpdateStudyMemberRequest,
   type UpdateStudyRequest,
 } from "@lpr/contracts";
+import { ApiErrors } from "../../common/api-error.js";
 import { ClockService } from "../../common/core.module.js";
+import { uuidParam } from "../../common/uuid-param.pipe.js";
 import { ZodBodyPipe } from "../../common/zod-body.pipe.js";
 import { CurrentUser, StudyAccess } from "../auth/decorators/current-user.decorator.js";
 import { RequireStudyPermission } from "../auth/decorators/require-study-permission.decorator.js";
 import type { AuthenticatedRequest, RequestStudyAccess } from "../auth/auth.types.js";
 import { StudyMemberService } from "./study-member.service.js";
 import { StudyService } from "./study.service.js";
+
+/**
+ * The same not-found `StudyMemberService` raises for a well-formed id that is
+ * not a member of this study, so a malformed id is indistinguishable from an
+ * absent one — see `uuid-param.pipe.ts` for why that matters.
+ *
+ * `:studyId` needs no pipe: `StudyPermissionGuard` resolves it against the
+ * membership table first and already collapses malformed, absent, and
+ * forbidden into one STUDY_NOT_FOUND.
+ */
+const memberNotFound = () => ApiErrors.notFound("Study member");
 
 @Controller("api/studies")
 export class StudyController {
@@ -192,7 +205,7 @@ export class StudyController {
   @RequireStudyPermission("study:members:manage")
   async changeMemberRole(
     @Param("studyId") _studyId: string,
-    @Param("userId") userId: string,
+    @Param("userId", uuidParam(memberNotFound)) userId: string,
     @Body(new ZodBodyPipe(updateStudyMemberRequestSchema)) body: UpdateStudyMemberRequest,
     @CurrentUser() user: ResearcherProfile,
     @StudyAccess() access: RequestStudyAccess,
@@ -213,7 +226,7 @@ export class StudyController {
   @RequireStudyPermission("study:members:manage")
   async removeMember(
     @Param("studyId") _studyId: string,
-    @Param("userId") userId: string,
+    @Param("userId", uuidParam(memberNotFound)) userId: string,
     @CurrentUser() user: ResearcherProfile,
     @StudyAccess() access: RequestStudyAccess,
     @Req() request: AuthenticatedRequest,

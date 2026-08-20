@@ -404,3 +404,40 @@ describe("GET /api/studies/:studyId/audit", () => {
     expect(studyId).toBeTruthy();
   });
 });
+
+/**
+ * A malformed `:userId` used to reach the query layer, where PostgreSQL raised
+ * a uuid cast error (22P02) that surfaced as an opaque 500 — a fuzzed request
+ * that looks exactly like an outage, and a different answer than the sibling
+ * questionnaire routes give for the same input.
+ */
+describe("member routes reject a malformed :userId", () => {
+  it("answers PATCH with the same not-found it gives an absent member", async () => {
+    const { client, studyId } = await ownerWithStudy();
+
+    const response = await client
+      .patch(`/api/studies/${studyId}/members/not-a-uuid`, { role: "EDITOR" })
+      .expect(404);
+
+    expect(response.body.error.code).toBe("NOT_FOUND");
+  });
+
+  it("answers DELETE with the same not-found it gives an absent member", async () => {
+    const { client, studyId } = await ownerWithStudy();
+
+    const response = await client.delete(`/api/studies/${studyId}/members/not-a-uuid`).expect(404);
+
+    expect(response.body.error.code).toBe("NOT_FOUND");
+  });
+
+  it("gives a well-formed but unknown id the same answer, so neither is an oracle", async () => {
+    const { client, studyId } = await ownerWithStudy();
+    const absent = "00000000-0000-4000-8000-000000000000";
+
+    const malformed = await client.delete(`/api/studies/${studyId}/members/not-a-uuid`);
+    const unknown = await client.delete(`/api/studies/${studyId}/members/${absent}`);
+
+    expect(malformed.status).toBe(unknown.status);
+    expect(malformed.body.error.code).toBe(unknown.body.error.code);
+  });
+});
