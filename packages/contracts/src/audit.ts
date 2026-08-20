@@ -42,8 +42,16 @@ export const AUDIT_ACTIONS = [
   "questionnaire.updated",
   "questionnaire.version.published",
 
-  // Later phases — declared, not yet emitted
+  // Protocol (Phase 4)
+  "protocol.created",
+  "protocol.updated",
+  "protocol.step.created",
+  "protocol.step.updated",
+  "protocol.step.deleted",
+  "protocol.steps.reordered",
   "protocol.version.published",
+
+  // Later phases — declared, not yet emitted
   "consent.version.published",
   "participant.withdrawn",
   "participant.erased",
@@ -59,6 +67,8 @@ export const AUDIT_ENTITY_TYPES = [
   "study_member",
   "questionnaire",
   "questionnaire_version",
+  "protocol",
+  "protocol_step",
   "protocol_version",
   "consent_version",
   "participant",

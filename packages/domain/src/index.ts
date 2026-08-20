@@ -33,3 +33,4 @@ export * from "./questionnaire/publish.js";
 export * from "./scheduling/index.js";
 export * from "./protocol/trigger-graph.js";
 export * from "./protocol/timing.js";
+export * from "./protocol/preview.js";

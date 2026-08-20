@@ -368,3 +368,151 @@ export const protocolStepInputSchema = z
       });
     }
   });
+
+export type ProtocolStepInput = z.infer<typeof protocolStepInputSchema>;
+
+/**
+ * Updating a step.
+ *
+ * Every field is optional, but the cross-field rules still have to hold once
+ * the patch is applied — which the service checks by re-validating the merged
+ * row, not by trying to express "valid after merge" in a schema.
+ */
+export const updateProtocolStepSchema = protocolStepInputSchema.innerType().partial().strict();
+
+export type UpdateProtocolStepRequest = z.infer<typeof updateProtocolStepSchema>;
+
+export const createProtocolSchema = z.object({
+  name: z.string().min(1).max(200),
+  description: z.string().max(2000).default(""),
+});
+
+export type CreateProtocolRequest = z.infer<typeof createProtocolSchema>;
+
+export const updateProtocolSchema = z.object({
+  name: z.string().min(1).max(200).optional(),
+  description: z.string().max(2000).optional(),
+});
+
+export type UpdateProtocolRequest = z.infer<typeof updateProtocolSchema>;
+
+export const reorderProtocolStepsSchema = z.object({
+  /** Every step of the draft, in the order they should take. */
+  stepIds: z.array(z.string().uuid()).min(1),
+});
+
+export type ReorderProtocolStepsRequest = z.infer<typeof reorderProtocolStepsSchema>;
+
+export const protocolStepResponseSchema = protocolStepInputSchema.innerType().extend({
+  id: z.string().uuid(),
+  stepIndex: z.number().int().min(0),
+  reminderPolicy: reminderPolicyResponseSchema.nullable(),
+});
+
+export type ProtocolStepResponse = z.infer<typeof protocolStepResponseSchema>;
+
+export const protocolVersionSummarySchema = z.object({
+  id: z.string().uuid(),
+  status: protocolVersionStatusSchema,
+  versionNumber: z.number().int().nullable(),
+  stepCount: z.number().int(),
+  publishedAt: z.string().nullable(),
+});
+
+export type ProtocolVersionSummary = z.infer<typeof protocolVersionSummarySchema>;
+
+export const protocolVersionDetailSchema = protocolVersionSummarySchema.extend({
+  protocolId: z.string().uuid(),
+  steps: z.array(protocolStepResponseSchema),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export type ProtocolVersionDetail = z.infer<typeof protocolVersionDetailSchema>;
+
+export const protocolDetailSchema = z.object({
+  id: z.string().uuid(),
+  studyId: z.string().uuid(),
+  name: z.string(),
+  description: z.string(),
+  draft: protocolVersionDetailSchema,
+  publishedVersions: z.array(protocolVersionSummarySchema),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export type ProtocolDetail = z.infer<typeof protocolDetailSchema>;
+
+export const protocolSummarySchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  description: z.string(),
+  draft: z.object({ id: z.string().uuid(), stepCount: z.number().int() }),
+  latestPublished: protocolVersionSummarySchema.nullable(),
+});
+
+export type ProtocolSummary = z.infer<typeof protocolSummarySchema>;
+
+export const protocolListResponseSchema = z.object({
+  protocols: z.array(protocolSummarySchema),
+});
+
+export type ProtocolListResponse = z.infer<typeof protocolListResponseSchema>;
+
+/**
+ * The timeline preview (PLAN.md Phase 4).
+ *
+ * The researcher's only defence against misconfiguring a study, so it runs the
+ * SAME domain functions the engine will in Phase 7 rather than a second
+ * implementation that could agree with the builder and disagree with reality.
+ *
+ * A hypothetical participant is supplied rather than assumed: "what does this
+ * look like for someone who enrols on the 4th, in Istanbul?" is the question
+ * being asked, and every part of the answer depends on both.
+ */
+export const previewProtocolSchema = z.object({
+  /** When the hypothetical participant enrolls. */
+  enrolledAt: z.string().datetime(),
+  /** Their zone; null means they never reported one and the study's is used. */
+  participantTimezone: z.string().nullable().default(null),
+  /**
+   * When they complete each step, keyed by `step_key`. Supplying none is the
+   * worst case worth previewing: a participant who completes nothing, which is
+   * exactly the case FR-48c exists to protect.
+   */
+  completions: z.record(z.string(), z.string().datetime()).default({}),
+});
+
+export type PreviewProtocolRequest = z.infer<typeof previewProtocolSchema>;
+
+export const previewOccurrenceSchema = z.object({
+  occurrenceIndex: z.number().int(),
+  availableFrom: z.string(),
+  availableUntil: z.string(),
+  adjustment: z.enum(["NONE", "SPRING_FORWARD_GAP", "FALL_BACK_AMBIGUOUS"]),
+});
+
+export const previewStepSchema = z.object({
+  stepId: z.string().uuid(),
+  stepKey: z.string(),
+  questionnaireVersionId: z.string().uuid(),
+  dependency: z.enum(["UNCONDITIONAL", "CONDITIONAL"]),
+  dependsOnCompletionOf: z.array(z.string()),
+  /**
+   * Absent when the step's origin could not be resolved for this hypothetical
+   * participant — which is what a conditional step whose prerequisite was never
+   * completed looks like, and is the point of showing it.
+   */
+  occurrences: z.array(previewOccurrenceSchema).nullable(),
+  unresolvedReason: z.string().nullable(),
+});
+
+export type PreviewStep = z.infer<typeof previewStepSchema>;
+
+export const protocolPreviewResponseSchema = z.object({
+  steps: z.array(previewStepSchema),
+  /** Total sessions this participant would be given. */
+  totalOccurrences: z.number().int(),
+});
+
+export type ProtocolPreviewResponse = z.infer<typeof protocolPreviewResponseSchema>;
