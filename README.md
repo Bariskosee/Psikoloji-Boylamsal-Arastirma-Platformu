@@ -12,7 +12,7 @@ The core goals are:
 - give researchers a dashboard for compliance and response monitoring,
 - export clean longitudinal datasets for statistical analysis.
 
-> **Project status:** Architecture complete, implementation not yet started. The technical plan is approved and documented; no application code exists yet. See `PLAN.md` for the phased roadmap.
+> **Project status:** Phases 0–3 are implemented — the core domain and database, researcher authentication, studies and the audit trail, and the questionnaire builder with immutable publishing — along with the background job queue (ADR-004) and the reconciliation sweepers (ADR-005). Protocols, participant enrollment, and the questionnaire runtime are next. See `PLAN.md` for the phased roadmap and `CONTRIBUTING.md` to run it locally.
 
 ---
 
