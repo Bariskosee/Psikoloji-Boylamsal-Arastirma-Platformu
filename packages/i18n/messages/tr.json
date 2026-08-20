@@ -70,7 +70,20 @@
       "notFound": "Bu çalışma mevcut değil veya erişim yetkiniz yok.",
       "transition": "Bu durum değişikliğine izin verilmiyor."
     },
-    "manageQuestionnaires": "Anketleri yönet"
+    "manageQuestionnaires": "Anketleri yönet",
+    "statuses": {
+      "DRAFT": "Taslak",
+      "ACTIVE": "Etkin",
+      "PAUSED": "Duraklatıldı",
+      "CLOSED": "Kapatıldı",
+      "ARCHIVED": "Arşivlendi"
+    },
+    "roles": {
+      "OWNER": "Sahip",
+      "EDITOR": "Düzenleyici",
+      "ANALYST": "Analist",
+      "VIEWER": "İzleyici"
+    }
   },
   "members": {
     "title": "Çalışma üyeleri",
@@ -178,7 +191,8 @@
       "notFound": "Bu anket mevcut değil veya erişim yetkiniz yok.",
       "publishEmpty": "Yayımlamadan önce en az bir soru ekleyin.",
       "publishNeedsOptions": "{position}. sorunun yayımlanabilmesi için en az iki seçeneği olmalı.",
-      "publishSelectionBounds": "{position}. soru, seçenek sayısından fazla seçim istiyor."
+      "publishSelectionBounds": "{position}. soru, seçenek sayısından fazla seçim istiyor.",
+      "forbidden": "Bu çalışmanın anketlerine erişiminiz yok. Düzenleyici yetkisi için çalışma sahibine başvurun."
     }
   }
 }
