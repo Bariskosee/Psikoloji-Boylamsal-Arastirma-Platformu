@@ -26,3 +26,4 @@ export * from "./study.js";
 export * from "./audit.js";
 export * from "./question-types.js";
 export * from "./questionnaire.js";
+export * from "./protocol.js";
