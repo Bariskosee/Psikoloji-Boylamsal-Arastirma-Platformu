@@ -70,7 +70,20 @@
       "notFound": "This study does not exist, or you do not have access to it.",
       "transition": "That status change is not allowed."
     },
-    "manageQuestionnaires": "Manage questionnaires"
+    "manageQuestionnaires": "Manage questionnaires",
+    "statuses": {
+      "DRAFT": "Draft",
+      "ACTIVE": "Active",
+      "PAUSED": "Paused",
+      "CLOSED": "Closed",
+      "ARCHIVED": "Archived"
+    },
+    "roles": {
+      "OWNER": "Owner",
+      "EDITOR": "Editor",
+      "ANALYST": "Analyst",
+      "VIEWER": "Viewer"
+    }
   },
   "members": {
     "title": "Study members",
@@ -178,7 +191,8 @@
       "notFound": "This questionnaire does not exist, or you do not have access to it.",
       "publishEmpty": "Add at least one question before publishing.",
       "publishNeedsOptions": "Question {position} needs at least two options before you can publish.",
-      "publishSelectionBounds": "Question {position} asks for more selections than it has options."
+      "publishSelectionBounds": "Question {position} asks for more selections than it has options.",
+      "forbidden": "You do not have access to this study's questionnaires. Ask an owner for editor access."
     }
   }
 }

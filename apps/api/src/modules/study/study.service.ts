@@ -240,6 +240,18 @@ export class StudyService {
     return buildEnrollmentUrl(this.env.PARTICIPANT_ORIGIN, code);
   }
 
+  /**
+   * Insert the study, regenerating the enrollment code on a collision.
+   *
+   * Each attempt runs in its own SAVEPOINT (`tx.transaction(...)` nested inside
+   * the caller's transaction). That is load-bearing, not tidiness: in
+   * PostgreSQL the FIRST failed statement aborts the whole transaction, and
+   * every later statement then fails with 25P02 regardless of what it does.
+   * Retrying the INSERT directly on `tx` therefore cannot succeed — the second
+   * attempt raises 25P02, `isUniqueViolation` says no, and the caller receives
+   * a 500 instead of the retry the loop was written to perform. A savepoint
+   * rolls back just the failed attempt and leaves the transaction usable.
+   */
   private async insertWithUniqueCode(
     tx: Database,
     actorId: string,
@@ -249,23 +261,26 @@ export class StudyService {
     for (let attempt = 0; attempt < CODE_ATTEMPTS; attempt += 1) {
       const enrollmentCode = generateEnrollmentCode(generateRandomBytes(ENROLLMENT_CODE_BYTES));
       try {
-        const inserted = await tx
-          .insert(studies)
-          .values({
-            name: input.name,
-            description: input.description,
-            timezone: input.timezone,
-            defaultLocale: input.defaultLocale,
-            supportedLocales: input.supportedLocales,
-            enrollmentCapacity: input.enrollmentCapacity,
-            enrollmentCode,
-            createdBy: actorId,
-            createdAt: now,
-            updatedAt: now,
-          })
-          .returning();
-        const study = inserted[0];
-        if (study) return study;
+        return await tx.transaction(async (savepoint) => {
+          const inserted = await savepoint
+            .insert(studies)
+            .values({
+              name: input.name,
+              description: input.description,
+              timezone: input.timezone,
+              defaultLocale: input.defaultLocale,
+              supportedLocales: input.supportedLocales,
+              enrollmentCapacity: input.enrollmentCapacity,
+              enrollmentCode,
+              createdBy: actorId,
+              createdAt: now,
+              updatedAt: now,
+            })
+            .returning();
+          const study = inserted[0];
+          if (!study) throw ApiErrors.enrollmentCodeUnavailable();
+          return study;
+        });
       } catch (error) {
         // Retry ONLY a unique violation on the code. Any other failure is a
         // real error and must not be swallowed by a retry loop.

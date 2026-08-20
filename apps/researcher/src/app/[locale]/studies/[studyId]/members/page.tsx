@@ -11,7 +11,7 @@ import {
   type StudyRole,
 } from "@lpr/contracts";
 import { ApiError, api } from "@/lib/api";
-import { ErrorBanner, styles } from "@/lib/ui";
+import { ErrorBanner, TableScroll, styles } from "@/lib/ui";
 
 /**
  * Study membership — OWNER only, enforced server-side.
@@ -22,6 +22,8 @@ import { ErrorBanner, styles } from "@/lib/ui";
  */
 export default function MembersPage() {
   const t = useTranslations("members");
+  // Role labels live under `studies` because the study list renders them too.
+  const tStudies = useTranslations("studies");
   const router = useRouter();
   const params = useParams<{ studyId: string }>();
   const studyId = params?.studyId ?? "";
@@ -121,7 +123,7 @@ export default function MembersPage() {
             >
               {STUDY_ROLES.map((option) => (
                 <option key={option} value={option}>
-                  {option}
+                  {tStudies(`roles.${option}`)}
                 </option>
               ))}
             </select>
@@ -141,49 +143,51 @@ export default function MembersPage() {
         <h2>{t("current")}</h2>
         {members === null ? <p>{t("loading")}</p> : null}
         {members && members.length > 0 ? (
-          <table style={styles.table}>
-            <thead>
-              <tr>
-                <th style={styles.cell}>{t("name")}</th>
-                <th style={styles.cell}>{t("email")}</th>
-                <th style={styles.cell}>{t("role")}</th>
-                <th style={styles.cell} />
-              </tr>
-            </thead>
-            <tbody>
-              {members.map((member) => (
-                <tr key={member.userId}>
-                  <td style={styles.cell}>{member.displayName}</td>
-                  <td style={styles.cell}>{member.email}</td>
-                  <td style={styles.cell}>
-                    <select
-                      aria-label={t("role")}
-                      value={member.role}
-                      onChange={(event) =>
-                        changeRole(member.userId, event.target.value as StudyRole)
-                      }
-                      style={{ ...styles.input, minHeight: 36 }}
-                    >
-                      {STUDY_ROLES.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td style={styles.cell}>
-                    <button
-                      type="button"
-                      onClick={() => remove(member.userId)}
-                      style={styles.secondaryButton}
-                    >
-                      {t("remove")}
-                    </button>
-                  </td>
+          <TableScroll label={t("current")}>
+            <table style={styles.table}>
+              <thead>
+                <tr>
+                  <th style={styles.cell}>{t("name")}</th>
+                  <th style={styles.cell}>{t("email")}</th>
+                  <th style={styles.cell}>{t("role")}</th>
+                  <th style={styles.cell} />
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {members.map((member) => (
+                  <tr key={member.userId}>
+                    <td style={styles.cell}>{member.displayName}</td>
+                    <td style={styles.cell}>{member.email}</td>
+                    <td style={styles.cell}>
+                      <select
+                        aria-label={t("role")}
+                        value={member.role}
+                        onChange={(event) =>
+                          changeRole(member.userId, event.target.value as StudyRole)
+                        }
+                        style={{ ...styles.input, minHeight: 36 }}
+                      >
+                        {STUDY_ROLES.map((option) => (
+                          <option key={option} value={option}>
+                            {tStudies(`roles.${option}`)}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td style={styles.cell}>
+                      <button
+                        type="button"
+                        onClick={() => remove(member.userId)}
+                        style={styles.secondaryButton}
+                      >
+                        {t("remove")}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableScroll>
         ) : null}
       </section>
     </div>

@@ -5,7 +5,21 @@ import type { HealthResponse, ReadyResponse } from "@lpr/contracts";
 // injection through emitDecoratorMetadata, which needs the class at runtime —
 // a type-only import erases it and DI fails at startup.
 import { HealthService } from "./health.service.js";
+import { Public } from "../auth/decorators/public.decorator.js";
 
+/**
+ * Both probes are `@Public()`.
+ *
+ * Authentication is global and opt-out (see `app.module.ts`), and a probe is
+ * the one caller that can never present a session: the orchestrator and the
+ * load balancer are not logged in. Behind the guard these return 401, which a
+ * probe reads as "not healthy" forever — the process is marked permanently
+ * unready while it is in fact serving perfectly. That failure is silent from
+ * inside the application, because a 401 looks like a correctly-refused request.
+ *
+ * Neither route exposes anything a caller could not learn by watching whether
+ * the port answers, which is what makes them safe to leave open.
+ */
 @Controller()
 export class HealthController {
   constructor(private readonly health: HealthService) {}
@@ -17,6 +31,7 @@ export class HealthController {
    * database blip causes the orchestrator to restart a perfectly healthy
    * process, which makes an outage worse rather than better.
    */
+  @Public()
   @Get("health")
   getHealth(): HealthResponse {
     return this.health.liveness();
@@ -28,6 +43,7 @@ export class HealthController {
    * Returns 503 when not ready so a load balancer drains traffic instead of
    * routing requests that are certain to fail.
    */
+  @Public()
   @Get("ready")
   async getReady(@Res({ passthrough: true }) res: Response): Promise<ReadyResponse> {
     const result = await this.health.readiness();

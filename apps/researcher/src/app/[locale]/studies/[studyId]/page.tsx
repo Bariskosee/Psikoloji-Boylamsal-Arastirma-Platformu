@@ -99,7 +99,7 @@ export default function StudyPage() {
 
       <header style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <h1 style={{ margin: 0 }}>{study.name}</h1>
-        <StatusBadge status={study.status} />
+        <StatusBadge status={t(`statuses.${study.status}`)} />
       </header>
 
       <ErrorBanner>{error}</ErrorBanner>
@@ -188,9 +188,17 @@ export default function StudyPage() {
         </section>
       ) : null}
 
-      <p>
-        <Link href={`/studies/${studyId}/questionnaires`}>{t("manageQuestionnaires")} →</Link>
-      </p>
+      {/*
+        EDITOR and above only, matching the server: every route under
+        `/questionnaires` requires `questionnaire:edit`, reads included
+        (QuestionnaireController explains why). Offering the link to a VIEWER
+        sent them to a screen that could only ever fail.
+      */}
+      {canEdit ? (
+        <p>
+          <Link href={`/studies/${studyId}/questionnaires`}>{t("manageQuestionnaires")} →</Link>
+        </p>
+      ) : null}
 
       {canAdminister ? (
         <p>

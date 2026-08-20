@@ -35,6 +35,12 @@
     "dev": {
       "cache": false,
       "persistent": true,
+      // The workspace packages resolve through their `main`, which points at
+      // dist/. On a fresh clone nothing has been built, so `pnpm dev` fails to
+      // resolve @lpr/contracts and @lpr/db before it prints anything useful.
+      // Building dependencies first is what makes the documented first-run
+      // sequence actually work.
+      "dependsOn": ["^build"],
       // Same trap as test:integration: Turborepo strips undeclared variables,
       // so without this `pnpm dev` starts the backends with no configuration
       // and they exit immediately on env validation.

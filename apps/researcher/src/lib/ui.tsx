@@ -66,6 +66,30 @@ export const styles = {
 } as const;
 
 /**
+ * Wraps a table so a narrow screen scrolls the TABLE rather than the PAGE.
+ *
+ * `width: 100%` alone does not prevent overflow — a table still grows to fit
+ * its content, so on a phone the members table pushed its last column past the
+ * viewport and the whole document scrolled sideways, taking the header and
+ * every other section with it.
+ *
+ * `tabIndex={0}` because a scrollable region has to be reachable by keyboard;
+ * without it the overflowing columns are unreachable without a pointer.
+ */
+export function TableScroll({ children, label }: { children: ReactNode; label?: string }) {
+  return (
+    <div
+      style={{ overflowX: "auto", maxWidth: "100%", WebkitOverflowScrolling: "touch" }}
+      tabIndex={0}
+      role="region"
+      aria-label={label}
+    >
+      {children}
+    </div>
+  );
+}
+
+/**
  * An error banner.
  *
  * `role="alert"` so a screen reader announces a failed login without the user

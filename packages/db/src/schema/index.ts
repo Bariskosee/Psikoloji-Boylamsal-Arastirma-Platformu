@@ -1,19 +1,14 @@
 /**
  * Drizzle schema definitions.
  *
- * ─────────────────────────────────────────────────────────────────────────────
- * MERGE NOTE — Phase 1 owns the complete schema.
+ * Two PostgreSQL schemas, kept apart deliberately (ADR-003): `identity` holds
+ * the researcher accounts and their sessions, `research` holds study data.
  *
- * PLAN.md authors the full model for both PostgreSQL schemas in Phase 1, in
- * migration 0001. This branch defines only the five tables Phase 2 needs to
- * function — `researcher_users`, `researcher_sessions`, `studies`,
- * `study_members`, `audit_events` — because Phase 2 cannot authenticate anyone
- * against a schema that does not exist yet.
- *
- * When Phase 1 merges, ITS definitions are authoritative for anything that
- * disagrees. The migration here is written idempotently (`IF NOT EXISTS`
- * throughout) so the two can be reconciled without a destructive reset.
- * ─────────────────────────────────────────────────────────────────────────────
+ * What is defined here is what the implemented phases need — the tables below,
+ * across migrations 0000–0002. Later phases add their own tables as they land;
+ * this file and the migration journal are the pair to read together, because
+ * Drizzle cannot express the triggers, roles, and immutability guards the
+ * migrations install alongside them.
  */
 
 export * from "./schemas";
