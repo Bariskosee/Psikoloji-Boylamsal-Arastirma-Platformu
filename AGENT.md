@@ -22,6 +22,7 @@ Before changing code, review the relevant project documents:
 When working on a specific area, also read:
 
 - `docs/adr/` — why each technical choice was made, and what was rejected. Do not re-open a decided question without reading its ADR.
+- `docs/reference-protocol.md` — before touching protocols, scheduling, or anything that consumes them. It is the study design the platform is being built for, worked through as configuration, and it is the shared fixture for tests. It is an example, never a default.
 - `docs/compliance-formula.md` — before touching any participation metric.
 - `docs/export-codebook.md` — before touching export or missingness handling.
 
@@ -52,6 +53,8 @@ Do not hard-code:
 - questionnaire content,
 - number of questions,
 - study day counts,
+- occurrence counts and recurrence intervals,
+- which questionnaire a protocol step administers, including reuse of one instrument at several steps,
 - delay between questionnaire sets,
 - reminder intervals,
 - response windows,
@@ -60,6 +63,8 @@ Do not hard-code:
 - language strings.
 
 These must be researcher-configurable or centrally configurable according to scope.
+
+`docs/reference-protocol.md` describes the first study the platform serves — ~100 items at baseline, ten items daily for thirty days, the baseline instrument again at the end. **Every number in it is configuration.** It exists so that tests, previews, and acceptance criteria have one realistic target; it is not a default, a constant, an enum value, or a shape any code may assume.
 
 ### 3.5 Mobile-first participant experience
 
@@ -482,6 +487,8 @@ Stop and reconsider an implementation if it would:
 - introduce clinical diagnosis or scoring without explicit research-team requirements,
 - **emit a numeric default, sentinel, or empty string in place of a typed missing-value status** — see `docs/export-codebook.md`,
 - **describe the data as anonymous** in code, comments, interface strings, exports, or documentation. It is pseudonymous; continuity credentials, push endpoints, and contact details keep re-identification possible,
-- **read the wall clock inside `packages/domain`** via `new Date()`, `Date.now()`, or equivalent. A `Clock` is injected, so that multi-day and daylight-saving behaviour stays testable.
+- **read the wall clock inside `packages/domain`** via `new Date()`, `Date.now()`, or equivalent. A `Clock` is injected, so that multi-day and daylight-saving behaviour stays testable,
+- **trigger a step on the completion of a recurring step** — one missed daily report then silently destroys the study's outcome measurement thirty days later, unrecoverably. Anchor a step that follows a recurring block on the block's own origin plus a duration, or on a named occurrence becoming *available*. Conditioning on a single-occurrence step such as a baseline remains legitimate. See FR-48 and `docs/adr/ADR-011-recurring-block-anchoring.md`,
+- **hard-code any parameter of the reference protocol** — item counts, occurrence counts, intervals, windows, anchor times, or the step layout — as a default, constant, or assumption anywhere in application code.
 
 These are architectural or research-integrity defects, not minor implementation details.

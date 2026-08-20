@@ -52,6 +52,8 @@ The participant experience should remain as simple as a conventional online ques
 - Baseline + follow-up designs
 - Multi-wave questionnaire studies
 
+The first study the platform serves combines several of these: a baseline assessment of roughly a hundred items, the same ten-item set every day for thirty days, and the baseline instrument administered again at the end — around 35–36 days in total. It is worked through as configuration in `docs/reference-protocol.md` and is the shape the implementation is tested against. Every value in it is researcher-configurable; a different study changes the configuration, not the code.
+
 ---
 
 ## User Roles

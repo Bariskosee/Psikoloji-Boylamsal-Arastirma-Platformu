@@ -1,0 +1,42 @@
+- generic [active] [ref=f9e1] [box=0,0,1200,749]:
+  - main [ref=f9e2] [box=50,48,1100,669]:
+    - generic [ref=f9e18] [box=150,48,900,669]:
+      - paragraph [ref=f9e19] [box=150,48,900,26]:
+        - link "← All questionnaires" [ref=f9e20] [cursor=pointer] [box=150,51,147,19]:
+          - /url: /en/studies/ac54208b-d1b7-477a-9f16-b02e13d61ac6/questionnaires
+      - generic [ref=f9e21] [box=150,90,900,51]:
+        - heading "QA Core Instrument" [level=1] [ref=f9e22] [box=150,90,295,51]
+        - generic [ref=f9e23] [box=453,103,48,25]: Draft
+      - generic [ref=f9e24] [box=150,141,900,251]:
+        - generic [ref=f9e25] [box=167,158,866,70]:
+          - generic [ref=f9e26] [box=167,158,866,22]: Name
+          - textbox "Name" [ref=f9e27] [box=167,184,866,44]: QA Core Instrument
+        - generic [ref=f9e28] [box=167,244,866,93]:
+          - generic [ref=f9e29] [box=167,244,866,22]: Description
+          - textbox "Description" [ref=f9e30] [box=167,271,866,60]: Five-type bilingual synthetic instrument
+        - paragraph [ref=f9e31] [box=167,354,866,21]: The questionnaire's label for your team. Published versions are unaffected by a rename.
+      - generic [ref=f9e32] [box=150,407,900,310]:
+        - generic [ref=f9e33] [box=150,407,438,310]:
+          - heading "Questions" [level=2] [ref=f9e34] [box=150,427,438,38]
+          - paragraph [ref=f9e35] [box=150,486,438,26]: No questions yet.
+          - list [box=150,527,438,0]
+          - generic [ref=f9e36] [box=150,527,438,130]:
+            - generic [ref=f9e37] [box=167,544,101,44]: Add a question
+            - combobox "Add a question" [ref=f9e38] [box=276,544,220,44]:
+              - option "Single choice" [selected] [box=0,0,0,0]
+              - option "Multiple choice" [box=0,0,0,0]
+              - option "Likert scale" [box=0,0,0,0]
+              - option "Number" [box=0,0,0,0]
+              - option "Free text" [box=0,0,0,0]
+            - button "+ Add" [ref=f9e39] [cursor=pointer] [box=167,596,75,44]
+          - button "Publish this version" [disabled] [ref=f9e40] [cursor=pointer] [box=150,673,172,44]
+        - generic [ref=f9e41] [box=612,407,438,219]:
+          - generic [ref=f9e42] [box=612,407,438,44]:
+            - heading "Participant preview" [level=2] [ref=f9e43] [box=612,410,216,38]
+            - generic [ref=f9e44] [box=836,418,64,22]: Language
+            - combobox "Language" [ref=f9e45] [box=907,407,120,44]:
+              - option "TR" [box=0,0,0,0]
+              - option "EN" [selected] [box=0,0,0,0]
+          - paragraph [ref=f9e46] [box=612,464,438,42]: Shown at phone width, because this is where participants will answer. Controls are inactive.
+          - paragraph [ref=f9e49] [box=636,536,390,74]: No questions yet.
+  - alert [ref=f9e17] [box=15,716,1,1]

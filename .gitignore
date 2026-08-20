@@ -17,6 +17,11 @@ coverage/
 test-results/
 playwright-report/
 .playwright/
+# Scratch output from the Playwright MCP server — page snapshots and console
+# logs written on every navigation. Regenerated on demand and named by
+# timestamp, so it accumulates fast and none of it is worth versioning.
+# Evidence worth keeping is copied into docs/qa/evidence/ by hand.
+.playwright-mcp/
 
 # Environment — NEVER commit real secrets. Only .env.example is tracked.
 .env

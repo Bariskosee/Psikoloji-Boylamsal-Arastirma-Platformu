@@ -124,7 +124,8 @@ This document is the authority for technical design. Product behaviour is define
 │   └── config/               tsconfig / eslint / vitest base configs
 │
 ├── docs/
-│   ├── adr/                  ADR-001 … ADR-010
+│   ├── adr/                  ADR-001 … ADR-011
+│   ├── reference-protocol.md
 │   ├── compliance-formula.md
 │   ├── export-codebook.md
 │   └── runbooks/
@@ -278,15 +279,20 @@ On `config`: everything queried relationally — order, type, required flag, pag
 | `questionnaire_version_id` | Pinned to an immutable version |
 | `trigger_type` | `ENROLLMENT` \| `CONSENT` \| `STEP_COMPLETED` \| `STEP_AVAILABLE` \| `FIXED_DATETIME` |
 | `trigger_step_id` | Required when the trigger references another step |
+| `trigger_occurrence_index` | Required when `trigger_step_id` names a recurring step, forbidden otherwise (FR-48a) |
 | `offset_iso` | ISO-8601 duration, e.g. `PT72H`. DST-immune |
 | `anchor_local_time`, `anchor_timezone_source` | Wall-clock steps. `STUDY` \| `PARTICIPANT` |
 | `window_duration_iso` | e.g. `PT24H` |
-| `occurrence_count`, `recurrence_interval_iso` | `7` × `P1D` = daily for a week (FR-38) |
+| `occurrence_count`, `recurrence_interval_iso` | `30` × `P1D` = daily for a month (FR-38) |
 | `reminder_policy_id` | FK |
 | `counts_toward_compliance` | Excludes exploratory steps from the denominator |
 | `step_kind` | `SCHEDULED` \| `PARTICIPANT_INITIATED` (FR-46) |
 | `min_interval_iso`, `max_per_day`, `max_total` | Rate limits, participant-initiated steps only |
 | `allowed_group_ids` | Empty means all groups; otherwise restricts the step (FR-45) |
+
+`questionnaire_version_id` is deliberately **not** unique across steps. A pre/post design pins one published version at two steps, so the two administrations are guaranteed to be the same instrument rather than two copies that drift (FR-47). Steps are distinguished everywhere by `step_key`, never by which questionnaire they administer.
+
+Two publish-time validations live on this table beyond acyclicity and dangling references (FR-48, ADR-011): a trigger naming a recurring step must carry `trigger_occurrence_index`, and `trigger_type = STEP_COMPLETED` against a recurring step is rejected outright — an outcome measurement must not become unreachable because an intermediate occurrence was missed. The derived `unconditional` / `conditional` classification the builder displays is computed from this graph and never stored.
 
 **`reminder_policies`** — `initial_delay_iso`, `interval_iso`, `max_reminders` (NOT NULL), `quiet_hours_start`, `quiet_hours_end`, `quiet_hours_behavior ∈ {SKIP, DEFER}` (FR-40).
 
@@ -392,6 +398,8 @@ These live in `identity`, not `research`, even though the domain-model diagram a
 
 **Forbidden and tested as such:** any transition out of a terminal state · any backwards transition · `SCHEDULED → COMPLETED` directly · any transition driven by a client-supplied timestamp.
 
+**Cancellation reasons.** `cancellation_reason` records why a session left the protocol: `WITHDRAWAL`, `STUDY_CLOSED`, `TRIGGER_UNREACHABLE`, and `ENROLLED_AFTER_WINDOW` — the last being a recurring occurrence whose window had already closed when the participant enrolled (§8.2). It is a terminal state at materialisation rather than a transition, and it is the one cancellation that reflects nothing about the participant, so no interface may render it as a missed or failed session.
+
 ---
 
 ## 8. Scheduling Architecture
@@ -407,6 +415,10 @@ Every scheduling outcome is derivable from `participant_sessions` and `notificat
 At enrollment, all ParticipantSessions for every step of the bound protocol version are created immediately, expanded across `occurrence_count`. Steps whose time is computable start in `SCHEDULED`; the rest start in `PENDING_TRIGGER`.
 
 Materialising upfront rather than lazily is what makes the compliance denominator and the participant timeline knowable, and pins the protocol version at one well-defined moment.
+
+The whole expansion happens in **one transaction**. For the reference protocol that is 32 rows per enrollment — one baseline, thirty daily occurrences, one endline — and NFR-11 requires headroom to 40. A partially materialised enrollment would be a participant with a silently truncated protocol, which no sweeper can detect, because the sweepers reconcile the sessions that exist against the clock, not against the protocol version.
+
+**Occurrences that are already over.** A step anchored to a `FIXED_DATETIME` can have occurrences whose window closed before this participant enrolled. They are materialised as `CANCELLED` with `cancellation_reason = 'ENROLLED_AFTER_WINDOW'` — never `EXPIRED_UNSTARTED`, which means "offered and not done" and would put measurements the participant was never offered into their compliance denominator (FR-38, FR-44). An occurrence whose window is open at that instant materialises normally and activates as usual. See ADR-011.
 
 Two exceptions (FR-45, FR-46). Steps whose `allowed_group_ids` excludes the participant's group are not materialised at all. **Participant-initiated steps are not materialised either** — they have no computable time, so a ParticipantSession is created on demand when the participant starts one, after the server re-checks `min_interval_iso`, `max_per_day` and `max_total` against existing sessions. Those limits are enforced server-side; the client may hide the button, but hiding is not enforcement.
 
@@ -436,6 +448,19 @@ available_until = available_from + window_duration_iso   (always duration arithm
 Türkiye has been permanently UTC+3 with no DST since 2016, which limits exposure for an initial Turkish study — but participants may travel or be recruited elsewhere, so the logic is required regardless.
 
 **Recurrence.** Occurrence *n* is anchored on the step's own trigger plus *n* × `recurrence_interval_iso`, never chained from occurrence *n−1*. A missed occurrence therefore does not delay the ones after it.
+
+**Worked example — the reference protocol.** Study zone `Europe/Istanbul`, block origin `2026-09-07` at `20:00` local, participant enrolled `2026-09-04T09:12Z`:
+
+```text
+baseline   ENROLLMENT + PT0S,  window P3D     → 2026-09-04T09:12Z … 2026-09-07T09:12Z
+daily #n   FIXED_DATETIME origin + n × P1D,
+           wall-clock 20:00 participant zone,
+           window PT12H                       → #0  2026-09-07T17:00Z … 2026-09-08T05:00Z
+                                                #29 2026-10-06T17:00Z … 2026-10-07T05:00Z
+endline    same origin + P30D, window P3D     → 2026-10-07T17:00Z … 2026-10-10T17:00Z
+```
+
+The endline shares the block's origin instead of chaining off its last occurrence, so daily adherence cannot make the study's primary outcome measurement unreachable (FR-48c). The full table, the participant-relative variant, and the late-enrollment case are in `docs/reference-protocol.md`; the protocol builder's preview and the materialisation tests both assert against it.
 
 ### 8.4 Reconciliation sweepers
 
@@ -782,6 +807,8 @@ Time-dependent tests use an injected `Clock`. Push tests use a fake transport th
 
 Test fixtures use neutral placeholder content (`Sample question 1`) exclusively. Real psychological instruments are never committed.
 
+**The shared multi-step fixture is the reference protocol** (`docs/reference-protocol.md`): a ~100-item instrument administered at two steps, a thirty-occurrence daily block between them, 32 sessions per participant. Timing, materialisation, compliance, dashboard, and export tests all build on it, so a change that breaks the design breaks visibly in one place instead of subtly in twenty hand-written mini-protocols. Its computed instants are the assertion target — if the implementation disagrees with the table, one of the two is wrong and it is resolved before the phase closes. Smaller ad-hoc protocols remain appropriate for testing a single rule in isolation.
+
 ---
 
 ## 17. Deployment
@@ -819,7 +846,8 @@ docs/adr/
 ├── ADR-007-participant-continuity.md
 ├── ADR-008-versioning-model.md
 ├── ADR-009-frontend-application-split.md
-└── ADR-010-deployment-platform.md
+├── ADR-010-deployment-platform.md
+└── ADR-011-recurring-block-anchoring.md
 ```
 
 Each records context, decision, alternatives rejected with reasons, and consequences.
