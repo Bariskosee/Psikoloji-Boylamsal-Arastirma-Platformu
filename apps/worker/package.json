@@ -2,7 +2,7 @@
   "name": "@lpr/worker",
   "version": "0.0.0",
   "private": true,
-  "description": "Background worker — job handlers and reconciliation sweepers. Same NestJS codebase as the API, deployed as a separate always-on process.",
+  "description": "Background worker \u2014 job handlers and reconciliation sweepers. Same NestJS codebase as the API, deployed as a separate always-on process.",
   "main": "dist/main.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -19,7 +19,6 @@
     "@nestjs/core": "^11.0.1",
     "@sentry/node": "^8.47.0",
     "dotenv": "^17.4.2",
-    "pg-boss": "^10.1.6",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "zod": "^3.24.1"

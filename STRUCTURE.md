@@ -118,6 +118,7 @@ This document is the authority for technical design. Product behaviour is define
 │   │                         missingness/, export/, question-types/
 │   ├── contracts/            Zod schemas + inferred types (API, jobs, question configs)
 │   ├── db/                   Drizzle schema, migrations, seeds, test factories
+│   │   └── src/jobs/         pg-boss queue + transactional enqueue (ADR-004)
 │   ├── i18n/                 en.json, tr.json, locale negotiation
 │   ├── ui/                   Shared primitives + design tokens
 │   └── config/               tsconfig / eslint / vitest base configs
