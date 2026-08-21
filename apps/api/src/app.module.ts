@@ -9,6 +9,8 @@ import { SessionAuthGuard } from "./modules/auth/guards/session-auth.guard.js";
 import { StudyPermissionGuard } from "./modules/auth/guards/study-permission.guard.js";
 import { DatabaseModule } from "./modules/database/database.module.js";
 import { HealthModule } from "./modules/health/health.module.js";
+import { ConsentModule } from "./modules/consent/consent.module.js";
+import { ParticipantModule } from "./modules/participant/participant.module.js";
 import { ProtocolModule } from "./modules/protocol/protocol.module.js";
 import { QuestionnaireModule } from "./modules/questionnaire/questionnaire.module.js";
 import { StudyModule } from "./modules/study/study.module.js";
@@ -45,6 +47,8 @@ import { StudyModule } from "./modules/study/study.module.js";
     StudyModule,
     QuestionnaireModule,
     ProtocolModule,
+    ConsentModule,
+    ParticipantModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: ApiExceptionFilter },

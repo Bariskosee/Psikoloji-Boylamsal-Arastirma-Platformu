@@ -81,6 +81,22 @@ export const API_ERROR_CODES = [
   "PROTOCOL_TRIGGER_OCCURRENCE_OUT_OF_RANGE",
   "PROTOCOL_STEP_COMPLETION_OF_RECURRING",
   "PROTOCOL_DUPLICATE_STEP_KEY",
+
+  // Consent and participants (Phase 5)
+  "CONSENT_VERSION_NOT_FOUND",
+  "CONSENT_VERSION_EMPTY",
+  /** The consent text the participant read is no longer the study's current one. */
+  "CONSENT_VERSION_STALE",
+  "STUDY_NOT_ACCEPTING_ENROLLMENTS",
+  "PARTICIPANT_NOT_FOUND",
+  "PARTICIPANT_CODE_UNAVAILABLE",
+  /**
+   * The continuity cookie is absent, unknown, revoked, or past its grace
+   * period. Deliberately ONE code for all four: distinguishing them would tell
+   * a caller whether a token they hold ever existed.
+   */
+  "PARTICIPANT_AUTH_REQUIRED",
+  "PARTICIPANT_WITHDRAWN",
 ] as const;
 
 export const apiErrorCodeSchema = z.enum(API_ERROR_CODES);

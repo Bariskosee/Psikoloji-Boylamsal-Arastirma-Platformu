@@ -17,6 +17,9 @@
  * Phase 3 adds: question-types, questionnaire.
  * Phase 4 adds: protocol — trigger vocabulary, step and reminder-policy shapes,
  *               and the timeline-preview request and response.
+ * Phase 5 adds: consent — versioned documents and their translations;
+ *               participant — public study view, enrollment, recovery, and
+ *               withdrawal. The continuity token is deliberately absent.
  */
 
 export * from "./health.js";
@@ -29,3 +32,5 @@ export * from "./audit.js";
 export * from "./question-types.js";
 export * from "./questionnaire.js";
 export * from "./protocol.js";
+export * from "./consent.js";
+export * from "./participant.js";
