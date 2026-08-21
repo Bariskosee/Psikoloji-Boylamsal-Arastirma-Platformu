@@ -47,7 +47,15 @@
         "LOGIN_RATE_LIMIT_WINDOW_MINUTES",
         "SESSION_ABSOLUTE_TTL_HOURS",
         "SESSION_IDLE_TIMEOUT_MINUTES",
-        "COOKIE_SECURE"
+        "COOKIE_SECURE",
+        // Phase 8. The push tests assert the subscription lifecycle, and with
+        // no key pair the API correctly refuses to store a subscription at all
+        // (ADR-006) — so stripping these turns nine meaningful tests into nine
+        // 503s. This is the trap described above, hit for real: the CI workflow
+        // set them and Turborepo removed them before the task ever ran.
+        "VAPID_PUBLIC_KEY",
+        "VAPID_PRIVATE_KEY",
+        "VAPID_SUBJECT"
       ]
     },
     "dev": {
@@ -71,7 +79,14 @@
         "LOG_LEVEL",
         "SWEEP_INTERVAL_SECONDS",
         "WORKER_ID",
-        "NEXT_PUBLIC_API_URL"
+        "NEXT_PUBLIC_API_URL",
+        // Without these `pnpm dev` runs with push switched off, and the
+        // notifications screen truthfully reports that the study has no
+        // notifications — which looks like a bug in the screen rather than
+        // missing local configuration.
+        "VAPID_PUBLIC_KEY",
+        "VAPID_PRIVATE_KEY",
+        "VAPID_SUBJECT"
       ]
     }
   }
