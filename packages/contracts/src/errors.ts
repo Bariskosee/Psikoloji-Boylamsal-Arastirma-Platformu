@@ -110,6 +110,23 @@ export const API_ERROR_CODES = [
   "ANSWER_REJECTED",
   /** Carries the `question_key` of each unanswered required question. */
   "REQUIRED_QUESTIONS_UNANSWERED",
+
+  // Push and the install handoff (Phase 8)
+  /**
+   * This deployment has no VAPID key pair, so no study running on it can send
+   * a push. Its own code rather than a generic conflict because the client's
+   * response is specific: stop offering to enable notifications, and say that
+   * the study is running without them (ADR-006).
+   */
+  "PUSH_NOT_CONFIGURED",
+  "PUSH_SUBSCRIPTION_NOT_FOUND",
+  /**
+   * The install handoff link is expired, already redeemed, or was never ours.
+   * Deliberately ONE code for all three, for the same reason as
+   * `PARTICIPANT_AUTH_REQUIRED`: distinguishing them would confirm to a caller
+   * that a code they hold once existed.
+   */
+  "HANDOFF_CODE_INVALID",
 ] as const;
 
 export const apiErrorCodeSchema = z.enum(API_ERROR_CODES);

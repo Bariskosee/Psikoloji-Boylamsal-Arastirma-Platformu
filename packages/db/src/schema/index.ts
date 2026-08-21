@@ -17,6 +17,7 @@ export * from "./schemas";
 export * from "./identity/researcher-users";
 export * from "./identity/researcher-sessions";
 export * from "./identity/participant-credentials";
+export * from "./identity/push-subscriptions";
 
 // research — canonical research data.
 export * from "./research/studies";

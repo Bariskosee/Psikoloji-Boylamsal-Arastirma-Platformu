@@ -2,7 +2,11 @@ import { CanActivate, ExecutionContext, Injectable } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { eq } from "drizzle-orm";
 import type { Request, Response } from "express";
-import { PARTICIPANT_COOKIE_NAME, PARTICIPANT_COOKIE_MAX_AGE_MS } from "@lpr/contracts";
+import {
+  PARTICIPANT_COOKIE_NAME,
+  PARTICIPANT_COOKIE_MAX_AGE_MS,
+  type CredentialContext,
+} from "@lpr/contracts";
 import { participants, type Database } from "@lpr/db";
 import { Inject } from "@nestjs/common";
 import { ApiErrors } from "../../../common/api-error.js";
@@ -14,7 +18,7 @@ import { ContinuityService } from "../continuity.service.js";
 import { IS_PARTICIPANT_ROUTE } from "../decorators/participant-route.decorator.js";
 
 export interface ParticipantRequest extends Request {
-  participant?: { id: string; status: string };
+  participant?: { id: string; status: string; credentialContext: CredentialContext };
 }
 
 /**
@@ -82,7 +86,15 @@ export class ParticipantAuthGuard implements CanActivate {
       await this.continuity.touch(resolved.credentialId, now);
     }
 
-    request.participant = participant;
+    /**
+     * The credential's context travels with the request (STRUCTURE.md §11.4).
+     *
+     * A push subscription registered from the installed application and one
+     * registered from a browser tab have different survival odds, and the row
+     * records which it was. The only place that fact is knowable is here, where
+     * the credential was resolved.
+     */
+    request.participant = { ...participant, credentialContext: resolved.credentialContext };
     return true;
   }
 }

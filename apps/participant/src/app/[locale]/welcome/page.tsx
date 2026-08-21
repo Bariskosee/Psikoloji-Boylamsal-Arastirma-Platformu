@@ -49,7 +49,19 @@ export default function WelcomePage() {
 
   function done(): void {
     sessionStorage.removeItem("lpr_enrollment");
-    router.replace("/home");
+    /**
+     * Straight to installation, not to the home screen (Phase 8).
+     *
+     * This is the moment §11.4 specifies: consent has completed, the credential
+     * exists in THIS browser, and it is the only moment a handoff code can be
+     * minted with the participant still present. Sending them home first means
+     * most of them never see the install screen at all — and on iOS, the ones
+     * who install later without it become new people.
+     *
+     * `/install` offers a skip, so this adds a screen a participant may decline
+     * rather than a step they must complete.
+     */
+    router.replace("/install");
   }
 
   if (!codes) return null;

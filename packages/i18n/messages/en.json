@@ -359,7 +359,9 @@
     "withdrawAction": "Withdraw",
     "cancel": "Cancel",
     "recover": "I have a recovery code",
-    "notSignedIn": "We could not find your participation on this device."
+    "notSignedIn": "We could not find your participation on this device.",
+    "notifications": "Notifications",
+    "install": "Add to Home Screen"
   },
   "recover": {
     "title": "Use your recovery code",
@@ -406,5 +408,70 @@
     "open": "Open",
     "closesAt": "Closes {at}",
     "none": "There is nothing to complete right now."
+  },
+  "install": {
+    "title": "Add the study to your Home Screen",
+    "whyTitle": "Why this helps",
+    "whyBody": "Adding the study to your Home Screen makes it one tap away, and on iPhone and iPad it is the only way notifications can reach you.",
+    "iosStepsTitle": "On iPhone or iPad",
+    "iosStep1": "Tap the Share button at the bottom of Safari.",
+    "iosStep2": "Scroll down and tap “Add to Home Screen”.",
+    "iosStep3": "Tap “Add”, then open the study from your new Home Screen icon.",
+    "iosStep4": "Inside the app, tap the link below so it knows you are you.",
+    "androidStepsTitle": "On Android",
+    "androidStep1": "Open your browser menu.",
+    "androidStep2": "Tap “Install app” or “Add to Home screen”.",
+    "handoffTitle": "Your one-time link",
+    "handoffBody": "Open this link INSIDE the app you just installed. It connects the installed app to your existing participation, and it works once.",
+    "handoffCopy": "Copy link",
+    "handoffCopied": "Copied",
+    "handoffExpires": "This link works until {time}.",
+    "handoffFailed": "We could not create your link. You can try again from this screen at any time.",
+    "handoffAgain": "Create a new link",
+    "alreadyInstalled": "You are using the installed app. Nothing more to do here.",
+    "continue": "Continue",
+    "skip": "Not now"
+  },
+  "handoff": {
+    "title": "Connecting you to your study",
+    "working": "One moment…",
+    "successTitle": "You are connected",
+    "successBody": "This app is now linked to your participation. You can close the Safari tab you started in.",
+    "failedTitle": "That link did not work",
+    "failedBody": "Install links work once and expire after a day. Open the study in the browser you enrolled in and create a new one, or use your recovery code.",
+    "continue": "Go to my study",
+    "recover": "I have a recovery code"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "whyTitle": "Why we ask",
+    "whyBody": "Questionnaires in this study are open for a limited time. A notification is how you find out one is waiting, so you do not have to remember to check.",
+    "noContentNote": "Notifications never contain your answers or any question text.",
+    "enable": "Turn on notifications",
+    "enabledTitle": "Notifications are on",
+    "enabledBody": "This device will let you know when something is ready for you.",
+    "deviceCount": "{count} device connected.",
+    "deviceCountPlural": "{count} devices connected.",
+    "disable": "Turn off on this device",
+    "blockedTitle": "Notifications are blocked",
+    "blockedBody": "Your device is refusing notifications for this study. You can change that in your browser or system settings, then come back to this screen.",
+    "requiresInstallTitle": "Add the study to your Home Screen first",
+    "requiresInstallBody": "On iPhone and iPad, notifications only work once the study has been added to the Home Screen.",
+    "requiresInstallAction": "Show me how",
+    "requiresUpgradeTitle": "Your device software is too old",
+    "requiresUpgradeBody": "Notifications for web apps need iOS 16.4 or later. You can still take part — you will need to open the study yourself to check for questionnaires.",
+    "unsupportedTitle": "This browser cannot show notifications",
+    "unsupportedBody": "You can still take part in full. You will need to open the study yourself to check whether a questionnaire is waiting.",
+    "notConfiguredTitle": "Notifications are not available for this study",
+    "notConfiguredBody": "You can still take part in full. You will need to open the study yourself to check whether a questionnaire is waiting.",
+    "noGuarantee": "Notifications depend on your device and network, so they can be late or not arrive at all. Opening the study is always the reliable way to check.",
+    "failed": "We could not change your notification setting. Please try again.",
+    "permissionDismissed": "You did not answer the permission request, so nothing has changed.",
+    "back": "Back to my study"
+  },
+  "updatePrompt": {
+    "message": "A new version of the study app is ready.",
+    "action": "Update now",
+    "dismiss": "Later"
   }
 }

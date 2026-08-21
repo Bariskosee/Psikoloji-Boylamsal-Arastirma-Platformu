@@ -146,6 +146,34 @@ export default function HomePage() {
         <p style={{ ...styles.code, fontSize: 20 }}>{me.publicCode}</p>
       </section>
 
+      {/*
+        The non-nagging path FR-16 asks for. A participant who declined
+        notifications, or who has since changed their mind, finds them here —
+        rather than being asked again by a banner they cannot get rid of.
+      */}
+      <Link
+        href="/notifications"
+        style={{
+          ...styles.secondaryButton,
+          textAlign: "center",
+          textDecoration: "none",
+          marginBottom: tokens.spacing.sm,
+        }}
+      >
+        {t("notifications")}
+      </Link>
+      <Link
+        href="/install"
+        style={{
+          ...styles.secondaryButton,
+          textAlign: "center",
+          textDecoration: "none",
+          marginBottom: tokens.spacing.md,
+        }}
+      >
+        {t("install")}
+      </Link>
+
       <ErrorBanner>{error}</ErrorBanner>
 
       {confirming ? (

@@ -15,12 +15,15 @@ import type { Response } from "express";
 import {
   PARTICIPANT_COOKIE_MAX_AGE_MS,
   enrollRequestSchema,
+  handoffRedeemRequestSchema,
   localeSchema,
   recoverRequestSchema,
   updateParticipantSchema,
   withdrawRequestSchema,
   type EnrollRequest,
   type EnrollResponse,
+  type HandoffMintResponse,
+  type HandoffRedeemRequest,
   type Locale,
   type ParticipantMeResponse,
   type PublicStudyResponse,
@@ -156,6 +159,66 @@ export class ParticipantController {
   ): Promise<ParticipantMeResponse> {
     if (participant.status === "WITHDRAWN") throw ApiErrors.participantWithdrawn();
     return this.participants.update(participant.id, body, this.clock.now());
+  }
+
+  /**
+   * Mint a one-time install handoff code (STRUCTURE.md §11.4, ADR-007, FR-41).
+   *
+   * Authenticated, so it can only ever be minted by the participant whose
+   * identity it will carry. The code goes in the body — the one secret in this
+   * controller that does, because its entire purpose is to be rendered as a
+   * tappable link in the Safari tab the participant is looking at.
+   *
+   * Rate limited despite being authenticated. An unbounded mint would let one
+   * device fill the table with live capabilities, and each of them is a
+   * 24-hour key to that participant's identity.
+   */
+  @ParticipantRoute()
+  @Public()
+  @Post("handoff")
+  @HttpCode(HttpStatus.CREATED)
+  async mintHandoff(
+    @CurrentParticipant() participant: { id: string; status: string },
+    @Req() request: ParticipantRequest,
+  ): Promise<HandoffMintResponse> {
+    if (participant.status === "WITHDRAWN") throw ApiErrors.participantWithdrawn();
+    this.limit(`handoff-mint:${clientKey(request)}`, 20);
+
+    const minted = await this.continuity.mintHandoffCode(participant.id, this.clock.now());
+    return { code: minted.code, expiresAt: minted.expiresAt.toISOString() };
+  }
+
+  /**
+   * Redeem an install handoff code inside the newly installed application.
+   *
+   * Public, because the whole point is that the caller has no credential yet:
+   * on iOS the installed application opens with an empty cookie store, and
+   * this is the request that gives it one bound to the SAME participant
+   * (STRUCTURE.md §11.4).
+   *
+   * Rate limited hard for the same reason recovery is. Expired, already
+   * redeemed and never-existed are answered identically — the reason is
+   * recorded for the operator and never returned, because telling them apart
+   * confirms that a code someone holds once existed.
+   */
+  @Public()
+  @Post("handoff/redeem")
+  @HttpCode(HttpStatus.OK)
+  async redeemHandoff(
+    @Body(new ZodBodyPipe(handoffRedeemRequestSchema)) body: HandoffRedeemRequest,
+    @Req() request: ParticipantRequest,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<{ ok: true }> {
+    this.limit(`handoff-redeem:${clientKey(request)}`, 10);
+
+    const now = this.clock.now();
+    const redeemed = await this.continuity.redeemHandoffCode(body.code, now);
+    if (!redeemed.ok) throw ApiErrors.handoffCodeInvalid();
+
+    const minted = await this.continuity.issueAfterHandoff(redeemed.participantId, now);
+    setParticipantCookie(response, minted.token, this.cookieSettings());
+
+    return { ok: true };
   }
 
   @ParticipantRoute()

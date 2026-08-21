@@ -359,7 +359,9 @@
     "withdrawAction": "Ayrıl",
     "cancel": "Vazgeç",
     "recover": "Kurtarma kodum var",
-    "notSignedIn": "Bu cihazda katılımınızı bulamadık."
+    "notSignedIn": "Bu cihazda katılımınızı bulamadık.",
+    "notifications": "Bildirimler",
+    "install": "Ana Ekrana ekle"
   },
   "recover": {
     "title": "Kurtarma kodunuzu kullanın",
@@ -406,5 +408,70 @@
     "open": "Aç",
     "closesAt": "{at} tarihinde kapanıyor",
     "none": "Şu anda tamamlamanız gereken bir şey yok."
+  },
+  "install": {
+    "title": "Çalışmayı Ana Ekranınıza ekleyin",
+    "whyTitle": "Bu neden yararlı",
+    "whyBody": "Çalışmayı Ana Ekranınıza eklemek ona tek dokunuşla ulaşmanızı sağlar; iPhone ve iPad'de bildirimlerin size ulaşabilmesinin tek yolu da budur.",
+    "iosStepsTitle": "iPhone veya iPad'de",
+    "iosStep1": "Safari'nin altındaki Paylaş düğmesine dokunun.",
+    "iosStep2": "Aşağı kaydırıp “Ana Ekrana Ekle”ye dokunun.",
+    "iosStep3": "“Ekle”ye dokunun, sonra çalışmayı yeni Ana Ekran simgenizden açın.",
+    "iosStep4": "Uygulamanın içinde, sizi tanıyabilmesi için aşağıdaki bağlantıya dokunun.",
+    "androidStepsTitle": "Android'de",
+    "androidStep1": "Tarayıcı menünüzü açın.",
+    "androidStep2": "“Uygulamayı yükle” veya “Ana ekrana ekle”ye dokunun.",
+    "handoffTitle": "Tek kullanımlık bağlantınız",
+    "handoffBody": "Bu bağlantıyı az önce yüklediğiniz uygulamanın İÇİNDE açın. Yüklü uygulamayı mevcut katılımınıza bağlar ve yalnızca bir kez çalışır.",
+    "handoffCopy": "Bağlantıyı kopyala",
+    "handoffCopied": "Kopyalandı",
+    "handoffExpires": "Bu bağlantı {time} saatine kadar geçerlidir.",
+    "handoffFailed": "Bağlantınızı oluşturamadık. Bu ekrandan istediğiniz zaman yeniden deneyebilirsiniz.",
+    "handoffAgain": "Yeni bağlantı oluştur",
+    "alreadyInstalled": "Yüklü uygulamayı kullanıyorsunuz. Burada yapılacak başka bir şey yok.",
+    "continue": "Devam et",
+    "skip": "Şimdi değil"
+  },
+  "handoff": {
+    "title": "Çalışmanıza bağlanıyorsunuz",
+    "working": "Bir saniye…",
+    "successTitle": "Bağlandınız",
+    "successBody": "Bu uygulama artık katılımınıza bağlı. Başladığınız Safari sekmesini kapatabilirsiniz.",
+    "failedTitle": "Bu bağlantı çalışmadı",
+    "failedBody": "Yükleme bağlantıları bir kez çalışır ve bir gün sonra geçerliliğini yitirir. Kaydolduğunuz tarayıcıda çalışmayı açıp yenisini oluşturun veya kurtarma kodunuzu kullanın.",
+    "continue": "Çalışmama git",
+    "recover": "Kurtarma kodum var"
+  },
+  "notifications": {
+    "title": "Bildirimler",
+    "whyTitle": "Neden soruyoruz",
+    "whyBody": "Bu çalışmadaki anketler sınırlı bir süre açık kalır. Bir anketin sizi beklediğini bildirim sayesinde öğrenirsiniz; böylece kontrol etmeyi hatırlamak zorunda kalmazsınız.",
+    "noContentNote": "Bildirimler hiçbir zaman yanıtlarınızı veya soru metnini içermez.",
+    "enable": "Bildirimleri aç",
+    "enabledTitle": "Bildirimler açık",
+    "enabledBody": "Bu cihaz, sizin için bir şey hazır olduğunda size haber verecek.",
+    "deviceCount": "{count} cihaz bağlı.",
+    "deviceCountPlural": "{count} cihaz bağlı.",
+    "disable": "Bu cihazda kapat",
+    "blockedTitle": "Bildirimler engellenmiş",
+    "blockedBody": "Cihazınız bu çalışma için bildirimleri reddediyor. Bunu tarayıcı veya sistem ayarlarınızdan değiştirip bu ekrana dönebilirsiniz.",
+    "requiresInstallTitle": "Önce çalışmayı Ana Ekranınıza ekleyin",
+    "requiresInstallBody": "iPhone ve iPad'de bildirimler yalnızca çalışma Ana Ekrana eklendikten sonra çalışır.",
+    "requiresInstallAction": "Nasıl olduğunu göster",
+    "requiresUpgradeTitle": "Cihaz yazılımınız çok eski",
+    "requiresUpgradeBody": "Web uygulamaları için bildirimler iOS 16.4 veya sonrasını gerektirir. Yine de katılabilirsiniz — anketleri kontrol etmek için çalışmayı kendiniz açmanız gerekecek.",
+    "unsupportedTitle": "Bu tarayıcı bildirim gösteremiyor",
+    "unsupportedBody": "Çalışmaya eksiksiz katılmaya devam edebilirsiniz. Bir anketin sizi bekleyip beklemediğini görmek için çalışmayı kendiniz açmanız gerekecek.",
+    "notConfiguredTitle": "Bu çalışma için bildirimler kullanılamıyor",
+    "notConfiguredBody": "Çalışmaya eksiksiz katılmaya devam edebilirsiniz. Bir anketin sizi bekleyip beklemediğini görmek için çalışmayı kendiniz açmanız gerekecek.",
+    "noGuarantee": "Bildirimler cihazınıza ve ağınıza bağlıdır; gecikebilir veya hiç ulaşmayabilir. Kontrol etmenin güvenilir yolu her zaman çalışmayı açmaktır.",
+    "failed": "Bildirim ayarınızı değiştiremedik. Lütfen tekrar deneyin.",
+    "permissionDismissed": "İzin isteğini yanıtlamadınız, bu yüzden hiçbir şey değişmedi.",
+    "back": "Çalışmama dön"
+  },
+  "updatePrompt": {
+    "message": "Çalışma uygulamasının yeni bir sürümü hazır.",
+    "action": "Şimdi güncelle",
+    "dismiss": "Sonra"
   }
 }

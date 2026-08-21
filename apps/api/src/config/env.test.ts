@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loadEnv, shouldUseSecureCookies } from "./env.js";
+import { isPushConfigured, loadEnv, shouldUseSecureCookies } from "./env.js";
 
 const MINIMAL = {
   DATABASE_URL: "postgresql://u:p@localhost:5432/db",
@@ -77,5 +77,47 @@ describe("shouldUseSecureCookies", () => {
     expect(
       shouldUseSecureCookies(loadEnv({ ...MINIMAL, COOKIE_SECURE: "true" } as NodeJS.ProcessEnv)),
     ).toBe(true);
+  });
+});
+
+/**
+ * The VAPID pair (Phase 8, ADR-006).
+ *
+ * This guard exists because half a pair fails INVISIBLY. With a public key and
+ * no private one, participants subscribe successfully, the settings screen says
+ * notifications are on, and every send fails from Phase 9 onward — with nothing
+ * in the participant's experience to contradict it. Refusing to boot is the
+ * only signal that arrives in time, which makes the guard worth a test of its
+ * own.
+ */
+describe("VAPID configuration", () => {
+  const KEYS = {
+    VAPID_PUBLIC_KEY: "public-not-a-real-key",
+    VAPID_PRIVATE_KEY: "private-not-a-real-key",
+  };
+
+  it("treats an absent pair as push being unavailable, not as an error", () => {
+    // The documented degraded mode: a study runs without notifications rather
+    // than not running at all.
+    const env = loadEnv(MINIMAL as NodeJS.ProcessEnv);
+    expect(isPushConfigured(env)).toBe(false);
+  });
+
+  it("reports push as configured when both halves are present", () => {
+    expect(isPushConfigured(loadEnv({ ...MINIMAL, ...KEYS } as NodeJS.ProcessEnv))).toBe(true);
+  });
+
+  it("refuses to start on a public key with no private one", () => {
+    expect(() =>
+      loadEnv({ ...MINIMAL, VAPID_PUBLIC_KEY: KEYS.VAPID_PUBLIC_KEY } as NodeJS.ProcessEnv),
+    ).toThrow(/must be set together/);
+  });
+
+  it("refuses to start on a private key with no public one", () => {
+    // Less obviously broken than the other direction and just as fatal: the
+    // client is told push is unavailable and silently never subscribes.
+    expect(() =>
+      loadEnv({ ...MINIMAL, VAPID_PRIVATE_KEY: KEYS.VAPID_PRIVATE_KEY } as NodeJS.ProcessEnv),
+    ).toThrow(/must be set together/);
   });
 });

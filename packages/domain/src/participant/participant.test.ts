@@ -6,6 +6,14 @@ import {
   graceExpiresAt,
 } from "./continuity.js";
 import { allocateGroup, type AllocatableGroup } from "./group-allocation.js";
+import {
+  HANDOFF_CODE_BYTES,
+  HANDOFF_CODE_LENGTH,
+  HANDOFF_CODE_TTL_HOURS,
+  evaluateHandoffCode,
+  generateHandoffCode,
+  handoffExpiresAt,
+} from "./handoff.js";
 import { generatePublicCode, generateRecoveryCode, normalizeRecoveryCode } from "./identity.js";
 
 const DAY = 86_400_000;
@@ -170,5 +178,82 @@ describe("group allocation", () => {
 
     expect(allocateGroup(groups, 1)?.key).toBe("b");
     expect(allocateGroup(groups, 0)?.key).toBe("a");
+  });
+});
+
+/**
+ * The install handoff (STRUCTURE.md §11.4, ADR-007, FR-41).
+ *
+ * The properties asserted here are the ones that justify putting a secret in a
+ * URL at all: it works once, it dies in a day, and it is 128 bits wide.
+ */
+describe("the install handoff code", () => {
+  const bytes = (values: number[]): Uint8Array => new Uint8Array(values);
+  const HOUR = 3_600_000;
+
+  it("encodes the full 128 bits as hex", () => {
+    const code = generateHandoffCode(
+      bytes([0, 1, 15, 16, 127, 128, 200, 255, 1, 2, 3, 4, 5, 6, 7, 8]),
+    );
+
+    expect(code).toBe("00010f107f80c8ff0102030405060708");
+    expect(code).toHaveLength(HANDOFF_CODE_LENGTH);
+    expect(HANDOFF_CODE_LENGTH).toBe(HANDOFF_CODE_BYTES * 2);
+  });
+
+  it("refuses to mint a code from too few bytes", () => {
+    // Silently padding would produce a short code that still looks right and
+    // is orders of magnitude easier to guess.
+    expect(() => generateHandoffCode(bytes([1, 2, 3]))).toThrow(/at least 16 random bytes/);
+  });
+
+  it("expires twenty-four hours after minting", () => {
+    expect(handoffExpiresAt(T0).getTime()).toBe(T0.getTime() + HANDOFF_CODE_TTL_HOURS * HOUR);
+  });
+
+  it("is redeemable inside its window", () => {
+    const state = { expiresAt: handoffExpiresAt(T0), redeemedAt: null };
+
+    // The flow it has to survive: read instructions, install, get distracted,
+    // come back, tap the link.
+    expect(evaluateHandoffCode(state, new Date(T0.getTime() + 23 * HOUR))).toEqual({
+      redeemable: true,
+    });
+  });
+
+  it("stops being redeemable exactly at expiry", () => {
+    const state = { expiresAt: handoffExpiresAt(T0), redeemedAt: null };
+
+    expect(evaluateHandoffCode(state, handoffExpiresAt(T0))).toEqual({
+      redeemable: false,
+      reason: "EXPIRED",
+    });
+  });
+
+  it("refuses a second redemption", () => {
+    const state = {
+      expiresAt: handoffExpiresAt(T0),
+      redeemedAt: new Date(T0.getTime() + HOUR),
+    };
+
+    expect(evaluateHandoffCode(state, new Date(T0.getTime() + 2 * HOUR))).toEqual({
+      redeemable: false,
+      reason: "ALREADY_REDEEMED",
+    });
+  });
+
+  it("reports a used-then-expired code as used", () => {
+    // "You already used this link, you are probably fine" and "that link
+    // expired, here is another" send the participant in different directions,
+    // and only one of them is true here.
+    const state = {
+      expiresAt: handoffExpiresAt(T0),
+      redeemedAt: new Date(T0.getTime() + HOUR),
+    };
+
+    expect(evaluateHandoffCode(state, new Date(T0.getTime() + 48 * HOUR))).toEqual({
+      redeemable: false,
+      reason: "ALREADY_REDEEMED",
+    });
   });
 });

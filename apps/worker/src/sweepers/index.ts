@@ -1,5 +1,6 @@
 import type { Pool } from "@lpr/db";
 import { HeartbeatWriter } from "./heartbeat.js";
+import { expireSubscriptionsSweeper, pruneSubscriptionsSweeper } from "./push-sweepers.js";
 import { activateDueSweeper, expireDueSweeper } from "./session-sweepers.js";
 import { ReconciliationRunner } from "./sweep-runner.js";
 import type { SweepLogger, Sweeper } from "./sweeper.js";
@@ -10,6 +11,7 @@ export * from "./reconcile.js";
 export * from "./heartbeat.js";
 export * from "./sweep-runner.js";
 export * from "./session-sweepers.js";
+export * from "./push-sweepers.js";
 
 /**
  * Composition for the reconciliation loop (ADR-005).
@@ -24,9 +26,15 @@ export * from "./session-sweepers.js";
  * restore correct state within one cycle, because they ask the database what is
  * true rather than what the queue remembers.
  *
+ * `sweep.expire_subscriptions` and `sweep.prune_subscriptions` run (Phase 8).
+ * They are the subscription table's hygiene: one marks a subscription the push
+ * service said had expired, the other deletes dead rows once their retention
+ * window has run. PLAN.md called the second "the daily pruning job"; see
+ * `push-sweepers.ts` for why it is a sweeper instead.
+ *
  * `sweep.notifications_due` is NOT registered — `notification_attempts` does
- * not exist yet, and Phase 7 deliberately ships no notifications. Sessions
- * become available silently, which is what keeps this phase reviewable.
+ * not exist yet, and Phase 8 deliberately ships no sending. Subscriptions are
+ * collected and used by nothing, which is what keeps this phase reviewable.
  * Registering it later is adding one more entry to the array below; the loop,
  * the cross-replica exclusion, the batching, the per-row locking and the
  * heartbeat are already here and already tested against a real PostgreSQL.
@@ -67,7 +75,12 @@ export function startReconciliation(options: StartReconciliationOptions): Reconc
 
   const runner = new ReconciliationRunner({
     pool: options.pool,
-    sweepers: options.sweepers ?? [activateDueSweeper(), expireDueSweeper()],
+    sweepers: options.sweepers ?? [
+      activateDueSweeper(),
+      expireDueSweeper(),
+      expireSubscriptionsSweeper(),
+      pruneSubscriptionsSweeper(),
+    ],
     heartbeat,
     intervalMs: options.sweepIntervalSeconds * 1000,
     logger: options.logger,

@@ -93,6 +93,7 @@ export async function resetDatabase(db: Database): Promise<void> {
              research.protocol_steps, research.reminder_policies,
              research.protocol_versions, research.protocols,
              research.study_groups, research.study_members, research.studies,
+             identity.push_subscriptions, identity.participant_handoff_codes,
              identity.participant_recovery_codes, identity.participant_credentials,
              identity.researcher_sessions, identity.researcher_users
      RESTART IDENTITY CASCADE` as never,

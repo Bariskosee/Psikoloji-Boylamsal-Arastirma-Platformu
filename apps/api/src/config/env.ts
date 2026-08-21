@@ -48,6 +48,25 @@ const envSchema = z.object({
    */
   COOKIE_SECURE: z.enum(["true", "false"]).optional(),
 
+  /**
+   * VAPID (ADR-006). Optional, and the optionality is a feature: a deployment
+   * with no keys runs the whole study without push, which is the documented
+   * degraded mode rather than a broken one. The API advertises the PUBLIC key
+   * to participants; without it the client is told push is unavailable here and
+   * stops offering to enable it.
+   *
+   * The PRIVATE key never leaves this process and appears in no response. It is
+   * read here so that the process refuses to start on a half-configured pair —
+   * a public key with no private one produces subscriptions that can never be
+   * sent to, and nothing would report it until Phase 9.
+   */
+  VAPID_PUBLIC_KEY: z.string().optional().default(""),
+  VAPID_PRIVATE_KEY: z.string().optional().default(""),
+  VAPID_SUBJECT: z.string().optional().default(""),
+
+  /** Push subscription registrations per hour, per participant (STRUCTURE.md §11.5). */
+  PUSH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(20),
+
   /** Login attempts per window, per email and per IP (STRUCTURE.md §11.5). */
   LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(5),
   LOGIN_RATE_LIMIT_WINDOW_MINUTES: z.coerce.number().int().positive().default(15),
@@ -71,7 +90,41 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     );
   }
 
-  return parsed.data;
+  const env = parsed.data;
+
+  /**
+   * Half a VAPID pair is worse than none.
+   *
+   * With a public key and no private one, participants subscribe successfully,
+   * the rows are stored, the settings screen says notifications are on — and
+   * every send fails from Phase 9 onward. Nothing in the participant's
+   * experience contradicts it, so the failure is invisible until compliance
+   * data comes back thin. Refusing to boot is the only signal that arrives in
+   * time.
+   */
+  const configured = [env.VAPID_PUBLIC_KEY, env.VAPID_PRIVATE_KEY].filter(
+    (value) => value.length > 0,
+  ).length;
+  if (configured === 1) {
+    throw new Error(
+      "Invalid environment configuration:\n  VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY must be " +
+        "set together, or both left empty.\n\nWith only one of them, participants subscribe " +
+        "successfully and every send fails silently. Generate a pair with " +
+        "`pnpm dlx web-push generate-vapid-keys`, or leave both empty to run without push.",
+    );
+  }
+
+  return env;
+}
+
+/**
+ * Is Web Push configured on this deployment?
+ *
+ * The one question the participant API answers about VAPID. Everything else
+ * about the key pair stays inside the process (ADR-006).
+ */
+export function isPushConfigured(env: Env): boolean {
+  return env.VAPID_PUBLIC_KEY.length > 0 && env.VAPID_PRIVATE_KEY.length > 0;
 }
 
 /**

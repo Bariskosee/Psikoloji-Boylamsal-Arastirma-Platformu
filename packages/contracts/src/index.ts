@@ -24,6 +24,10 @@
  *               schema, so nothing here can serialise it.
  * Phase 6 adds: session — the runtime's questions, saved answers, autosave
  *               batch, and completion result.
+ * Phase 8 adds: push — subscription registration, the participant's own view of
+ *               their registered devices, and the install handoff code. The
+ *               VAPID private key and the push endpoint are absent from every
+ *               response shape here, deliberately.
  */
 
 export * from "./health.js";
@@ -39,3 +43,4 @@ export * from "./protocol.js";
 export * from "./consent.js";
 export * from "./participant.js";
 export * from "./session.js";
+export * from "./push.js";
