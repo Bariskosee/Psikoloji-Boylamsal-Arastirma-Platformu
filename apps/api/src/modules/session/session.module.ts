@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { ParticipantModule } from "../participant/participant.module.js";
+import { SchedulingModule } from "../scheduling/scheduling.module.js";
 import { SessionController } from "./session.controller.js";
 import { SessionService } from "./session.service.js";
 
@@ -11,7 +12,7 @@ import { SessionService } from "./session.service.js";
  * engine that materialises them from a protocol is Phase 7.
  */
 @Module({
-  imports: [ParticipantModule],
+  imports: [ParticipantModule, SchedulingModule],
   controllers: [SessionController],
   providers: [SessionService],
   exports: [SessionService],

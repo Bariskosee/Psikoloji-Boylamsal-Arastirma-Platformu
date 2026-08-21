@@ -28,6 +28,7 @@ import type {
 import { ApiErrors } from "../../common/api-error.js";
 import { generateRandomBytes } from "../../common/crypto.js";
 import { DATABASE } from "../database/database.module.js";
+import { MaterialisationService } from "../scheduling/materialisation.service.js";
 import { ContinuityService } from "./continuity.service.js";
 
 /**
@@ -48,6 +49,7 @@ export class ParticipantService {
   constructor(
     @Inject(DATABASE) private readonly db: Database,
     private readonly continuity: ContinuityService,
+    private readonly materialisation: MaterialisationService,
   ) {}
 
   /**
@@ -174,6 +176,30 @@ export class ParticipantService {
         updatedAt: now,
       });
 
+      /**
+       * Every session this participant will ever be offered, in THIS
+       * transaction (STRUCTURE.md §8.2).
+       *
+       * A partially materialised enrollment is a participant with a silently
+       * truncated protocol, and no sweeper can detect it: the sweepers
+       * reconcile the sessions that exist against the clock, not against the
+       * protocol they should have come from.
+       */
+      await this.materialisation.materialiseEnrollment(
+        tx,
+        {
+          participantId: participant.id,
+          studyId: study.id,
+          protocolVersionId,
+          enrolledAt: now,
+          consentedAt: now,
+          participantTimezone: input.timezone,
+          studyTimezone: study.timezone,
+          groupId: group?.id ?? null,
+        },
+        now,
+      );
+
       const credential = await this.continuity.mint(tx, participant.id, now);
       const recoveryCode = await this.continuity.issueRecoveryCode(tx, participant.id, now);
 
@@ -251,6 +277,11 @@ export class ParticipantService {
       // Every credential, not just the one in use: a withdrawn participant must
       // not be resumable from another device that still holds a cookie.
       await this.continuity.revokeAll(tx, participantId, now);
+
+      // And nothing further is asked of them. Terminal sessions are untouched:
+      // a completed questionnaire is data they gave, and withdrawal is not
+      // erasure (FR-30).
+      await this.materialisation.cancelForWithdrawal(tx, participantId, now);
     });
   }
 

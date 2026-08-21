@@ -24,6 +24,9 @@
  *               continuity rotation policy, and weighted group allocation.
  * Phase 6 adds: session/ — the ParticipantSession state machine, per-type
  *               answer validation, and the autosave revision rule.
+ * Phase 7 adds: session/materialisation — expanding a protocol version into
+ *               the sessions one enrollment implies, trigger propagation, and
+ *               unreachable-trigger cascades.
  * Later phases add: compliance/, missingness/, export/.
  */
 
@@ -45,3 +48,4 @@ export * from "./participant/continuity.js";
 export * from "./participant/group-allocation.js";
 export * from "./session/state-machine.js";
 export * from "./session/answer-validation.js";
+export * from "./session/materialisation.js";
