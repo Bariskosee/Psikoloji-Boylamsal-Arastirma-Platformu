@@ -321,5 +321,52 @@
       "PROTOCOL_DUPLICATE_STEP_KEY": "Two steps share a key, which would merge their export columns.",
       "QUESTIONNAIRE_VERSION_NOT_PUBLISHED": "A step can only administer a published questionnaire version."
     }
+  },
+  "join": {
+    "loading": "Loading…",
+    "notFound": "We could not find a study for that link. Check the link or ask the research team.",
+    "closed": "This study is not accepting new participants right now.",
+    "aboutTitle": "About this study",
+    "consentTitle": "Consent",
+    "readCarefully": "Please read this carefully before deciding.",
+    "agree": "I have read the information above and I agree to take part.",
+    "continue": "Continue",
+    "joining": "Joining…",
+    "error": "Something went wrong. Please try again.",
+    "consentStale": "The consent information was updated while you were reading. Please read it again.",
+    "language": "Language"
+  },
+  "identity": {
+    "title": "You are enrolled",
+    "codeLabel": "Your participant code",
+    "recoveryTitle": "Save this recovery code",
+    "recoveryBody": "If you lose access to this device or clear your browser data, this code is the only way back into the study. We cannot show it again and we cannot recover it for you.",
+    "acknowledge": "I have saved my recovery code somewhere safe.",
+    "continue": "Go to my study"
+  },
+  "home": {
+    "title": "Your study",
+    "nothingDue": "There is nothing to complete right now.",
+    "nothingDueHint": "We will let you know when something is ready for you.",
+    "yourCode": "Your participant code",
+    "signedInAs": "You are taking part in {study}.",
+    "withdrawnTitle": "You have withdrawn",
+    "withdrawnBody": "You will not be asked to complete anything further. The answers you already gave remain part of the study.",
+    "settings": "Settings",
+    "withdraw": "Withdraw from the study",
+    "withdrawConfirm": "Withdrawing stops all further questionnaires and reminders. The answers you already gave stay part of the study. This cannot be undone.",
+    "withdrawReason": "Reason (optional)",
+    "withdrawAction": "Withdraw",
+    "cancel": "Cancel",
+    "recover": "I have a recovery code",
+    "notSignedIn": "We could not find your participation on this device."
+  },
+  "recover": {
+    "title": "Use your recovery code",
+    "body": "Enter the eight-character code you saved when you joined.",
+    "codeLabel": "Recovery code",
+    "submit": "Continue",
+    "submitting": "Checking…",
+    "failed": "That code did not work. Each code can be used only once."
   }
 }
