@@ -12,6 +12,7 @@ import { HealthModule } from "./modules/health/health.module.js";
 import { ConsentModule } from "./modules/consent/consent.module.js";
 import { ParticipantModule } from "./modules/participant/participant.module.js";
 import { ProtocolModule } from "./modules/protocol/protocol.module.js";
+import { SessionModule } from "./modules/session/session.module.js";
 import { QuestionnaireModule } from "./modules/questionnaire/questionnaire.module.js";
 import { StudyModule } from "./modules/study/study.module.js";
 
@@ -49,6 +50,7 @@ import { StudyModule } from "./modules/study/study.module.js";
     ProtocolModule,
     ConsentModule,
     ParticipantModule,
+    SessionModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: ApiExceptionFilter },

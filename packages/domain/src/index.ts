@@ -41,3 +41,5 @@ export * from "./protocol/preview.js";
 export * from "./participant/identity.js";
 export * from "./participant/continuity.js";
 export * from "./participant/group-allocation.js";
+export * from "./session/state-machine.js";
+export * from "./session/answer-validation.js";

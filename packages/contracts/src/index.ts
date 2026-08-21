@@ -36,3 +36,4 @@ export * from "./questionnaire.js";
 export * from "./protocol.js";
 export * from "./consent.js";
 export * from "./participant.js";
+export * from "./session.js";

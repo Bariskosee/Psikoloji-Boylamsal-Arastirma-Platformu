@@ -82,7 +82,10 @@ export async function resetDatabase(db: Database): Promise<void> {
     // `participant-credentials.ts`) — so CASCADE from a research table does not
     // reach them, and a credential left behind would let one test's participant
     // authenticate in the next.
-    `TRUNCATE research.audit_events, research.question_option_translations,
+    `TRUNCATE research.audit_events, research.session_submissions,
+             research.response_history, research.response_option_selections,
+             research.responses, research.participant_sessions,
+             research.question_option_translations,
              research.question_options, research.question_version_translations,
              research.question_versions, research.questionnaire_versions,
              research.questionnaires, research.enrollments, research.participants,
