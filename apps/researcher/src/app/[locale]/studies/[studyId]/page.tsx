@@ -17,6 +17,7 @@ import { ErrorBanner, StatusBadge, styles } from "@/lib/ui";
  */
 export default function StudyPage() {
   const t = useTranslations("studies");
+  const tProtocols = useTranslations("protocols");
   const router = useRouter();
   const params = useParams<{ studyId: string }>();
   const studyId = params?.studyId ?? "";
@@ -197,6 +198,12 @@ export default function StudyPage() {
       {canEdit ? (
         <p>
           <Link href={`/studies/${studyId}/questionnaires`}>{t("manageQuestionnaires")} →</Link>
+        </p>
+      ) : null}
+
+      {canEdit ? (
+        <p>
+          <Link href={`/studies/${studyId}/protocols`}>{tProtocols("title")} →</Link>
         </p>
       ) : null}
 
