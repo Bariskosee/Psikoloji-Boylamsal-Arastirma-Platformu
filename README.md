@@ -12,7 +12,7 @@ The core goals are:
 - give researchers a dashboard for compliance and response monitoring,
 - export clean longitudinal datasets for statistical analysis.
 
-> **Project status:** Phases 0–3 are implemented — the core domain and database, researcher authentication, studies and the audit trail, and the questionnaire builder with immutable publishing — along with the background job queue (ADR-004) and the reconciliation sweepers (ADR-005). Protocols, participant enrollment, and the questionnaire runtime are next. See `PLAN.md` for the phased roadmap and `CONTRIBUTING.md` to run it locally.
+> **Project status:** Phases 0–4 are implemented — the core domain and database, researcher authentication, studies and the audit trail, the questionnaire builder with immutable publishing, and the protocol builder with trigger validation and a timeline preview — along with the background job queue (ADR-004) and the reconciliation sweepers (ADR-005). Protocols are *defined* but nothing executes them yet: participant enrollment is next, and the scheduling engine that materialises sessions from a protocol is Phase 7. See `PLAN.md` for the phased roadmap and `CONTRIBUTING.md` to run it locally.
 
 ---
 

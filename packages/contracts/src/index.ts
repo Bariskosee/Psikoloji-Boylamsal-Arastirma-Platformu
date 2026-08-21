@@ -15,6 +15,8 @@
  * Phase 0 scope: health and locale.
  * Phase 2 adds: errors, roles, auth, study, audit.
  * Phase 3 adds: question-types, questionnaire.
+ * Phase 4 adds: protocol — trigger vocabulary, step and reminder-policy shapes,
+ *               and the timeline-preview request and response.
  */
 
 export * from "./health.js";

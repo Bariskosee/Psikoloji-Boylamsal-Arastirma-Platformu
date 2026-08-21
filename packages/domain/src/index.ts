@@ -17,8 +17,10 @@
  *               entity-key generation, reorder validation, publish eligibility.
  * ADR-005 adds: scheduling/ — sweeper-liveness classification and the
  *               staleness guard that stops a post-outage notification burst.
- * Later phases add: the rest of scheduling/ (protocol timing), state-machine/,
- *                    compliance/, missingness/, export/.
+ * Phase 4 adds: protocol/ — occurrence timing in both anchor modes, the
+ *               trigger-graph rules of FR-48 and ADR-011, and the timeline
+ *               preview the builder and the Phase 7 engine both call.
+ * Later phases add: state-machine/, compliance/, missingness/, export/.
  */
 
 export * from "./clock.js";
