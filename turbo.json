@@ -17,6 +17,24 @@
     "test:integration": {
       "dependsOn": ["^build"],
       "cache": false,
+      // Run these ONE PACKAGE AT A TIME. The root script passes
+      // `--concurrency=1`, and it is load-bearing.
+      //
+      // Every package's integration suite points at the SAME database — CI
+      // provisions one — and `apps/api`'s harness TRUNCATEs the shared research
+      // tables between tests. Run in parallel, that truncation lands in the
+      // middle of another package's test: a row inserted a statement earlier is
+      // gone, and it surfaces as a foreign-key violation in a suite that has
+      // nothing to do with the one that wiped it.
+      //
+      // Being a race, it passes far more often than it fails, which is worse
+      // than failing outright — a suite that is red once a week teaches people
+      // to re-run it rather than read it.
+      //
+      // The alternative is a database per package, which would keep the
+      // parallelism. That needs each suite to derive its own name and the
+      // migration step to apply to all of them; worth doing if these ever get
+      // slow enough to care.
       // Turborepo 2 runs tasks in a filtered environment: variables not
       // declared here are STRIPPED. Without this, DATABASE_URL never reaches
       // the integration tests, and they quietly connect somewhere else.
