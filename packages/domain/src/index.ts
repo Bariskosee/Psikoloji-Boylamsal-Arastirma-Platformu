@@ -20,6 +20,8 @@
  * Phase 4 adds: protocol/ — occurrence timing in both anchor modes, the
  *               trigger-graph rules of FR-48 and ADR-011, and the timeline
  *               preview the builder and the Phase 7 engine both call.
+ * Phase 5 adds: participant/ — public and recovery code generation, the
+ *               continuity rotation policy, and weighted group allocation.
  * Later phases add: state-machine/, compliance/, missingness/, export/.
  */
 

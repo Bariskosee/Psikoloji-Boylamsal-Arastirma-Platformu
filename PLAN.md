@@ -41,8 +41,8 @@ Phase 1    Core domain and database                                        done
 Phase 2    Researcher authentication, studies, audit                       done
 Phase 3    Questionnaire builder and versioning                            done
 Phase 4    Protocol builder and versioning                                 done
-Phase 5    Participant enrollment, consent, continuity                  ← next
-Phase 6    Questionnaire runtime: autosave, resume, completion
+Phase 5    Participant enrollment, consent, continuity                     done
+Phase 6    Questionnaire runtime: autosave, resume, completion           ← next
 Phase 7    Longitudinal protocol and scheduling engine
 Phase 8    PWA and push subscription lifecycle
 Phase 9    Notification and reminder engine
