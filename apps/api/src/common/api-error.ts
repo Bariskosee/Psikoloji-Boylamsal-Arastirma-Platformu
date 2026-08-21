@@ -141,6 +141,86 @@ export const ApiErrors = {
       [{ path: `questions.${position}`, message: `Minimum ${minimum} options` }],
     ),
 
+  protocolNotFound: () =>
+    new ApiException("PROTOCOL_NOT_FOUND", HttpStatus.NOT_FOUND, "Protocol not found"),
+
+  protocolStepNotFound: () =>
+    new ApiException("PROTOCOL_STEP_NOT_FOUND", HttpStatus.NOT_FOUND, "Protocol step not found"),
+
+  /**
+   * A step may only pin an immutable version (ADR-008). Pointing at a draft
+   * would mean the instrument a participant answers could change under them
+   * after they were enrolled on it.
+   */
+  questionnaireVersionNotPublished: () =>
+    new ApiException(
+      "QUESTIONNAIRE_VERSION_NOT_PUBLISHED",
+      HttpStatus.CONFLICT,
+      "A protocol step can only administer a published questionnaire version",
+    ),
+
+  protocolEmpty: () =>
+    new ApiException(
+      "PROTOCOL_EMPTY",
+      HttpStatus.CONFLICT,
+      "A protocol needs at least one step before it can be published",
+    ),
+
+  protocolTriggerDangling: (stepKey: string) =>
+    new ApiException(
+      "PROTOCOL_TRIGGER_DANGLING",
+      HttpStatus.CONFLICT,
+      `Step "${stepKey}" is triggered by a step that is not in this protocol`,
+      [{ path: `steps.${stepKey}`, message: "Trigger references a step outside this version" }],
+    ),
+
+  protocolTriggerCycle: (cycle: readonly string[]) =>
+    new ApiException(
+      "PROTOCOL_TRIGGER_CYCLE",
+      HttpStatus.CONFLICT,
+      `These steps trigger each other in a loop, so none of them can ever start: ${cycle.join(" \u2192 ")}`,
+      [{ path: `steps.${cycle[0] ?? ""}`, message: cycle.join(" \u2192 ") }],
+    ),
+
+  protocolTriggerNeedsOccurrence: (stepKey: string, referencedStepKey: string, count: number) =>
+    new ApiException(
+      "PROTOCOL_TRIGGER_NEEDS_OCCURRENCE",
+      HttpStatus.CONFLICT,
+      `Step "${stepKey}" follows "${referencedStepKey}", which happens ${String(count)} times — it must say which one`,
+      [{ path: `steps.${stepKey}`, message: referencedStepKey }],
+    ),
+
+  protocolTriggerOccurrenceOutOfRange: (
+    stepKey: string,
+    referencedStepKey: string,
+    count: number,
+  ) =>
+    new ApiException(
+      "PROTOCOL_TRIGGER_OCCURRENCE_OUT_OF_RANGE",
+      HttpStatus.CONFLICT,
+      `Step "${stepKey}" names an occurrence of "${referencedStepKey}" that does not exist; there are ${String(count)}`,
+      [{ path: `steps.${stepKey}`, message: String(count) }],
+    ),
+
+  /** FR-48c. See ADR-011 for why this is a prohibition and not a warning. */
+  protocolStepCompletionOfRecurring: (stepKey: string, referencedStepKey: string) =>
+    new ApiException(
+      "PROTOCOL_STEP_COMPLETION_OF_RECURRING",
+      HttpStatus.CONFLICT,
+      `Step "${stepKey}" is triggered by the completion of "${referencedStepKey}", which repeats. ` +
+        "A participant who misses one occurrence would never receive this step at all. " +
+        "Anchor it on that block's own start plus a duration, or on a named occurrence becoming available.",
+      [{ path: `steps.${stepKey}`, message: referencedStepKey }],
+    ),
+
+  protocolDuplicateStepKey: (stepKey: string) =>
+    new ApiException(
+      "PROTOCOL_DUPLICATE_STEP_KEY",
+      HttpStatus.CONFLICT,
+      `Two steps share the key "${stepKey}", which would merge their export columns`,
+      [{ path: `steps.${stepKey}`, message: "Duplicate step key" }],
+    ),
+
   questionSelectionBoundsUnsatisfiable: (position: number) =>
     new ApiException(
       "QUESTION_SELECTION_BOUNDS_UNSATISFIABLE",

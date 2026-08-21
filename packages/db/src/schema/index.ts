@@ -28,3 +28,7 @@ export * from "./research/question-versions";
 export * from "./research/question-version-translations";
 export * from "./research/question-options";
 export * from "./research/question-option-translations";
+export * from "./research/protocols";
+export * from "./research/protocol-versions";
+export * from "./research/reminder-policies";
+export * from "./research/protocol-steps";

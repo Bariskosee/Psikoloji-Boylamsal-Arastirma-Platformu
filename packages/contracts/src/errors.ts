@@ -58,6 +58,29 @@ export const API_ERROR_CODES = [
   "QUESTIONNAIRE_EMPTY",
   "QUESTION_OPTIONS_REQUIRED",
   "QUESTION_SELECTION_BOUNDS_UNSATISFIABLE",
+
+  // Protocol (Phase 4)
+  "PROTOCOL_NOT_FOUND",
+  "PROTOCOL_STEP_NOT_FOUND",
+  "QUESTIONNAIRE_VERSION_NOT_PUBLISHED",
+
+  /**
+   * Protocol publish refusals, one code per blocking condition for the same
+   * reason as the questionnaire ones above. Each carries the offending
+   * `step_key` in `details`, so the builder can point at the step without
+   * parsing English.
+   *
+   * `PROTOCOL_STEP_COMPLETION_OF_RECURRING` is FR-48c, the rule that stops a
+   * missed daily report from destroying a study's outcome measurement thirty
+   * days later.
+   */
+  "PROTOCOL_EMPTY",
+  "PROTOCOL_TRIGGER_DANGLING",
+  "PROTOCOL_TRIGGER_CYCLE",
+  "PROTOCOL_TRIGGER_NEEDS_OCCURRENCE",
+  "PROTOCOL_TRIGGER_OCCURRENCE_OUT_OF_RANGE",
+  "PROTOCOL_STEP_COMPLETION_OF_RECURRING",
+  "PROTOCOL_DUPLICATE_STEP_KEY",
 ] as const;
 
 export const apiErrorCodeSchema = z.enum(API_ERROR_CODES);

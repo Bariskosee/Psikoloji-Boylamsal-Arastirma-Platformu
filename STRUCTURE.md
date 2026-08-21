@@ -280,6 +280,7 @@ On `config`: everything queried relationally — order, type, required flag, pag
 | `trigger_type` | `ENROLLMENT` \| `CONSENT` \| `STEP_COMPLETED` \| `STEP_AVAILABLE` \| `FIXED_DATETIME` |
 | `trigger_step_id` | Required when the trigger references another step |
 | `trigger_occurrence_index` | Required when `trigger_step_id` names a recurring step, forbidden otherwise (FR-48a) |
+| `trigger_fixed_date` | The designated day for a `FIXED_DATETIME` step. A **date**, not a timestamp — see below |
 | `offset_iso` | ISO-8601 duration, e.g. `PT72H`. DST-immune |
 | `anchor_local_time`, `anchor_timezone_source` | Wall-clock steps. `STUDY` \| `PARTICIPANT` |
 | `window_duration_iso` | e.g. `PT24H` |
@@ -289,6 +290,8 @@ On `config`: everything queried relationally — order, type, required flag, pag
 | `step_kind` | `SCHEDULED` \| `PARTICIPANT_INITIATED` (FR-46) |
 | `min_interval_iso`, `max_per_day`, `max_total` | Rate limits, participant-initiated steps only |
 | `allowed_group_ids` | Empty means all groups; otherwise restricts the step (FR-45) |
+
+**Why `trigger_fixed_date` is a date.** A researcher picks a day on a calendar — "the cohort starts on the 7th" — and the instant that denotes is only fixed once the step's wall-clock anchor and the zone that anchor names are both known. Storing a timestamp would force the builder to choose a time and a zone at the moment of picking, invisibly. Worse, `anchor_timezone_source = PARTICIPANT` means the zone differs per participant: resolving the day to an instant up front in the study's zone makes a participant further west read it as the *previous* day, shifting their entire schedule by one day, silently, and only for some of the cohort. The date is therefore resolved per participant, in the anchor zone, at materialisation.
 
 `questionnaire_version_id` is deliberately **not** unique across steps. A pre/post design pins one published version at two steps, so the two administrations are guaranteed to be the same instrument rather than two copies that drift (FR-47). Steps are distinguished everywhere by `step_key`, never by which questionnaire they administer.
 

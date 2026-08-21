@@ -22,6 +22,13 @@
       "when": 1787150196051,
       "tag": "0002_adr005_reconciliation_heartbeats",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1787256396675,
+      "tag": "0003_phase4_protocol_builder",
+      "breakpoints": true
     }
   ]
 }
