@@ -39,6 +39,23 @@ import {
 let harness: Harness;
 
 beforeAll(async () => {
+  /**
+   * Fail here, once and legibly, rather than nine times and cryptically.
+   *
+   * With no VAPID pair the API correctly refuses to store a subscription at
+   * all (ADR-006), so every registration test below returns 503 and the suite
+   * reports nine assertion failures that say nothing about the cause. This is
+   * not a hypothetical: it is exactly how this file first failed in CI, where
+   * the workflow had no VAPID variables.
+   */
+  if (!process.env["VAPID_PUBLIC_KEY"] || !process.env["VAPID_PRIVATE_KEY"]) {
+    throw new Error(
+      "These tests need VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY set — the subscription " +
+        "lifecycle is what they assert, and without a key pair the API refuses to store " +
+        "one (ADR-006). Any non-empty values will do; nothing here signs or encrypts.",
+    );
+  }
+
   harness = await createHarness();
 });
 

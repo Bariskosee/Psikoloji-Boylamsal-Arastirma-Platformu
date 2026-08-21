@@ -83,6 +83,18 @@ jobs:
           SESSION_SECRET: ci-session-secret-not-used-in-any-deployment
           RESEARCHER_ORIGIN: http://localhost:3002
           PARTICIPANT_ORIGIN: http://localhost:3000
+          # Push must be CONFIGURED here, because the subscription lifecycle is
+          # what these tests are about: with no key pair the API correctly
+          # refuses to store a subscription at all (ADR-006), and every one of
+          # those tests would assert nothing while appearing to pass.
+          #
+          # Not secrets, and deliberately not shaped like keys. Nothing in the
+          # test suite signs or encrypts anything — Phase 8 stores subscriptions
+          # and sends none — so these only have to be non-empty and obviously
+          # inert to anyone reading the file or scanning it.
+          VAPID_PUBLIC_KEY: ci-vapid-public-not-a-real-key
+          VAPID_PRIVATE_KEY: ci-vapid-private-not-a-real-key
+          VAPID_SUBJECT: mailto:ci@example.invalid
 
   secrets:
     name: Secret scan
