@@ -19,7 +19,9 @@
  *               and the timeline-preview request and response.
  * Phase 5 adds: consent — versioned documents and their translations;
  *               participant — public study view, enrollment, recovery, and
- *               withdrawal. The continuity token is deliberately absent.
+ *               withdrawal. The continuity token is deliberately absent: it
+ *               exists only in an HttpOnly cookie and, hashed, in the identity
+ *               schema, so nothing here can serialise it.
  */
 
 export * from "./health.js";
