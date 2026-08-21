@@ -2,11 +2,11 @@
   "name": "@lpr/participant",
   "version": "0.0.0",
   "private": true,
-  "description": "Participant PWA — public origin, credential auth, service worker, mobile-first",
+  "description": "Participant PWA \u2014 public origin, credential auth, service worker, mobile-first",
   "scripts": {
     "build": "next build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "echo 'no component tests yet (Phase 5)'",
+    "test": "vitest run",
     "dev": "next dev -p 3000",
     "start": "next start -p 3000"
   },
@@ -21,9 +21,13 @@
   },
   "devDependencies": {
     "@lpr/config": "workspace:*",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
-    "typescript": "^5.7.2"
+    "@vitejs/plugin-react": "^4.7.0",
+    "jsdom": "^25.0.1",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.9"
   }
 }

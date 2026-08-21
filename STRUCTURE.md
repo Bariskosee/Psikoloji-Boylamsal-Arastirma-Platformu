@@ -341,6 +341,18 @@ Contains no participant data and no secret. Rows are never pruned automatically:
 
 **`audit_events`** — `actor_type`, `actor_id`, `study_id`, `action`, `entity_type`, `entity_id`, `metadata` (redacted jsonb), `ip_hash`, `occurred_at`. Never contains response payloads.
 
+**`push_subscriptions`** *(identity schema)* — `participant_id`, `endpoint` (UNIQUE), `p256dh_key`, `auth_key`, `expiration_time`, `credential_context`, `is_active`, `deactivated_at`, `deactivation_reason ∈ {UNSUBSCRIBED, WITHDRAWN, EXPIRED, REJECTED_BY_SERVICE}`, `last_seen_at`.
+
+Unique on the **endpoint**, not on the participant. A browser re-subscribes routinely — on every service-worker update, and whenever the client is unsure of its own state — so registration is an upsert on that key, enforced by the database rather than by the service checking first. The consequence worth stating: a device previously registered to another participant MOVES to the new one, because a shared or handed-on phone must never deliver one person's reminders to another.
+
+Rows are deactivated, never deleted on the spot. "When did this participant stop receiving reminders?" is an operational question that surfaces weeks later, and a deleted row answers it with silence. The retention rule in `packages/domain/src/push/retention.ts` deletes them once the window has run, applied by `sweep.prune_subscriptions` — the only sweeper in the system that deletes anything, because an endpoint is a device identifier rather than research evidence.
+
+No user agent, no device name, no IP: those would be re-identifying data collected for operator convenience.
+
+**`participant_handoff_codes`** *(identity schema)* — `participant_id`, `code_hash`, `issued_at`, `expires_at`, `redeemed_at`. The install handoff of §11.4: 128 bits, hashed at rest, single-use by conditional UPDATE, and a stored `expires_at` rather than a derived one so that the TTL a code was minted under travels with the row.
+
+**`participant_credentials.credential_context`** — `BROWSER` | `INSTALLED`. Rotation carries the value forward: a credential replaced on its thirtieth day must not silently revert an installed participant to looking at-risk.
+
 **`researcher_users`, `researcher_sessions`** *(identity schema)* — researcher accounts and their server-side sessions.
 
 These live in `identity`, not `research`, even though the domain-model diagram above draws `researcher_users` alongside the study graph. `app_analytics` holds `SELECT` on the whole of `research` (§11.2), so a researcher's email address and argon2id password hash would otherwise sit one accidental join away from an export code path. The privacy boundary is drawn around re-identifying and secret data, and these tables are both.
@@ -467,7 +479,7 @@ The endline shares the block's origin instead of chaining off its last occurrenc
 
 ### 8.4 Reconciliation sweepers
 
-Four cron jobs at 60-second intervals, each with a `singletonKey` so only one instance runs across replicas.
+Sweepers on a 60-second loop, each holding a cross-replica advisory lock on its own name so only one instance runs at a time. Registered today: `sweep.activate_due`, `sweep.expire_due`, `sweep.expire_subscriptions`, `sweep.prune_subscriptions`, and `sweep.heartbeat`. `sweep.notifications_due` arrives with Phase 9, when `notification_attempts` exists.
 
 ```sql
 -- sweep.activate_due
@@ -480,7 +492,17 @@ SELECT id FROM research.participant_sessions
 WHERE status IN ('AVAILABLE','STARTED') AND available_until <= now()
 FOR UPDATE SKIP LOCKED LIMIT 500;
 
--- sweep.notifications_due
+-- sweep.expire_subscriptions
+SELECT id FROM identity.push_subscriptions
+WHERE is_active AND expiration_time IS NOT NULL AND expiration_time <= now()
+FOR UPDATE SKIP LOCKED LIMIT 500;
+
+-- sweep.prune_subscriptions   (the only sweeper that DELETES; see §6)
+SELECT id FROM identity.push_subscriptions
+WHERE NOT is_active AND deactivated_at <= now() - INTERVAL '30 days'
+FOR UPDATE SKIP LOCKED LIMIT 500;
+
+-- sweep.notifications_due   (Phase 9)
 --   sessions in AVAILABLE/STARTED, window open, active subscription,
 --   whose next due notification has no notification_attempts row
 FOR UPDATE SKIP LOCKED LIMIT 500;
@@ -686,10 +708,10 @@ Participant endpoints are **authenticated by the participant credential**. They 
 
 ```text
 PUBLIC (unauthenticated, strictly rate-limited)
-  GET  /api/public/studies/:code            study info + consent for display
-  POST /api/public/studies/:code/enroll     → participant + credential cookie
-  POST /api/public/participants/recover     redeem recovery code
-  POST /api/public/participants/handoff     redeem one-time install code
+  GET  /api/participant/studies/:code            study info + consent for display
+  POST /api/participant/studies/:code/enroll     → participant + credential cookie
+  POST /api/participant/recover                  redeem recovery code
+  POST /api/participant/handoff/redeem           redeem one-time install code
 
 PARTICIPANT (credential cookie; identity always derived from the credential)
   GET  /api/participant/me
@@ -699,8 +721,11 @@ PARTICIPANT (credential cookie; identity always derived from the credential)
   POST /api/participant/sessions/:id/start
   PUT  /api/participant/sessions/:id/answers/:questionVersionId
   POST /api/participant/sessions/:id/complete          Idempotency-Key
-  POST /api/participant/push-subscriptions
-  DEL  /api/participant/push-subscriptions/:id
+  GET  /api/participant/push/config                   VAPID PUBLIC key only
+  GET  /api/participant/push/subscriptions
+  POST /api/participant/push/subscriptions            upsert on endpoint
+  DEL  /api/participant/push/subscriptions            endpoint in the BODY
+  POST /api/participant/handoff                       mint one-time install code
   POST /api/participant/events
   POST /api/participant/withdraw
 
@@ -723,6 +748,10 @@ INTERNAL
 ```
 
 **On the analytics line.** REQUIREMENTS.md §5.2 defines VIEWER as "view aggregate monitoring only; no response-level access", and aggregate monitoring is exactly what the compliance dashboard shows (FR-27, FR-28). The line VIEWER must not cross is individual responses and exports, which stay ANALYST+. The authoritative table is `PERMISSION_MINIMUM_ROLE` in `packages/domain/src/authz/permissions.ts`, asserted exhaustively in its tests.
+
+**On the four public routes sharing the `/api/participant` prefix.** They are unauthenticated and marked as such in code, but they are the participant application's routes and are grouped with the rest of them rather than under a second prefix. The security property that matters is stated by the guard, not by the path.
+
+**On `DEL …/push/subscriptions` taking a body.** Unusual, and deliberate: it names a push endpoint, which is itself a capability URL. In the path or a query string it would be written into browser history, referrer headers, and every access log in between (AGENT.md §5).
 
 **Conventions:** Zod validation on every request and response · stable machine-readable error codes (`SESSION_EXPIRED`, `CONSENT_REQUIRED`, `REQUIRED_QUESTIONS_MISSING`) rather than raw messages · cursor pagination on participants, sessions, and audit · `Idempotency-Key` accepted on completion and enrollment · uniform responses on participant lookup regardless of existence.
 

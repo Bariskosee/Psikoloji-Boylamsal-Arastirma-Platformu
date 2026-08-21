@@ -207,4 +207,38 @@ export default tseslint.config(
       "@typescript-eslint/no-require-imports": "off",
     },
   },
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // The service worker runs in a ServiceWorkerGlobalScope, not in a window and
+  // not in Node. `self`, `caches` and `clients` are its globals; without them
+  // declared here every line of the worker reads as an undefined reference.
+  //
+  // It is plain JavaScript on purpose: it is served verbatim from `public/`,
+  // because a service worker's scope cannot exceed the path it was served from
+  // and this one has to cover the whole origin (STRUCTURE.md §14).
+  // ───────────────────────────────────────────────────────────────────────────
+  {
+    files: ["apps/participant/public/sw.js"],
+    languageOptions: {
+      globals: {
+        self: "readonly",
+        caches: "readonly",
+        clients: "readonly",
+        console: "readonly",
+        fetch: "readonly",
+      },
+    },
+  },
+
+  // Build-time Node scripts: not shipped, not imported, run by hand.
+  {
+    files: ["**/scripts/*.mjs"],
+    languageOptions: {
+      globals: {
+        Buffer: "readonly",
+        console: "readonly",
+        process: "readonly",
+      },
+    },
+  },
 );

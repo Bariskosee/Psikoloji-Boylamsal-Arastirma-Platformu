@@ -1,13 +1,24 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { and, eq, isNull, or, gt } from "drizzle-orm";
-import { participantCredentials, participantRecoveryCodes, type Database } from "@lpr/db";
+import {
+  participantCredentials,
+  participantHandoffCodes,
+  participantRecoveryCodes,
+  type Database,
+} from "@lpr/db";
 import {
   evaluateCredential,
+  evaluateHandoffCode,
+  generateHandoffCode,
   generateRecoveryCode,
+  handoffExpiresAt,
   normalizeRecoveryCode,
+  HANDOFF_CODE_BYTES,
   RECOVERY_CODE_BYTES,
   type CredentialRejection,
+  type HandoffRejection,
 } from "@lpr/domain";
+import type { CredentialContext } from "@lpr/contracts";
 import {
   generateRandomBytes,
   generateToken,
@@ -44,6 +55,7 @@ export type CredentialResolution =
       readonly participantId: string;
       readonly rotate: boolean;
       readonly credentialId: string;
+      readonly credentialContext: CredentialContext;
     }
   | { readonly ok: false; readonly reason: CredentialRejection | "UNKNOWN" };
 
@@ -51,7 +63,19 @@ export type CredentialResolution =
 export class ContinuityService {
   constructor(@Inject(DATABASE) private readonly db: Database) {}
 
-  async mint(tx: Database, participantId: string, now: Date): Promise<MintedCredential> {
+  /**
+   * `context` records WHERE this credential was minted (STRUCTURE.md §11.4).
+   *
+   * Enrollment happens in a browser, so that is the default. Only the handoff
+   * redemption passes `INSTALLED`, and it can, because the request that
+   * redeems arrived from inside the installed application.
+   */
+  async mint(
+    tx: Database,
+    participantId: string,
+    now: Date,
+    context: CredentialContext = "BROWSER",
+  ): Promise<MintedCredential> {
     const token = generateToken(32);
 
     const inserted = (
@@ -61,6 +85,7 @@ export class ContinuityService {
           participantId,
           tokenHash: hashToken(token),
           lookupPrefix: token.slice(0, LOOKUP_PREFIX_LENGTH),
+          credentialContext: context,
           issuedAt: now,
           createdAt: now,
         })
@@ -100,6 +125,7 @@ export class ContinuityService {
       participantId: match.participantId,
       rotate: verdict.shouldRotate,
       credentialId: match.id,
+      credentialContext: match.credentialContext as CredentialContext,
     };
   }
 
@@ -113,17 +139,34 @@ export class ContinuityService {
    */
   async rotate(credentialId: string, participantId: string, now: Date): Promise<MintedCredential> {
     return this.db.transaction(async (tx) => {
-      await tx
-        .update(participantCredentials)
-        .set({ rotatedAt: now })
-        .where(
-          and(
-            eq(participantCredentials.id, credentialId),
-            isNull(participantCredentials.rotatedAt),
-          ),
-        );
+      const superseded = (
+        await tx
+          .update(participantCredentials)
+          .set({ rotatedAt: now })
+          .where(
+            and(
+              eq(participantCredentials.id, credentialId),
+              isNull(participantCredentials.rotatedAt),
+            ),
+          )
+          .returning({ context: participantCredentials.credentialContext })
+      )[0];
 
-      return this.mint(tx, participantId, now);
+      /**
+       * The replacement inherits its predecessor's context.
+       *
+       * Rotation happens silently, on the thirtieth day, inside whichever
+       * request happened to arrive. Defaulting the new row to `BROWSER` would
+       * mean every installed participant quietly reverted to looking
+       * at-risk a month after installing — and the researcher view that exists
+       * to catch losses early would fill with people who are perfectly safe.
+       */
+      return this.mint(
+        tx,
+        participantId,
+        now,
+        (superseded?.context ?? "BROWSER") as CredentialContext,
+      );
     });
   }
 
@@ -214,5 +257,101 @@ export class ContinuityService {
         ),
       );
     return rows.length;
+  }
+
+  /**
+   * Mint an install handoff code (STRUCTURE.md §11.4, ADR-007, FR-41).
+   *
+   * Returned in the body, unlike every other secret this service handles,
+   * because its whole purpose is to be shown as a tappable link in the Safari
+   * tab. Only the hash is stored — the same discipline as the recovery code,
+   * for the same reason.
+   */
+  async mintHandoffCode(
+    participantId: string,
+    now: Date,
+  ): Promise<{ code: string; expiresAt: Date }> {
+    const code = generateHandoffCode(generateRandomBytes(HANDOFF_CODE_BYTES));
+    const expiresAt = handoffExpiresAt(now);
+
+    await this.db.insert(participantHandoffCodes).values({
+      participantId,
+      codeHash: hashToken(code),
+      issuedAt: now,
+      expiresAt,
+      createdAt: now,
+    });
+
+    return { code, expiresAt };
+  }
+
+  /**
+   * Redeem a handoff code, exactly once.
+   *
+   * The single-use guarantee is the conditional UPDATE, not a read followed by
+   * a write: a participant double-tapping the link fires two requests, both
+   * would pass a read-then-check, and only one may set `redeemed_at`.
+   *
+   * The expiry is checked in the same statement for the same reason — a
+   * separate read would leave a window in which a code expiring right now is
+   * judged live and then redeemed.
+   *
+   * Returns the rejection reason for the log, never for the caller: the
+   * controller answers expired, already-redeemed and never-existed identically.
+   */
+  async redeemHandoffCode(
+    code: string,
+    now: Date,
+  ): Promise<
+    { ok: true; participantId: string } | { ok: false; reason: HandoffRejection | "UNKNOWN" }
+  > {
+    const hash = hashToken(code);
+
+    const redeemed = (
+      await this.db
+        .update(participantHandoffCodes)
+        .set({ redeemedAt: now })
+        .where(
+          and(
+            eq(participantHandoffCodes.codeHash, hash),
+            isNull(participantHandoffCodes.redeemedAt),
+            gt(participantHandoffCodes.expiresAt, now),
+          ),
+        )
+        .returning()
+    )[0];
+
+    if (redeemed) return { ok: true, participantId: redeemed.participantId };
+
+    // Nothing was updated. Ask the row why, so the failure is explicable in a
+    // log even though the caller is told nothing.
+    const existing = (
+      await this.db
+        .select()
+        .from(participantHandoffCodes)
+        .where(eq(participantHandoffCodes.codeHash, hash))
+        .limit(1)
+    )[0];
+    if (!existing) return { ok: false, reason: "UNKNOWN" };
+
+    const verdict = evaluateHandoffCode(
+      { expiresAt: existing.expiresAt, redeemedAt: existing.redeemedAt },
+      now,
+    );
+    return { ok: false, reason: verdict.redeemable ? "UNKNOWN" : verdict.reason };
+  }
+
+  /**
+   * Mint a credential inside the freshly installed application.
+   *
+   * Deliberately does NOT revoke the browser's credential, which is the one
+   * difference from recovery. Both containers belong to the same person and
+   * both are legitimately in use: the participant may finish the questionnaire
+   * they already had open in Safari, and revoking would sign them out of it
+   * mid-answer — at the exact moment we asked them to install, which is the
+   * moment they are most likely to give up.
+   */
+  async issueAfterHandoff(participantId: string, now: Date): Promise<MintedCredential> {
+    return this.db.transaction(async (tx) => this.mint(tx, participantId, now, "INSTALLED"));
   }
 }

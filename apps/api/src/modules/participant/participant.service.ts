@@ -29,6 +29,7 @@ import { ApiErrors } from "../../common/api-error.js";
 import { generateRandomBytes } from "../../common/crypto.js";
 import { DATABASE } from "../database/database.module.js";
 import { MaterialisationService } from "../scheduling/materialisation.service.js";
+import { PushService } from "../push/push.service.js";
 import { ContinuityService } from "./continuity.service.js";
 
 /**
@@ -50,6 +51,7 @@ export class ParticipantService {
     @Inject(DATABASE) private readonly db: Database,
     private readonly continuity: ContinuityService,
     private readonly materialisation: MaterialisationService,
+    private readonly push: PushService,
   ) {}
 
   /**
@@ -282,6 +284,17 @@ export class ParticipantService {
       // a completed questionnaire is data they gave, and withdrawal is not
       // erasure (FR-30).
       await this.materialisation.cancelForWithdrawal(tx, participantId, now);
+
+      /**
+       * And no device is left able to receive a reminder (FR-30, FR-18).
+       *
+       * In the SAME transaction. A separate write could commit while the
+       * withdrawal rolled back — or fail while it committed, leaving a live
+       * subscription for someone who has left. Of every notification this
+       * system could send, a questionnaire reminder to a withdrawn participant
+       * is the one that must be impossible rather than unlikely.
+       */
+      await this.push.deactivateAllForParticipant(tx, participantId, "WITHDRAWN", now);
     });
   }
 

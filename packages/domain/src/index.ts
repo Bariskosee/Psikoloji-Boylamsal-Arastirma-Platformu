@@ -27,6 +27,17 @@
  * Phase 7 adds: session/materialisation — expanding a protocol version into
  *               the sessions one enrollment implies, trigger propagation, and
  *               unreachable-trigger cascades.
+ * Phase 8 adds: push/ — the push subscription retention rule the worker's
+ *               prune sweeper applies; participant/handoff — the single-use
+ *               install handoff code.
+ *
+ *               NOT here: the push availability matrix that decides what a
+ *               participant is told about notifications on their device. It is
+ *               a decision about a browser, made in a browser, and the frontends
+ *               are forbidden from importing this package (STRUCTURE.md §3). It
+ *               lives beside its only caller, in
+ *               `apps/participant/src/lib/push-availability.ts`, with its own
+ *               unit tests.
  * Later phases add: compliance/, missingness/, export/.
  */
 
@@ -46,6 +57,8 @@ export * from "./protocol/preview.js";
 export * from "./participant/identity.js";
 export * from "./participant/continuity.js";
 export * from "./participant/group-allocation.js";
+export * from "./participant/handoff.js";
 export * from "./session/state-machine.js";
 export * from "./session/answer-validation.js";
 export * from "./session/materialisation.js";
+export * from "./push/index.js";

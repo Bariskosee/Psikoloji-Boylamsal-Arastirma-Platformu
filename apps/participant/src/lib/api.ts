@@ -63,4 +63,14 @@ export const api = {
   get: <T>(path: string) => request<T>("GET", path),
   post: <T>(path: string, body?: unknown) => request<T>("POST", path, body),
   patch: <T>(path: string, body?: unknown) => request<T>("PATCH", path, body),
+  /**
+   * DELETE with a body — unusual, and deliberate.
+   *
+   * Unsubscribing names a push endpoint, and a push endpoint is a capability
+   * URL of its own. Putting it in the path or a query string would write it
+   * into browser history, referrer headers and every access log between here
+   * and the API (AGENT.md §5). A body is the only place it does not end up
+   * recorded.
+   */
+  delete: <T>(path: string, body?: unknown) => request<T>("DELETE", path, body),
 };

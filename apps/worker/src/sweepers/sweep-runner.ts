@@ -85,6 +85,18 @@ export class ReconciliationRunner {
   }
 
   /**
+   * The sweepers this runner will execute, in order.
+   *
+   * Exposed so the worker's startup line can name them rather than assert a
+   * count someone has to remember to update. A boot log that claimed "0
+   * sweepers registered" for a whole phase after two were added is what
+   * prompted this — an operator reading that line has no other way to check.
+   */
+  get sweeperNames(): readonly string[] {
+    return this.#options.sweepers.map((sweeper) => sweeper.name);
+  }
+
+  /**
    * Begin sweeping. Returns as soon as the first cycle is scheduled; the first
    * cycle itself starts on the next tick, so a caller can `start()` and then
    * finish wiring signal handlers without racing it.

@@ -30,9 +30,20 @@ export const styles = {
     lineHeight: 1.7,
     fontSize: 16,
   } satisfies CSSProperties,
+  /**
+   * `boxSizing` is load-bearing, not tidiness.
+   *
+   * These styles are applied to `<a>` as well as `<button>` — a link that looks
+   * like a button is how every navigation on the participant screens is drawn.
+   * Form controls inherit `border-box` from the user-agent stylesheet and
+   * anchors do not, so `width: 100%` plus padding and a border made an anchor
+   * two pixels wider than its parent and put a horizontal scrollbar on the home
+   * screen at 320px. Stated here so both element types measure the same way.
+   */
   button: {
     display: "block",
     width: "100%",
+    boxSizing: "border-box",
     minHeight: tokens.touchTargetMinPx,
     padding: `${String(tokens.spacing.sm)}px ${String(tokens.spacing.md)}px`,
     fontSize: 17,
@@ -45,6 +56,7 @@ export const styles = {
   secondaryButton: {
     display: "block",
     width: "100%",
+    boxSizing: "border-box",
     minHeight: tokens.touchTargetMinPx,
     padding: `${String(tokens.spacing.sm)}px ${String(tokens.spacing.md)}px`,
     fontSize: 17,

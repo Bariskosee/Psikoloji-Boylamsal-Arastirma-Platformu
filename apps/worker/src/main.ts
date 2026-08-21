@@ -29,16 +29,16 @@ import { startReconciliation } from "./sweepers/index.js";
  * The reconciliation loop starts here too and runs for the life of the process.
  * It is what makes the scheduling guarantee real, and it does not depend on
  * pg-boss: it asks the database what is true rather than what the queue
- * remembers. `sweep.heartbeat` is registered today; the three session sweepers
- * join the same loop once `participant_sessions` exists (see `sweepers/`).
+ * remembers. Registered today: `sweep.heartbeat`, the two session sweepers from
+ * Phase 7, and the two push-subscription sweepers from Phase 8 (see
+ * `sweepers/index.ts` for what each one is for and what is still missing).
  *
  * Current job scope: the queue itself, with ZERO job definitions and ZERO
- * handlers registered. `session.activate`, `session.expire`,
- * `notification.send`, `protocol.materialize` and the four sweepers arrive in
- * Phase 7 against the handler contract in ADR-005, which
- * `sweepers/reconcile.ts` already implements — every one of them re-derives its
- * decision from canonical state and is safe to run twice, out of order, or a
- * week late.
+ * handlers registered. Everything the system needs is done by sweepers, which
+ * is ADR-005 working as intended rather than a gap — jobs make the system
+ * prompt, sweepers make it correct, and nothing so far has needed sub-interval
+ * promptness. `notification.send` arrives in Phase 9 against the handler
+ * contract in ADR-005, which `sweepers/reconcile.ts` already implements.
  */
 async function bootstrap(): Promise<void> {
   const env = loadWorkerEnv();
@@ -129,7 +129,9 @@ async function bootstrap(): Promise<void> {
   console.log(
     `worker started (${env.NODE_ENV}) as "${workerId}"; ` +
       `pg-boss ${queueReady ? "connected as queue owner" : "UNAVAILABLE"}; ` +
-      `${String(queue.registeredQueues.length)} queues, 0 handlers, 0 sweepers registered; ` +
+      `${String(queue.registeredQueues.length)} queues, 0 handlers, ` +
+      `${String(reconciliation.sweeperNames.length)} sweepers ` +
+      `(${reconciliation.sweeperNames.join(", ")}); ` +
       `reconciliation sweeping every ${String(env.SWEEP_INTERVAL_SECONDS)}s`,
   );
 

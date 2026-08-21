@@ -334,6 +334,39 @@ export const ApiErrors = {
       [{ path: `questions.${position}`, message: "Selection bounds exceed the option count" }],
     ),
 
+  /**
+   * No VAPID pair on this deployment (ADR-006).
+   *
+   * 503 rather than 500: nothing is broken, the capability is simply absent
+   * here, and the client's correct response is to carry on without push — a
+   * study running without notifications is degraded, not failed.
+   */
+  pushNotConfigured: () =>
+    new ApiException(
+      "PUSH_NOT_CONFIGURED",
+      HttpStatus.SERVICE_UNAVAILABLE,
+      "Web Push is not configured on this deployment",
+    ),
+
+  pushSubscriptionNotFound: () =>
+    new ApiException(
+      "PUSH_SUBSCRIPTION_NOT_FOUND",
+      HttpStatus.NOT_FOUND,
+      "No such push subscription for this participant",
+    ),
+
+  /**
+   * One code for expired, already-redeemed, and never-existed alike — the same
+   * enumeration reasoning as `participantAuthRequired`. The distinction is
+   * recorded for the operator, never returned to the caller.
+   */
+  handoffCodeInvalid: () =>
+    new ApiException(
+      "HANDOFF_CODE_INVALID",
+      HttpStatus.UNAUTHORIZED,
+      "That install link is no longer valid",
+    ),
+
   rateLimited: (retryAfterSeconds: number) =>
     new ApiException(
       "RATE_LIMITED",

@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 import { AuditModule } from "../audit/audit.module.js";
 import { AuthModule } from "../auth/auth.module.js";
+import { PushModule } from "../push/push.module.js";
 import { SchedulingModule } from "../scheduling/scheduling.module.js";
 import { ContinuityService } from "./continuity.service.js";
 import { ParticipantAuthGuard } from "./guards/participant-auth.guard.js";
@@ -19,9 +20,14 @@ import { ParticipantService } from "./participant.service.js";
  *
  * `AuthModule` is imported for its rate limiter, which enrollment and recovery
  * share with login — one limiter, one place its behaviour is defined.
+ *
+ * `PushModule` is imported so withdrawal can silence a participant's devices
+ * inside its own transaction (Phase 8). The dependency runs this way round
+ * deliberately: push knows nothing about withdrawal, and withdrawal owns the
+ * transaction that everything it stops has to commit with.
  */
 @Module({
-  imports: [AuditModule, AuthModule, SchedulingModule],
+  imports: [AuditModule, AuthModule, PushModule, SchedulingModule],
   controllers: [ParticipantController],
   providers: [
     ParticipantService,

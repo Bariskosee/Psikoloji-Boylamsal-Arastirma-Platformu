@@ -44,8 +44,8 @@ Phase 4    Protocol builder and versioning                                 done
 Phase 5    Participant enrollment, consent, continuity                     done
 Phase 6    Questionnaire runtime: autosave, resume, completion            done
 Phase 7    Longitudinal protocol and scheduling engine                     done
-Phase 8    PWA and push subscription lifecycle                          ← next
-Phase 9    Notification and reminder engine
+Phase 8    PWA and push subscription lifecycle                             done
+Phase 9    Notification and reminder engine                             ← next
 Phase 10   Researcher monitoring and compliance dashboard
 Phase 11   Descriptive analytics and data export
 Phase 12   Hardening: security, observability, i18n completion
@@ -54,10 +54,21 @@ Phase 13   Pilot validation and MVP release gate
 
 **Out of sequence.** ADR-004's job queue and ADR-005's reconciliation loop were
 built ahead of the phase that consumes them, because their *shape* is what the
-scheduling engine's design depends on. Phase 7 has now registered
-`sweep.activate_due` and `sweep.expire_due` against that machinery, which is
-what it was for. `sweep.notifications_due` and every job handler remain
-unregistered until Phase 9 — Phase 7 ships no notifications at all.
+scheduling engine's design depends on. Phase 7 registered `sweep.activate_due`
+and `sweep.expire_due` against that machinery, which is what it was for, and
+Phase 8 added `sweep.expire_subscriptions` and `sweep.prune_subscriptions`.
+`sweep.notifications_due` and every job handler remain unregistered until Phase
+9 — nothing before it sends anything at all.
+
+**One deviation, recorded.** Phase 8's background-job impact is written below as
+"the daily subscription-pruning job only". It shipped as a sweeper in the
+existing reconciliation loop instead. A cron job would have required switching
+on pg-boss scheduling, a queue, a definition and a handler — infrastructure
+Phase 7 deliberately did not build and Phase 9 will design properly around
+sends — while pruning needs none of it: the work is defined entirely by what is
+in the table, it is idempotent by construction, and after the first pass on any
+day the claim returns nothing. "Daily" described how often the work needs
+doing, not the mechanism. See `apps/worker/src/sweepers/push-sweepers.ts`.
 
 **Ordering rationale.** Documentation is consolidated first, because every later phase reads these files as its contract. The questionnaire runtime (6) precedes the scheduling engine (7) because the engine's most important trigger is session completion, which must exist first. Subscriptions (8) precede sending (9). Protocol *definition* (4) is separated from protocol *execution* (7) so the highest-risk subsystem is built against a stable, already-tested data model.
 
