@@ -12,7 +12,7 @@ The core goals are:
 - give researchers a dashboard for compliance and response monitoring,
 - export clean longitudinal datasets for statistical analysis.
 
-> **Project status:** Phases 0–5 are implemented — the core domain and database, researcher authentication, studies and the audit trail, the questionnaire builder, the protocol builder with a timeline preview, and participant enrollment with versioned consent and a continuity credential — along with the background job queue (ADR-004) and the reconciliation sweepers (ADR-005). A participant can join a study and stays the same person across devices and browser restarts, but **nothing is scheduled yet**: the questionnaire runtime is Phase 6 and the engine that materialises sessions from a protocol is Phase 7. See `PLAN.md` for the phased roadmap and `CONTRIBUTING.md` to run it locally.
+> **Project status:** Phases 0–6 are implemented — the core domain and database, researcher authentication, studies and the audit trail, the questionnaire builder, the protocol builder with a timeline preview, participant enrollment with versioned consent and a continuity credential, and the questionnaire runtime with autosave, resume and completion — along with the background job queue (ADR-004) and the reconciliation sweepers (ADR-005). A participant can join a study and answer a questionnaire without losing work. What is still missing is the part that decides **when** they are asked: sessions are created by hand today, and the engine that materialises them from a protocol is Phase 7. See `PLAN.md` for the phased roadmap and `CONTRIBUTING.md` to run it locally.
 
 ---
 

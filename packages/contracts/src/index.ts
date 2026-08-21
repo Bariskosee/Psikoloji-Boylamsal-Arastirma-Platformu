@@ -22,6 +22,8 @@
  *               withdrawal. The continuity token is deliberately absent: it
  *               exists only in an HttpOnly cookie and, hashed, in the identity
  *               schema, so nothing here can serialise it.
+ * Phase 6 adds: session — the runtime's questions, saved answers, autosave
+ *               batch, and completion result.
  */
 
 export * from "./health.js";
