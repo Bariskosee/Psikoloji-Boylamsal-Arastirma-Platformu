@@ -12,7 +12,7 @@ The core goals are:
 - give researchers a dashboard for compliance and response monitoring,
 - export clean longitudinal datasets for statistical analysis.
 
-> **Project status:** Phases 0–6 are implemented — the core domain and database, researcher authentication, studies and the audit trail, the questionnaire builder, the protocol builder with a timeline preview, participant enrollment with versioned consent and a continuity credential, and the questionnaire runtime with autosave, resume and completion — along with the background job queue (ADR-004) and the reconciliation sweepers (ADR-005). A participant can join a study and answer a questionnaire without losing work. What is still missing is the part that decides **when** they are asked: sessions are created by hand today, and the engine that materialises them from a protocol is Phase 7. See `PLAN.md` for the phased roadmap and `CONTRIBUTING.md` to run it locally.
+> **Project status:** Phases 0–7 are implemented. A researcher can define a study, a questionnaire, and a longitudinal protocol; a participant can join it, and the scheduling engine materialises every session their protocol implies and opens each one at its computed instant. The longitudinal loop runs end to end — but **silently**: there are no notifications yet, so a participant only sees new work by opening the app. Push subscriptions are Phase 8 and sending is Phase 9. See `PLAN.md` for the phased roadmap and `CONTRIBUTING.md` to run it locally.
 
 ---
 
