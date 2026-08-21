@@ -37,3 +37,5 @@ export * from "./research/consent-versions";
 export * from "./research/study-groups";
 export * from "./research/participants";
 export * from "./research/enrollments";
+export * from "./research/participant-sessions";
+export * from "./research/responses";

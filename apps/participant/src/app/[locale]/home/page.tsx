@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { tokens } from "@lpr/ui";
-import type { ParticipantMeResponse } from "@lpr/contracts";
+import type { ParticipantMeResponse, SessionListResponse, SessionSummary } from "@lpr/contracts";
 import { api } from "@/lib/api";
 import { ErrorBanner, styles } from "@/lib/ui";
 
@@ -18,8 +18,10 @@ import { ErrorBanner, styles } from "@/lib/ui";
  */
 export default function HomePage() {
   const t = useTranslations("home");
+  const tSessions = useTranslations("sessions");
 
   const [me, setMe] = useState<ParticipantMeResponse | null>(null);
+  const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "anonymous">("loading");
   const [confirming, setConfirming] = useState(false);
   /**
@@ -39,6 +41,15 @@ export default function HomePage() {
   const load = useCallback(async () => {
     try {
       setMe(await api.get<ParticipantMeResponse>("/api/participant/me"));
+      // Fetched separately: a participant with no sessions is the normal case
+      // until Phase 7, and this list failing must not make the home screen
+      // look signed-out.
+      try {
+        const list = await api.get<SessionListResponse>("/api/participant/sessions");
+        setSessions(list.sessions);
+      } catch {
+        setSessions([]);
+      }
       setStatus("ready");
     } catch {
       // Any credential failure lands here: no cookie, unknown, revoked, or past
@@ -90,16 +101,42 @@ export default function HomePage() {
 
   if (!me) return null;
 
+  /**
+   * Only what the participant can actually act on.
+   *
+   * A scheduled session is a promise about the future, and listing it as
+   * something to open would produce a screen full of buttons that refuse.
+   */
+  const open = sessions.filter(
+    (session) => session.status === "AVAILABLE" || session.status === "STARTED",
+  );
+
   return (
     <div style={styles.page}>
       <h1>{t("title")}</h1>
       <p style={{ color: "#5b6472" }}>{t("signedInAs", { study: me.studyName })}</p>
 
       <section style={styles.card}>
-        {me.hasAvailableWork ? null : (
+        {open.length === 0 ? (
           <>
             <p style={{ marginTop: 0, fontSize: 17 }}>{t("nothingDue")}</p>
             <p style={{ color: "#5b6472", marginBottom: 0 }}>{t("nothingDueHint")}</p>
+          </>
+        ) : (
+          <>
+            <p style={{ marginTop: 0, fontWeight: 600 }}>{tSessions("available")}</p>
+            <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+              {open.map((session) => (
+                <li key={session.id} style={{ marginBottom: tokens.spacing.sm }}>
+                  <Link
+                    href={`/sessions/${session.id}`}
+                    style={{ ...styles.button, textAlign: "center", textDecoration: "none" }}
+                  >
+                    {session.questionnaireName} — {tSessions("open")}
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </>
         )}
       </section>

@@ -277,6 +277,55 @@ export const ApiErrors = {
       "This participant has withdrawn from the study",
     ),
 
+  sessionNotFound: () =>
+    new ApiException("SESSION_NOT_FOUND", HttpStatus.NOT_FOUND, "Session not found"),
+
+  sessionNotAvailable: () =>
+    new ApiException(
+      "SESSION_NOT_AVAILABLE",
+      HttpStatus.CONFLICT,
+      "This questionnaire is not open yet",
+    ),
+
+  /**
+   * Decided on the server's clock. A participant whose device clock is wrong —
+   * or set deliberately — gets exactly this answer, which is what makes a
+   * response window a window rather than a suggestion.
+   */
+  sessionWindowClosed: () =>
+    new ApiException(
+      "SESSION_WINDOW_CLOSED",
+      HttpStatus.CONFLICT,
+      "The time window for this questionnaire has closed",
+    ),
+
+  sessionAlreadyCompleted: () =>
+    new ApiException(
+      "SESSION_ALREADY_COMPLETED",
+      HttpStatus.CONFLICT,
+      "This questionnaire has already been submitted",
+    ),
+
+  sessionCancelled: () =>
+    new ApiException("SESSION_CANCELLED", HttpStatus.CONFLICT, "This questionnaire was cancelled"),
+
+  answerRejected: (problem: string) =>
+    new ApiException(
+      "ANSWER_REJECTED",
+      HttpStatus.BAD_REQUEST,
+      `The submitted answer is not valid for this question: ${problem}`,
+      [{ path: "answer", message: problem }],
+    ),
+
+  /** Names every missing question, so the interface can mark them all at once. */
+  requiredQuestionsUnanswered: (questionKeys: readonly string[]) =>
+    new ApiException(
+      "REQUIRED_QUESTIONS_UNANSWERED",
+      HttpStatus.CONFLICT,
+      `${String(questionKeys.length)} required question(s) have not been answered`,
+      questionKeys.map((key) => ({ path: `questions.${key}`, message: "required" })),
+    ),
+
   questionSelectionBoundsUnsatisfiable: (position: number) =>
     new ApiException(
       "QUESTION_SELECTION_BOUNDS_UNSATISFIABLE",

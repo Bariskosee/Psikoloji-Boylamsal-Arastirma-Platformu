@@ -97,6 +97,19 @@ export const API_ERROR_CODES = [
    */
   "PARTICIPANT_AUTH_REQUIRED",
   "PARTICIPANT_WITHDRAWN",
+
+  // Questionnaire runtime (Phase 6)
+  "SESSION_NOT_FOUND",
+  /** The window has not opened yet. */
+  "SESSION_NOT_AVAILABLE",
+  /** The window has closed. Decided on the SERVER clock, always. */
+  "SESSION_WINDOW_CLOSED",
+  "SESSION_ALREADY_COMPLETED",
+  "SESSION_CANCELLED",
+  /** The submitted value is not legal for the question version shown. */
+  "ANSWER_REJECTED",
+  /** Carries the `question_key` of each unanswered required question. */
+  "REQUIRED_QUESTIONS_UNANSWERED",
 ] as const;
 
 export const apiErrorCodeSchema = z.enum(API_ERROR_CODES);

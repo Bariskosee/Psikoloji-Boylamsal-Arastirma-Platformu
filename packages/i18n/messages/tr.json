@@ -368,5 +368,43 @@
     "submit": "Devam et",
     "submitting": "Kontrol ediliyor…",
     "failed": "Bu kod işe yaramadı. Her kod yalnızca bir kez kullanılabilir."
+  },
+  "runtime": {
+    "loading": "Yükleniyor…",
+    "notFound": "Bu anketi bulamadık.",
+    "notAvailable": "Bu anket henüz açılmadı.",
+    "windowClosed": "Bu anketin süresi doldu.",
+    "alreadyCompleted": "Bu anketi zaten gönderdiniz.",
+    "cancelled": "Bu anket iptal edildi.",
+    "pageOf": "Sayfa {page} / {total}",
+    "progress": "{total} sorudan {answered} tanesi yanıtlandı",
+    "required": "Zorunlu",
+    "next": "İleri",
+    "back": "Geri",
+    "submit": "Gönder",
+    "submitting": "Gönderiliyor…",
+    "missingRequired": "Lütfen bu sayfadaki zorunlu soruları yanıtlayın.",
+    "missingRequiredOnSubmit": "Bazı zorunlu sorular yanıtlanmadı.",
+    "saveError": "Bunu kaydedemedik. Otomatik olarak yeniden denenecek.",
+    "clear": "Yanıtı temizle",
+    "numberPlaceholder": "Bir sayı girin",
+    "textPlaceholder": "Yanıtınızı yazın",
+    "saveState": {
+      "saved": "Kaydedildi",
+      "saving": "Kaydediliyor…",
+      "pending": "Kaydedilmeyi bekliyor",
+      "offline": "Çevrimdışı — yanıtlarınız bu cihazda saklanıyor"
+    },
+    "done": {
+      "title": "Teşekkürler",
+      "body": "Yanıtlarınız gönderildi.",
+      "back": "Çalışmama dön"
+    }
+  },
+  "sessions": {
+    "available": "Şimdi sizin için hazır",
+    "open": "Aç",
+    "closesAt": "{at} tarihinde kapanıyor",
+    "none": "Şu anda tamamlamanız gereken bir şey yok."
   }
 }

@@ -22,7 +22,9 @@
  *               preview the builder and the Phase 7 engine both call.
  * Phase 5 adds: participant/ — public and recovery code generation, the
  *               continuity rotation policy, and weighted group allocation.
- * Later phases add: state-machine/, compliance/, missingness/, export/.
+ * Phase 6 adds: session/ — the ParticipantSession state machine, per-type
+ *               answer validation, and the autosave revision rule.
+ * Later phases add: compliance/, missingness/, export/.
  */
 
 export * from "./clock.js";
@@ -41,3 +43,5 @@ export * from "./protocol/preview.js";
 export * from "./participant/identity.js";
 export * from "./participant/continuity.js";
 export * from "./participant/group-allocation.js";
+export * from "./session/state-machine.js";
+export * from "./session/answer-validation.js";

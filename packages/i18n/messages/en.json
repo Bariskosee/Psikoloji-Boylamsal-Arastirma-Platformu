@@ -368,5 +368,43 @@
     "submit": "Continue",
     "submitting": "Checking…",
     "failed": "That code did not work. Each code can be used only once."
+  },
+  "runtime": {
+    "loading": "Loading…",
+    "notFound": "We could not find this questionnaire.",
+    "notAvailable": "This questionnaire is not open yet.",
+    "windowClosed": "The time window for this questionnaire has closed.",
+    "alreadyCompleted": "You have already submitted this questionnaire.",
+    "cancelled": "This questionnaire was cancelled.",
+    "pageOf": "Page {page} of {total}",
+    "progress": "{answered} of {total} answered",
+    "required": "Required",
+    "next": "Next",
+    "back": "Back",
+    "submit": "Submit",
+    "submitting": "Submitting…",
+    "missingRequired": "Please answer the required questions on this page.",
+    "missingRequiredOnSubmit": "Some required questions have not been answered.",
+    "saveError": "We could not save that. It will be retried automatically.",
+    "clear": "Clear answer",
+    "numberPlaceholder": "Enter a number",
+    "textPlaceholder": "Type your answer",
+    "saveState": {
+      "saved": "Saved",
+      "saving": "Saving…",
+      "pending": "Waiting to save",
+      "offline": "Offline — your answers are saved on this device"
+    },
+    "done": {
+      "title": "Thank you",
+      "body": "Your answers have been submitted.",
+      "back": "Back to my study"
+    }
+  },
+  "sessions": {
+    "available": "Ready for you now",
+    "open": "Open",
+    "closesAt": "Closes {at}",
+    "none": "There is nothing to complete right now."
   }
 }
