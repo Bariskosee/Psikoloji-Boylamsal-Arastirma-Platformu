@@ -1,5 +1,5 @@
 import type { CookieOptions, Response } from "express";
-import { CSRF_COOKIE_NAME, SESSION_COOKIE_NAME } from "@lpr/contracts";
+import { CSRF_COOKIE_NAME, PARTICIPANT_COOKIE_NAME, SESSION_COOKIE_NAME } from "@lpr/contracts";
 
 /**
  * Cookie handling for researcher sessions.
@@ -40,6 +40,27 @@ export function setCsrfCookie(res: Response, token: string, settings: CookieSett
     // The token authorises nothing on its own; it only proves the caller could
     // read a same-site response, which a cross-site attacker cannot.
     httpOnly: false,
+  });
+}
+
+/**
+ * The participant continuity cookie (STRUCTURE.md §11.3).
+ *
+ * HttpOnly without exception. The token IS the participant's identity — there
+ * is no password behind it — so script must never be able to read it, and it
+ * must never reach a URL, a log, or `localStorage`. Everything the participant
+ * application needs is served from endpoints that read this cookie; the client
+ * never sees the value.
+ */
+export function setParticipantCookie(res: Response, token: string, settings: CookieSettings): void {
+  res.cookie(PARTICIPANT_COOKIE_NAME, token, { ...baseOptions(settings), httpOnly: true });
+}
+
+export function clearParticipantCookie(res: Response, settings: CookieSettings): void {
+  res.clearCookie(PARTICIPANT_COOKIE_NAME, {
+    ...baseOptions(settings),
+    maxAge: undefined,
+    httpOnly: true,
   });
 }
 

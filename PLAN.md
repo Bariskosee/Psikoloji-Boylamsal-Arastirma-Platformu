@@ -34,14 +34,14 @@ The MVP is complete only when the end-to-end acceptance scenario in `REQUIREMENT
 ## 3. Phase Sequence
 
 ```text
-Phase D    Documentation consolidation          (Markdown only — no code)
+Phase D    Documentation consolidation          (Markdown only — no code)   done
 ────────── READINESS GATE ──────────────────────────────────────────────
-Phase 0    Foundation and architecture records
-Phase 1    Core domain and database
-Phase 2    Researcher authentication, studies, audit
-Phase 3    Questionnaire builder and versioning
-Phase 4    Protocol builder and versioning
-Phase 5    Participant enrollment, consent, continuity
+Phase 0    Foundation and architecture records                             done
+Phase 1    Core domain and database                                        done
+Phase 2    Researcher authentication, studies, audit                       done
+Phase 3    Questionnaire builder and versioning                            done
+Phase 4    Protocol builder and versioning                                 done
+Phase 5    Participant enrollment, consent, continuity                  ← next
 Phase 6    Questionnaire runtime: autosave, resume, completion
 Phase 7    Longitudinal protocol and scheduling engine
 Phase 8    PWA and push subscription lifecycle
@@ -51,6 +51,12 @@ Phase 11   Descriptive analytics and data export
 Phase 12   Hardening: security, observability, i18n completion
 Phase 13   Pilot validation and MVP release gate
 ```
+
+**Out of sequence.** ADR-004's job queue and ADR-005's reconciliation loop are
+built already, ahead of the phase that consumes them. Both are infrastructure
+whose *shape* the scheduling engine depends on, and deciding it late would have
+meant designing Phase 7 against a queue nobody had run. No handler and no
+session sweeper is registered: the mechanism exists, the behaviour does not.
 
 **Ordering rationale.** Documentation is consolidated first, because every later phase reads these files as its contract. The questionnaire runtime (6) precedes the scheduling engine (7) because the engine's most important trigger is session completion, which must exist first. Subscriptions (8) precede sending (9). Protocol *definition* (4) is separated from protocol *execution* (7) so the highest-risk subsystem is built against a stable, already-tested data model.
 

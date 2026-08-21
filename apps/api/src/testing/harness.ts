@@ -77,10 +77,20 @@ export async function createHarness(): Promise<Harness> {
  */
 export async function resetDatabase(db: Database): Promise<void> {
   await db.execute(
+    // The identity participant tables are listed EXPLICITLY. They carry no
+    // foreign key into `research` — that separation is deliberate (see
+    // `participant-credentials.ts`) — so CASCADE from a research table does not
+    // reach them, and a credential left behind would let one test's participant
+    // authenticate in the next.
     `TRUNCATE research.audit_events, research.question_option_translations,
              research.question_options, research.question_version_translations,
              research.question_versions, research.questionnaire_versions,
-             research.questionnaires, research.study_members, research.studies,
+             research.questionnaires, research.enrollments, research.participants,
+             research.consent_version_translations, research.consent_versions,
+             research.protocol_steps, research.reminder_policies,
+             research.protocol_versions, research.protocols,
+             research.study_groups, research.study_members, research.studies,
+             identity.participant_recovery_codes, identity.participant_credentials,
              identity.researcher_sessions, identity.researcher_users
      RESTART IDENTITY CASCADE` as never,
   );

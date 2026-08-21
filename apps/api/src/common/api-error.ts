@@ -221,6 +221,62 @@ export const ApiErrors = {
       [{ path: `steps.${stepKey}`, message: "Duplicate step key" }],
     ),
 
+  consentVersionNotFound: () =>
+    new ApiException(
+      "CONSENT_VERSION_NOT_FOUND",
+      HttpStatus.NOT_FOUND,
+      "Consent version not found",
+    ),
+
+  consentVersionEmpty: () =>
+    new ApiException(
+      "CONSENT_VERSION_EMPTY",
+      HttpStatus.CONFLICT,
+      "A consent version needs text in at least one language before it can be published",
+    ),
+
+  consentVersionStale: () =>
+    new ApiException(
+      "CONSENT_VERSION_STALE",
+      HttpStatus.CONFLICT,
+      "The consent document changed while you were reading it; please review the current one",
+    ),
+
+  studyNotAcceptingEnrollments: () =>
+    new ApiException(
+      "STUDY_NOT_ACCEPTING_ENROLLMENTS",
+      HttpStatus.CONFLICT,
+      "This study is not accepting new participants",
+    ),
+
+  participantNotFound: () =>
+    new ApiException("PARTICIPANT_NOT_FOUND", HttpStatus.NOT_FOUND, "Participant not found"),
+
+  participantCodeUnavailable: () =>
+    new ApiException(
+      "PARTICIPANT_CODE_UNAVAILABLE",
+      HttpStatus.CONFLICT,
+      "Could not allocate a participant code; please try again",
+    ),
+
+  /**
+   * One code for absent, unknown, revoked and expired alike. Telling them
+   * apart would confirm to a caller that a token they hold once existed.
+   */
+  participantAuthRequired: () =>
+    new ApiException(
+      "PARTICIPANT_AUTH_REQUIRED",
+      HttpStatus.UNAUTHORIZED,
+      "This request needs a valid participant credential",
+    ),
+
+  participantWithdrawn: () =>
+    new ApiException(
+      "PARTICIPANT_WITHDRAWN",
+      HttpStatus.FORBIDDEN,
+      "This participant has withdrawn from the study",
+    ),
+
   questionSelectionBoundsUnsatisfiable: (position: number) =>
     new ApiException(
       "QUESTION_SELECTION_BOUNDS_UNSATISFIABLE",

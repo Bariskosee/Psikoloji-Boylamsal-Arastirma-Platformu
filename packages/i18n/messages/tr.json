@@ -321,5 +321,52 @@
       "PROTOCOL_DUPLICATE_STEP_KEY": "İki adım aynı anahtarı paylaşıyor; bu, dışa aktarım sütunlarını birleştirir.",
       "QUESTIONNAIRE_VERSION_NOT_PUBLISHED": "Bir adım yalnızca yayımlanmış bir anket sürümünü uygulayabilir."
     }
+  },
+  "join": {
+    "loading": "Yükleniyor…",
+    "notFound": "Bu bağlantıya ait bir çalışma bulamadık. Bağlantıyı kontrol edin veya araştırma ekibine sorun.",
+    "closed": "Bu çalışma şu anda yeni katılımcı kabul etmiyor.",
+    "aboutTitle": "Bu çalışma hakkında",
+    "consentTitle": "Onam",
+    "readCarefully": "Karar vermeden önce lütfen dikkatle okuyun.",
+    "agree": "Yukarıdaki bilgileri okudum ve katılmayı kabul ediyorum.",
+    "continue": "Devam et",
+    "joining": "Katılıyorsunuz…",
+    "error": "Bir şeyler ters gitti. Lütfen tekrar deneyin.",
+    "consentStale": "Siz okurken onam bilgileri güncellendi. Lütfen tekrar okuyun.",
+    "language": "Dil"
+  },
+  "identity": {
+    "title": "Kaydınız tamamlandı",
+    "codeLabel": "Katılımcı kodunuz",
+    "recoveryTitle": "Bu kurtarma kodunu saklayın",
+    "recoveryBody": "Bu cihaza erişiminizi kaybederseniz veya tarayıcı verilerinizi silerseniz, çalışmaya geri dönmenin tek yolu bu koddur. Kodu tekrar gösteremeyiz ve sizin için kurtaramayız.",
+    "acknowledge": "Kurtarma kodumu güvenli bir yere kaydettim.",
+    "continue": "Çalışmama git"
+  },
+  "home": {
+    "title": "Çalışmanız",
+    "nothingDue": "Şu anda tamamlamanız gereken bir şey yok.",
+    "nothingDueHint": "Sizin için bir şey hazır olduğunda haber vereceğiz.",
+    "yourCode": "Katılımcı kodunuz",
+    "signedInAs": "{study} çalışmasına katılıyorsunuz.",
+    "withdrawnTitle": "Çalışmadan ayrıldınız",
+    "withdrawnBody": "Sizden başka bir şey tamamlamanız istenmeyecek. Daha önce verdiğiniz yanıtlar çalışmanın parçası olarak kalır.",
+    "settings": "Ayarlar",
+    "withdraw": "Çalışmadan ayrıl",
+    "withdrawConfirm": "Ayrılmak tüm anketleri ve hatırlatmaları durdurur. Daha önce verdiğiniz yanıtlar çalışmada kalır. Bu geri alınamaz.",
+    "withdrawReason": "Sebep (isteğe bağlı)",
+    "withdrawAction": "Ayrıl",
+    "cancel": "Vazgeç",
+    "recover": "Kurtarma kodum var",
+    "notSignedIn": "Bu cihazda katılımınızı bulamadık."
+  },
+  "recover": {
+    "title": "Kurtarma kodunuzu kullanın",
+    "body": "Katıldığınızda kaydettiğiniz sekiz karakterli kodu girin.",
+    "codeLabel": "Kurtarma kodu",
+    "submit": "Devam et",
+    "submitting": "Kontrol ediliyor…",
+    "failed": "Bu kod işe yaramadı. Her kod yalnızca bir kez kullanılabilir."
   }
 }

@@ -16,6 +16,7 @@ export * from "./schemas";
 // identity — re-identifying data and authentication secrets.
 export * from "./identity/researcher-users";
 export * from "./identity/researcher-sessions";
+export * from "./identity/participant-credentials";
 
 // research — canonical research data.
 export * from "./research/studies";
@@ -32,3 +33,7 @@ export * from "./research/protocols";
 export * from "./research/protocol-versions";
 export * from "./research/reminder-policies";
 export * from "./research/protocol-steps";
+export * from "./research/consent-versions";
+export * from "./research/study-groups";
+export * from "./research/participants";
+export * from "./research/enrollments";
