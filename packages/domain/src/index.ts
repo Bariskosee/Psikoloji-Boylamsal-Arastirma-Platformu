@@ -45,3 +45,4 @@ export * from "./participant/continuity.js";
 export * from "./participant/group-allocation.js";
 export * from "./session/state-machine.js";
 export * from "./session/answer-validation.js";
+export * from "./session/materialisation.js";

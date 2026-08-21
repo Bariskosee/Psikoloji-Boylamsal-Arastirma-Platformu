@@ -41,6 +41,7 @@ import type {
 } from "@lpr/contracts";
 import { ApiErrors } from "../../common/api-error.js";
 import { DATABASE } from "../database/database.module.js";
+import { MaterialisationService } from "../scheduling/materialisation.service.js";
 
 type SessionRow = typeof participantSessions.$inferSelect;
 
@@ -64,7 +65,10 @@ type SessionRow = typeof participantSessions.$inferSelect;
  */
 @Injectable()
 export class SessionService {
-  constructor(@Inject(DATABASE) private readonly db: Database) {}
+  constructor(
+    @Inject(DATABASE) private readonly db: Database,
+    private readonly materialisation: MaterialisationService,
+  ) {}
 
   async list(participantId: string): Promise<SessionListResponse> {
     const rows = await this.db
@@ -332,6 +336,17 @@ export class SessionService {
         .update(participantSessions)
         .set({ status: "COMPLETED", completedAt: now })
         .where(eq(participantSessions.id, session.id));
+
+      /**
+       * Anything waiting on this step becomes schedulable, in THIS transaction.
+       *
+       * Doing it afterwards — or from a job — would leave a window in which the
+       * participant's baseline is complete and the follow-up it implies does
+       * not exist. A crash there is invisible: nothing records that the
+       * propagation was owed, which is exactly the failure ADR-005 exists to
+       * make impossible for everything else.
+       */
+      await this.materialisation.propagate(tx, session.id, session.protocolStepId, now, now);
 
       const submission = (
         await tx

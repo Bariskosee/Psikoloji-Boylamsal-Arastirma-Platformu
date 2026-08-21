@@ -162,28 +162,29 @@ async function openSession(window?: { from: Date; until: Date }): Promise<Fixtur
   );
   const participantId = (participantRow as unknown as { rows: { id: string }[] }).rows[0]?.id ?? "";
 
+  /**
+   * The session already exists.
+   *
+   * Phase 6 inserted one by hand — PLAN.md called that "created manually via
+   * test fixtures" — but Phase 7's engine materialises it during enrollment,
+   * and a second insert now collides on the (participant, step, occurrence)
+   * unique index. Adjusting the materialised row instead is also the better
+   * test: the runtime is exercised against a session the engine produced.
+   */
   const from = window?.from ?? new Date(Date.now() - 60_000);
   const until = window?.until ?? new Date(Date.now() + 3_600_000);
 
-  const inserted = await harness.db
-    .insert(participantSessions)
-    .values({
-      participantId,
-      studyId,
-      protocolVersionId: publishedProtocol.body.id,
-      protocolStepId: stepId,
-      occurrenceIndex: 0,
-      questionnaireVersionId: publishedQuestionnaire.body.id,
-      status: "AVAILABLE",
-      availableFrom: from,
-      availableUntil: until,
-    })
+  const materialised = await harness.db
+    .update(participantSessions)
+    .set({ status: "AVAILABLE", availableFrom: from, availableUntil: until })
+    .where(eq(participantSessions.participantId, participantId))
     .returning();
 
   void optional;
+  void stepId;
   return {
     cookie,
-    sessionId: inserted[0]?.id ?? "",
+    sessionId: materialised[0]?.id ?? "",
     questionIds: { required: qrows[0]?.id ?? "", optional: qrows[1]?.id ?? "" },
     optionIds,
   };

@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 import { AuditModule } from "../audit/audit.module.js";
 import { AuthModule } from "../auth/auth.module.js";
+import { SchedulingModule } from "../scheduling/scheduling.module.js";
 import { ContinuityService } from "./continuity.service.js";
 import { ParticipantAuthGuard } from "./guards/participant-auth.guard.js";
 import { ParticipantController } from "./participant.controller.js";
@@ -20,7 +21,7 @@ import { ParticipantService } from "./participant.service.js";
  * share with login — one limiter, one place its behaviour is defined.
  */
 @Module({
-  imports: [AuditModule, AuthModule],
+  imports: [AuditModule, AuthModule, SchedulingModule],
   controllers: [ParticipantController],
   providers: [
     ParticipantService,
