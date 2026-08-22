@@ -210,6 +210,22 @@ export default function NotificationsPage() {
         <p style={{ fontSize: 14, color: "#5b6472" }}>{t("noGuarantee")}</p>
       ) : null}
 
+      {/*
+        The contact record. Reachable whatever the permission state, because a
+        participant with notifications blocked is exactly the one likely to ask
+        what they have missed.
+      */}
+      <Link
+        href="/notifications/history"
+        style={{
+          ...styles.secondaryButton,
+          textAlign: "center",
+          textDecoration: "none",
+          marginTop: tokens.spacing.sm,
+        }}
+      >
+        {t("historyOpen")}
+      </Link>
       <Link
         href="/home"
         style={{

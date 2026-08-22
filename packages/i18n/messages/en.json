@@ -467,11 +467,35 @@
     "noGuarantee": "Notifications depend on your device and network, so they can be late or not arrive at all. Opening the study is always the reliable way to check.",
     "failed": "We could not change your notification setting. Please try again.",
     "permissionDismissed": "You did not answer the permission request, so nothing has changed.",
-    "back": "Back to my study"
+    "back": "Back to my study",
+    "historyTitle": "What we have sent you",
+    "historyEmpty": "We have not sent you anything yet.",
+    "historyOpen": "See what we have sent",
+    "historyBack": "Back to notifications",
+    "outcomeSentAccepted": "Sent",
+    "outcomeAttempted": "Sent",
+    "outcomeFailed": "Could not be sent",
+    "outcomeSuppressed": "Not sent",
+    "kindInitial": "New questionnaire",
+    "kindReminder": "Reminder",
+    "reasonState": "You had already finished it.",
+    "reasonExpired": "The questionnaire had already closed.",
+    "reasonWithdrawn": "You had withdrawn from the study.",
+    "reasonCap": "You had already had the maximum number of reminders.",
+    "reasonNoSubscription": "This device was not set up for notifications.",
+    "reasonQuietHours": "It was inside your quiet hours.",
+    "reasonStale": "The system was unavailable and it was too late to send.",
+    "acceptedNote": "“Sent” means a notification service accepted the message. It cannot tell us whether your device received or showed it."
   },
   "updatePrompt": {
     "message": "A new version of the study app is ready.",
     "action": "Update now",
     "dismiss": "Later"
+  },
+  "push": {
+    "initialTitle": "A questionnaire is ready",
+    "initialBody": "Tap to open it in the study app.",
+    "reminderTitle": "A questionnaire is still open",
+    "reminderBody": "It closes soon. Tap to open it."
   }
 }

@@ -11,3 +11,4 @@
 export * from "./job-definition.js";
 export * from "./queue.js";
 export * from "./transaction.js";
+export * from "./definitions.js";

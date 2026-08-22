@@ -467,11 +467,35 @@
     "noGuarantee": "Bildirimler cihazınıza ve ağınıza bağlıdır; gecikebilir veya hiç ulaşmayabilir. Kontrol etmenin güvenilir yolu her zaman çalışmayı açmaktır.",
     "failed": "Bildirim ayarınızı değiştiremedik. Lütfen tekrar deneyin.",
     "permissionDismissed": "İzin isteğini yanıtlamadınız, bu yüzden hiçbir şey değişmedi.",
-    "back": "Çalışmama dön"
+    "back": "Çalışmama dön",
+    "historyTitle": "Size gönderdiklerimiz",
+    "historyEmpty": "Henüz size bir şey göndermedik.",
+    "historyOpen": "Gönderdiklerimizi gör",
+    "historyBack": "Bildirimlere dön",
+    "outcomeSentAccepted": "Gönderildi",
+    "outcomeAttempted": "Gönderildi",
+    "outcomeFailed": "Gönderilemedi",
+    "outcomeSuppressed": "Gönderilmedi",
+    "kindInitial": "Yeni anket",
+    "kindReminder": "Hatırlatma",
+    "reasonState": "Anketi zaten tamamlamıştınız.",
+    "reasonExpired": "Anket çoktan kapanmıştı.",
+    "reasonWithdrawn": "Çalışmadan ayrılmıştınız.",
+    "reasonCap": "Bu anket için en fazla sayıda hatırlatmayı almıştınız.",
+    "reasonNoSubscription": "Bu cihaz bildirim için ayarlanmamıştı.",
+    "reasonQuietHours": "Sessiz saatlerinizin içindeydi.",
+    "reasonStale": "Sistem kullanılamıyordu ve göndermek için çok geç kalınmıştı.",
+    "acceptedNote": "“Gönderildi”, bir bildirim servisinin mesajı kabul ettiği anlamına gelir. Cihazınızın onu aldığını veya gösterdiğini bize söyleyemez."
   },
   "updatePrompt": {
     "message": "Çalışma uygulamasının yeni bir sürümü hazır.",
     "action": "Şimdi güncelle",
     "dismiss": "Sonra"
+  },
+  "push": {
+    "initialTitle": "Bir anket hazır",
+    "initialBody": "Çalışma uygulamasında açmak için dokunun.",
+    "reminderTitle": "Bir anket hâlâ açık",
+    "reminderBody": "Yakında kapanıyor. Açmak için dokunun."
   }
 }

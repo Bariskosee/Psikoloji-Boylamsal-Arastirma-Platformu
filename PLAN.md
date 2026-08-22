@@ -45,8 +45,8 @@ Phase 5    Participant enrollment, consent, continuity                     done
 Phase 6    Questionnaire runtime: autosave, resume, completion            done
 Phase 7    Longitudinal protocol and scheduling engine                     done
 Phase 8    PWA and push subscription lifecycle                             done
-Phase 9    Notification and reminder engine                             ← next
-Phase 10   Researcher monitoring and compliance dashboard
+Phase 9    Notification and reminder engine                                 done
+Phase 10   Researcher monitoring and compliance dashboard               ← next
 Phase 11   Descriptive analytics and data export
 Phase 12   Hardening: security, observability, i18n completion
 Phase 13   Pilot validation and MVP release gate
@@ -57,8 +57,20 @@ built ahead of the phase that consumes them, because their *shape* is what the
 scheduling engine's design depends on. Phase 7 registered `sweep.activate_due`
 and `sweep.expire_due` against that machinery, which is what it was for, and
 Phase 8 added `sweep.expire_subscriptions` and `sweep.prune_subscriptions`.
-`sweep.notifications_due` and every job handler remain unregistered until Phase
-9 — nothing before it sends anything at all.
+Phase 9 registered `sweep.notifications_due` and, for the first time, an actual
+job: `notification.send`. Everything up to it was done by sweepers alone, which
+is ADR-005 working as designed — a reminder is simply the first piece of work
+where promptness is the point rather than a nicety.
+
+**A second deviation, recorded.** STRUCTURE.md §9.1 sketches the reminder chain
+as starting from an enqueue at the moment a session becomes AVAILABLE. It starts
+from `sweep.notifications_due` instead. That sweeper must already derive "this
+open session has never been notified" in order to be a safety net at all, so an
+activation-time enqueue would be a second path to the same conclusion — and a
+second path is a second thing that can disagree, in a subsystem whose worst
+failure is notifying someone twice. The cost is that an initial notification can
+be up to one sweep interval late: sixty seconds, against reminder cadences
+measured in hours, and well inside the staleness guard's fifteen-minute floor.
 
 **One deviation, recorded.** Phase 8's background-job impact is written below as
 "the daily subscription-pruning job only". It shipped as a sweeper in the

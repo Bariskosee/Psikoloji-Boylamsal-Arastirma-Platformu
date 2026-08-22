@@ -479,7 +479,7 @@ The endline shares the block's origin instead of chaining off its last occurrenc
 
 ### 8.4 Reconciliation sweepers
 
-Sweepers on a 60-second loop, each holding a cross-replica advisory lock on its own name so only one instance runs at a time. Registered today: `sweep.activate_due`, `sweep.expire_due`, `sweep.expire_subscriptions`, `sweep.prune_subscriptions`, and `sweep.heartbeat`. `sweep.notifications_due` arrives with Phase 9, when `notification_attempts` exists.
+Sweepers on a 60-second loop, each holding a cross-replica advisory lock on its own name so only one instance runs at a time. Registered today: `sweep.activate_due`, `sweep.expire_due`, `sweep.notifications_due`, `sweep.expire_subscriptions`, `sweep.prune_subscriptions`, and `sweep.heartbeat`.
 
 ```sql
 -- sweep.activate_due
@@ -502,10 +502,13 @@ SELECT id FROM identity.push_subscriptions
 WHERE NOT is_active AND deactivated_at <= now() - INTERVAL '30 days'
 FOR UPDATE SKIP LOCKED LIMIT 500;
 
--- sweep.notifications_due   (Phase 9)
---   sessions in AVAILABLE/STARTED, window open, active subscription,
---   whose next due notification has no notification_attempts row
-FOR UPDATE SKIP LOCKED LIMIT 500;
+-- sweep.notifications_due
+--   open sessions whose NEXT owed chain link is due, derived from
+--   notification_attempts alone: no attempt yet → INITIAL at
+--   available_from + initial_delay; otherwise the link after the highest
+--   recorded, due one interval after that link's scheduled_for.
+--   No FOR UPDATE here — processNotification takes the per-session lock.
+LIMIT 500;
 
 -- sweep.heartbeat
 --   write system_heartbeats(worker_id, swept_at); alert if stale > 5 min
@@ -558,10 +561,12 @@ Retries use exponential backoff with a limit of 5. Exhausted jobs land in the de
 
 Reminders are **self-chaining, not pre-scheduled**. Reminder *n*'s handler schedules reminder *n+1*. There is no fan-out of jobs that must later be cancelled.
 
+**As built, the chain starts from `sweep.notifications_due`, not from an enqueue on activation.** That sweeper must already derive "this open session has never been notified" to be a safety net at all, so an activation-time enqueue would be a second path to the same conclusion — and in a subsystem whose worst failure is notifying someone twice, a second path is a second thing that can disagree. An initial notification can therefore be up to one sweep interval late, which is sixty seconds against cadences measured in hours.
+
 ```text
-session becomes AVAILABLE
-  └─ enqueue notification.send(kind=INITIAL, occurrence=0)
-        delay = reminder_policy.initial_delay_iso
+open session with no attempt yet, initial delay elapsed
+  └─ sweep.notifications_due runs notification.send(kind=INITIAL, occurrence=0)
+        due at available_from + reminder_policy.initial_delay_iso
 
   handler(session, kind, occurrence):
     BEGIN; SELECT … FOR UPDATE on session

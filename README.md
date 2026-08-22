@@ -12,7 +12,7 @@ The core goals are:
 - give researchers a dashboard for compliance and response monitoring,
 - export clean longitudinal datasets for statistical analysis.
 
-> **Project status:** Phases 0–8 are implemented. A researcher can define a study, a questionnaire, and a longitudinal protocol; a participant can join it, install it to their Home Screen, and the scheduling engine materialises every session their protocol implies and opens each one at its computed instant. The participant application is an installable PWA that holds a valid push subscription — including the one-time handoff that keeps an iOS participant the same person after they install. The loop still runs **silently**: Phase 8 collects subscriptions and sends nothing, so a participant still sees new work only by opening the app. Sending is Phase 9. See `PLAN.md` for the phased roadmap and `CONTRIBUTING.md` to run it locally.
+> **Project status:** Phases 0–9 are implemented. A researcher can define a study, a questionnaire, and a longitudinal protocol; a participant can join it, install it to their Home Screen, and the scheduling engine materialises every session their protocol implies and opens each one at its computed instant. **The loop is no longer silent:** a session becoming available notifies the participant, reminders follow the researcher's configured cadence and cap, and completing a questionnaire stops them the moment it happens. Delivery is never claimed — the strongest thing this system observes is that a push service accepted a message. What remains is the researcher's view of all this: monitoring and compliance (Phase 10), analytics and export (Phase 11). See `PLAN.md` for the phased roadmap and `CONTRIBUTING.md` to run it locally.
 
 ---
 

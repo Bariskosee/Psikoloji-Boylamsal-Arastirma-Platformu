@@ -367,6 +367,20 @@ export const ApiErrors = {
       "That install link is no longer valid",
     ),
 
+  /**
+   * A client-reported event that matches no attempt of this participant's.
+   *
+   * 404, and identical whether the attempt does not exist or belongs to
+   * somebody else. Best-effort client reports are not worth an oracle telling a
+   * caller which sessions other people were notified about.
+   */
+  notificationAttemptNotFound: () =>
+    new ApiException(
+      "NOTIFICATION_ATTEMPT_NOT_FOUND",
+      HttpStatus.NOT_FOUND,
+      "No such notification attempt for this participant",
+    ),
+
   rateLimited: (retryAfterSeconds: number) =>
     new ApiException(
       "RATE_LIMITED",

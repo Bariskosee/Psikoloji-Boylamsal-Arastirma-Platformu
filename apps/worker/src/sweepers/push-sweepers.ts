@@ -30,10 +30,13 @@ import type { SweepContext, SweepOutcome, Sweeper } from "./sweeper.js";
  * A pruned row is a push endpoint we no longer hold. That is the desirable
  * direction: it is re-identifying data (STRUCTURE.md §11.1) and keeping it past
  * its usefulness is the retention question a data protection review asks first.
- * Nothing downstream references `push_subscriptions.id` in Phase 8 — Phase 9's
- * `notification_attempts` will, and when it does its foreign key will have to
- * be `ON DELETE SET NULL`, because the attempt record is research evidence and
- * the endpoint is not.
+ * Phase 9's `notification_attempts` records which subscription an attempt went
+ * to, and deliberately carries NO foreign key to it — the two tables are in
+ * different schemas, and a cross-schema constraint would reintroduce the
+ * coupling ADR-003 separated them to avoid. Pruning is therefore safe by
+ * construction: deleting a dead endpoint leaves every attempt intact, which is
+ * right, because the attempt is research evidence and the endpoint was only
+ * ever the means of delivery.
  */
 
 interface SubscriptionRow {

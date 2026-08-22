@@ -16,18 +16,21 @@
     "@lpr/contracts": "workspace:*",
     "@lpr/db": "workspace:*",
     "@lpr/domain": "workspace:*",
+    "@lpr/i18n": "workspace:*",
     "@nestjs/common": "^11.0.1",
     "@nestjs/core": "^11.0.1",
     "@sentry/node": "^8.47.0",
     "dotenv": "^17.4.2",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "web-push": "^3.6.7",
     "zod": "^3.24.1"
   },
   "devDependencies": {
     "@lpr/config": "workspace:*",
     "@nestjs/cli": "^11.0.24",
     "@types/node": "^22.10.2",
+    "@types/web-push": "^3.6.4",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
   }

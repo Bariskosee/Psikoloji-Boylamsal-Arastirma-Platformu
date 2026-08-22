@@ -40,3 +40,4 @@ export * from "./research/participants";
 export * from "./research/enrollments";
 export * from "./research/participant-sessions";
 export * from "./research/responses";
+export * from "./research/notification-attempts";

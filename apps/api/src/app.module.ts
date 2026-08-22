@@ -10,6 +10,7 @@ import { StudyPermissionGuard } from "./modules/auth/guards/study-permission.gua
 import { DatabaseModule } from "./modules/database/database.module.js";
 import { HealthModule } from "./modules/health/health.module.js";
 import { ConsentModule } from "./modules/consent/consent.module.js";
+import { NotificationModule } from "./modules/notification/notification.module.js";
 import { ParticipantModule } from "./modules/participant/participant.module.js";
 import { ProtocolModule } from "./modules/protocol/protocol.module.js";
 import { PushModule } from "./modules/push/push.module.js";
@@ -37,8 +38,8 @@ import { StudyModule } from "./modules/study/study.module.js";
  *   CsrfGuard             needs request.auth for the double-submit comparison
  *   StudyPermissionGuard  needs request.auth for the membership lookup
  *
- * The remaining domain modules — notification, analytics, export — arrive in
- * Phase 9 onward.
+ * The remaining domain modules — analytics and export — arrive in Phase 10
+ * onward.
  */
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { StudyModule } from "./modules/study/study.module.js";
     QuestionnaireModule,
     ProtocolModule,
     ConsentModule,
+    NotificationModule,
     ParticipantModule,
     PushModule,
     SessionModule,

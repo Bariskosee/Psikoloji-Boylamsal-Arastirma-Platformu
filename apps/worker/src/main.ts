@@ -3,8 +3,15 @@ import "./config/load-env.js";
 import "reflect-metadata";
 import { hostname } from "node:os";
 import * as Sentry from "@sentry/node";
-import { createJobQueue, createPool, type JobQueue, type Pool } from "@lpr/db";
-import { loadWorkerEnv } from "./config/env.js";
+import { ALL_JOB_DEFINITIONS, createJobQueue, createPool, type JobQueue, type Pool } from "@lpr/db";
+import { isPushConfigured, loadWorkerEnv } from "./config/env.js";
+import { registerNotificationHandler } from "./notifications/handler.js";
+import type { SendDependencies } from "./notifications/send.js";
+import {
+  RecordingPushTransport,
+  createWebPushTransport,
+  type PushTransport,
+} from "./notifications/transport.js";
 import { startReconciliation } from "./sweepers/index.js";
 
 /**
@@ -33,15 +40,26 @@ import { startReconciliation } from "./sweepers/index.js";
  * Phase 7, and the two push-subscription sweepers from Phase 8 (see
  * `sweepers/index.ts` for what each one is for and what is still missing).
  *
- * Current job scope: the queue itself, with ZERO job definitions and ZERO
- * handlers registered. Everything the system needs is done by sweepers, which
- * is ADR-005 working as intended rather than a gap — jobs make the system
- * prompt, sweepers make it correct, and nothing so far has needed sub-interval
- * promptness. `notification.send` arrives in Phase 9 against the handler
- * contract in ADR-005, which `sweepers/reconcile.ts` already implements.
+ * Job scope: `notification.send` (Phase 9), the first and so far only job in
+ * the system. Everything else is done by sweepers, which is ADR-005 working as
+ * intended rather than a gap — jobs make the system prompt, sweepers make it
+ * correct, and a reminder is the first piece of work where promptness is the
+ * point. Its safety net, `sweep.notifications_due`, re-derives the same work
+ * from canonical state, so losing the queue costs timing and not contact.
  */
 async function bootstrap(): Promise<void> {
   const env = loadWorkerEnv();
+
+  /**
+   * A holder, because the reconciliation loop starts before the queue does.
+   *
+   * The loop must start first: it is the correctness guarantee, and it has to
+   * survive a queue that never comes up (ADR-005). The notification sweeper
+   * still wants to enqueue the next link of a chain when it can, so it reads
+   * the queue through this rather than being handed a value that was null at
+   * the moment it was constructed.
+   */
+  const queueRef: { value: JobQueue | null } = { value: null };
 
   if (env.SENTRY_DSN) {
     Sentry.init({
@@ -80,21 +98,60 @@ async function bootstrap(): Promise<void> {
    */
   const workerId = env.WORKER_ID ?? hostname();
 
+  const logger = {
+    info: (message: string) => console.info(`[sweep] ${message}`),
+    warn: (message: string) => console.warn(`[sweep] ${message}`),
+    error: (message: string) => console.error(`[sweep] ${message}`),
+  };
+
+  /**
+   * The push transport (ADR-006).
+   *
+   * A deployment with no VAPID pair gets the recording transport rather than a
+   * refusal to start. The worker runs five sweepers and the entire scheduling
+   * guarantee rests on this process staying up (ADR-010); losing that over an
+   * optional feature would be a far worse failure than losing push. The
+   * recording transport still produces `notification_attempts` rows, so the
+   * absence is visible in the data instead of being silence.
+   */
+  let transport: PushTransport;
+  if (isPushConfigured(env)) {
+    transport = await createWebPushTransport({
+      publicKey: env.VAPID_PUBLIC_KEY,
+      privateKey: env.VAPID_PRIVATE_KEY,
+      subject: env.VAPID_SUBJECT,
+    });
+  } else {
+    transport = new RecordingPushTransport();
+    console.warn(
+      "worker has no VAPID key pair: notifications will be RECORDED AND NOT SENT. " +
+        "Participants will only see new questionnaires by opening the app (ADR-006).",
+    );
+  }
+
   const reconciliation = startReconciliation({
     pool,
     workerId,
     sweepIntervalSeconds: env.SWEEP_INTERVAL_SECONDS,
-    logger: {
-      info: (message) => console.info(`[sweep] ${message}`),
-      warn: (message) => console.warn(`[sweep] ${message}`),
-      error: (message) => console.error(`[sweep] ${message}`),
-    },
+    logger,
+    // The queue is attached AFTER the loop starts, so the sweeper receives it
+    // through this holder rather than by value. A sweeper that captured `null`
+    // at construction would spend the process's life unable to enqueue the next
+    // link, and the chain would advance one sweep interval at a time forever.
+    notifications: {
+      pool,
+      transport,
+      get queue() {
+        return queueRef.value;
+      },
+    } as unknown as Omit<SendDependencies, "logger">,
     onError: (error) => Sentry.captureException(error),
   });
 
   const queue: JobQueue = createJobQueue({
     pool,
     role: "owner",
+    definitions: ALL_JOB_DEFINITIONS,
     onError: (error) => Sentry.captureException(error),
   });
 
@@ -115,7 +172,14 @@ async function bootstrap(): Promise<void> {
    */
   let queueReady = false;
   try {
-    await queue.start();
+    await queue.start(ALL_JOB_DEFINITIONS);
+    queueRef.value = queue;
+
+    // Handlers only once the queue is up. Registering against a queue that
+    // failed to start would throw and take down the sweepers with it, which is
+    // exactly the coupling the try/catch below exists to prevent.
+    await registerNotificationHandler(queue, { pool, transport, queue, logger });
+
     queueReady = true;
   } catch (error) {
     console.error(
@@ -129,10 +193,12 @@ async function bootstrap(): Promise<void> {
   console.log(
     `worker started (${env.NODE_ENV}) as "${workerId}"; ` +
       `pg-boss ${queueReady ? "connected as queue owner" : "UNAVAILABLE"}; ` +
-      `${String(queue.registeredQueues.length)} queues, 0 handlers, ` +
+      `${String(queue.registeredQueues.length)} queues, ` +
+      `${queueReady ? "1" : "0"} handlers, ` +
       `${String(reconciliation.sweeperNames.length)} sweepers ` +
       `(${reconciliation.sweeperNames.join(", ")}); ` +
-      `reconciliation sweeping every ${String(env.SWEEP_INTERVAL_SECONDS)}s`,
+      `reconciliation sweeping every ${String(env.SWEEP_INTERVAL_SECONDS)}s; ` +
+      `push ${isPushConfigured(env) ? "ENABLED" : "RECORDED ONLY (no VAPID pair)"}`,
   );
 
   let shuttingDown = false;
