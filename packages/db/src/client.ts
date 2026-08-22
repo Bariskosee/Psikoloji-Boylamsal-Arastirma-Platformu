@@ -5,6 +5,13 @@ import { Pool, type PoolConfig } from "pg";
  * is an implementation detail of this package; callers depend on @lpr/db.
  */
 export type { Pool } from "pg";
+/**
+ * A single checked-out connection. Exported because a handler that must hold
+ * one transaction across several statements — the notification send pipeline
+ * does (STRUCTURE.md §9.1) — needs to name the type without `apps/worker`
+ * taking a direct dependency on `pg`, which `@lpr/db` exists to own.
+ */
+export type { PoolClient } from "pg";
 
 /**
  * Connection roles (ADR-003, NFR-03).

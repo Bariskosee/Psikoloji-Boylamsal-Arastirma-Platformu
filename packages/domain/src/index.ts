@@ -30,6 +30,11 @@
  * Phase 8 adds: push/ — the push subscription retention rule the worker's
  *               prune sweeper applies; participant/handoff — the single-use
  *               install handoff code.
+ * Phase 9 adds: notification/ — the eight-guard chain that decides whether one
+ *               reminder may be sent, the quiet-hours window in the
+ *               participant's own zone, and the self-chaining rule. The order
+ *               of the guards is itself the contract: which one reports a
+ *               suppression decides what the data means.
  *
  *               NOT here: the push availability matrix that decides what a
  *               participant is told about notifications on their device. It is
@@ -62,3 +67,4 @@ export * from "./session/state-machine.js";
 export * from "./session/answer-validation.js";
 export * from "./session/materialisation.js";
 export * from "./push/index.js";
+export * from "./notification/index.js";

@@ -127,6 +127,15 @@ export const API_ERROR_CODES = [
    * that a code they hold once existed.
    */
   "HANDOFF_CODE_INVALID",
+
+  // Notifications (Phase 9)
+  /**
+   * The client reported an event for an attempt this participant has no record
+   * of. One code for "no such attempt" and "not yours", for the same
+   * enumeration reason as everywhere else: a caller must not be able to learn
+   * that some other participant was notified about some session.
+   */
+  "NOTIFICATION_ATTEMPT_NOT_FOUND",
 ] as const;
 
 export const apiErrorCodeSchema = z.enum(API_ERROR_CODES);

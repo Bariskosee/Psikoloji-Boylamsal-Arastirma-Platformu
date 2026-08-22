@@ -28,6 +28,9 @@ import {
 
 export const SERVICE_WORKER_PATH = "/sw.js";
 
+/** Same source as the API client's, so the two cannot drift. */
+const API_BASE_URL = process.env["NEXT_PUBLIC_API_URL"] ?? "http://localhost:3001";
+
 /** Read the current environment, without deciding anything about it. */
 export function readPushEnvironment(vapidConfigured: boolean): PushEnvironment {
   const userAgent = navigator.userAgent;
@@ -82,7 +85,28 @@ export function availability(environment: PushEnvironment): PushAvailability {
 export async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   if (!("serviceWorker" in navigator)) return null;
   try {
-    return await navigator.serviceWorker.register(SERVICE_WORKER_PATH, { scope: "/" });
+    const registration = await navigator.serviceWorker.register(SERVICE_WORKER_PATH, {
+      scope: "/",
+    });
+
+    /**
+     * Tell the worker where the API is (Phase 9).
+     *
+     * The worker reports best-effort notification events, and it cannot read
+     * this from anywhere itself: it has no environment, and the API is on a
+     * different origin (ADR-009) that differs between deployments. Sent on
+     * every registration, so a worker that outlived a deploy learns the current
+     * one.
+     *
+     * Failure is silent by design — the value is only used for telemetry, and a
+     * worker that never learns it still shows notifications and still handles
+     * clicks.
+     */
+    await navigator.serviceWorker.ready.then((ready) => {
+      ready.active?.postMessage({ type: "SET_API_BASE_URL", url: API_BASE_URL });
+    });
+
+    return registration;
   } catch {
     return null;
   }

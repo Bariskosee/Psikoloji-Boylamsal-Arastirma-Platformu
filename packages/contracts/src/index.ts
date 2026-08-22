@@ -28,6 +28,10 @@
  *               their registered devices, and the install handoff code. The
  *               VAPID private key and the push endpoint are absent from every
  *               response shape here, deliberately.
+ * Phase 9 adds: notification — kinds, outcomes, suppression reasons, the send
+ *               job payload, and the push payload. `SENT_ACCEPTED` is named for
+ *               what is observable: a push service took the message. Nothing
+ *               here may be read as a delivery receipt (FR-15, FR-19).
  */
 
 export * from "./health.js";
@@ -44,3 +48,4 @@ export * from "./consent.js";
 export * from "./participant.js";
 export * from "./session.js";
 export * from "./push.js";
+export * from "./notification.js";

@@ -1,5 +1,7 @@
 import type { Pool } from "@lpr/db";
+import type { SendDependencies } from "../notifications/send.js";
 import { HeartbeatWriter } from "./heartbeat.js";
+import { notificationsDueSweeper } from "./notification-sweeper.js";
 import { expireSubscriptionsSweeper, pruneSubscriptionsSweeper } from "./push-sweepers.js";
 import { activateDueSweeper, expireDueSweeper } from "./session-sweepers.js";
 import { ReconciliationRunner } from "./sweep-runner.js";
@@ -12,6 +14,7 @@ export * from "./heartbeat.js";
 export * from "./sweep-runner.js";
 export * from "./session-sweepers.js";
 export * from "./push-sweepers.js";
+export * from "./notification-sweeper.js";
 
 /**
  * Composition for the reconciliation loop (ADR-005).
@@ -32,12 +35,15 @@ export * from "./push-sweepers.js";
  * window has run. PLAN.md called the second "the daily pruning job"; see
  * `push-sweepers.ts` for why it is a sweeper instead.
  *
- * `sweep.notifications_due` is NOT registered — `notification_attempts` does
- * not exist yet, and Phase 8 deliberately ships no sending. Subscriptions are
- * collected and used by nothing, which is what keeps this phase reviewable.
- * Registering it later is adding one more entry to the array below; the loop,
- * the cross-replica exclusion, the batching, the per-row locking and the
- * heartbeat are already here and already tested against a real PostgreSQL.
+ * `sweep.notifications_due` runs (Phase 9) — but only when `notifications` is
+ * supplied. It is the safety net under the self-chaining reminder chain: it
+ * re-derives which link each open session is owed next from
+ * `notification_attempts` alone, so a lost job cannot silence a participant,
+ * and the whole notification subsystem keeps working with pg-boss switched off.
+ *
+ * That is now every sweeper STRUCTURE.md §8.4 names. The loop, the
+ * cross-replica exclusion, the batching, the per-row locking and the heartbeat
+ * were built in ADR-005 and have not needed to change for any of them.
  */
 export interface StartReconciliationOptions {
   readonly pool: Pool;
@@ -45,6 +51,13 @@ export interface StartReconciliationOptions {
   readonly sweepIntervalSeconds: number;
   readonly logger: SweepLogger;
   readonly onError?: (error: Error) => void;
+  /**
+   * What the notification sweeper needs to actually send. Omitted only where
+   * there is nothing to send with — the sweeper is then left unregistered
+   * rather than registered and inert, so the startup line tells the truth about
+   * what this worker will do.
+   */
+  readonly notifications?: Omit<SendDependencies, "logger">;
   /** Test seam. Production passes nothing and gets the registered set. */
   readonly sweepers?: readonly Sweeper[];
 }
@@ -80,6 +93,9 @@ export function startReconciliation(options: StartReconciliationOptions): Reconc
       expireDueSweeper(),
       expireSubscriptionsSweeper(),
       pruneSubscriptionsSweeper(),
+      ...(options.notifications === undefined
+        ? []
+        : [notificationsDueSweeper(options.notifications)]),
     ],
     heartbeat,
     intervalMs: options.sweepIntervalSeconds * 1000,

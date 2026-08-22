@@ -28,9 +28,37 @@ const workerEnvSchema = z.object({
    * instance. Set explicitly wherever the hostname is random per start.
    */
   WORKER_ID: z.string().min(1).optional(),
+
+  /**
+   * VAPID (ADR-006, Phase 9). The worker is the only process that SENDS, so it
+   * is the only process that needs the private key.
+   *
+   * Optional, and the optionality is the documented degraded mode: a deployment
+   * with no keys runs the whole study without push. The worker then uses the
+   * recording transport, which still writes `notification_attempts` rows — so a
+   * researcher can see that outreach was attempted and that nothing left the
+   * building, rather than seeing silence and having to guess why.
+   */
+  VAPID_PUBLIC_KEY: z.string().optional().default(""),
+  VAPID_PRIVATE_KEY: z.string().optional().default(""),
+  /** A contact the push service can reach the operator at. */
+  VAPID_SUBJECT: z.string().optional().default("mailto:ops@example.invalid"),
 });
 
 export type WorkerEnv = z.infer<typeof workerEnvSchema>;
+
+/**
+ * Is Web Push configured here?
+ *
+ * The API asks the same question of its own environment and refuses to boot on
+ * half a pair. The worker deliberately does NOT refuse: it has four sweepers to
+ * run, and the entire scheduling guarantee rests on this process staying up
+ * (ADR-005, ADR-010). A misconfigured key pair must degrade push, not stop the
+ * clock.
+ */
+export function isPushConfigured(env: WorkerEnv): boolean {
+  return env.VAPID_PUBLIC_KEY.length > 0 && env.VAPID_PRIVATE_KEY.length > 0;
+}
 
 export function loadWorkerEnv(source: NodeJS.ProcessEnv = process.env): WorkerEnv {
   const parsed = workerEnvSchema.safeParse(source);
