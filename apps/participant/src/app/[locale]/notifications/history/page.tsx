@@ -108,12 +108,12 @@ export default function NotificationHistoryPage() {
           <p style={{ marginTop: 0, fontWeight: 600 }}>
             {entry.kind === "INITIAL" ? t("kindInitial") : t("kindReminder")}
           </p>
-          <p style={{ color: "#5b6472", margin: 0 }}>
+          <p style={{ color: "var(--muted-foreground)", margin: 0 }}>
             {new Date(entry.scheduledFor).toLocaleString(locale)}
           </p>
           <p style={{ margin: `${String(tokens.spacing.sm)}px 0 0` }}>{outcomeText(entry)}</p>
           {entry.suppressionReason !== null ? (
-            <p style={{ color: "#5b6472", margin: "4px 0 0", fontSize: 15 }}>
+            <p style={{ color: "var(--muted-foreground)", margin: "4px 0 0", fontSize: 15 }}>
               {reasonText(entry.suppressionReason)}
             </p>
           ) : null}
@@ -121,7 +121,7 @@ export default function NotificationHistoryPage() {
       ))}
 
       {/* The footnote that stops "Sent" from being read as a delivery receipt. */}
-      <p style={{ fontSize: 14, color: "#5b6472" }}>{t("acceptedNote")}</p>
+      <p style={{ fontSize: 14, color: "var(--muted-foreground)" }}>{t("acceptedNote")}</p>
 
       <Link
         href="/notifications"

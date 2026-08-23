@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
-import { Link, useRouter } from "@/i18n/navigation";
+import { UserPlus, Users } from "lucide-react";
+import { toast } from "sonner";
+import { useRouter } from "@/i18n/navigation";
 import {
   STUDY_ROLES,
   type StudyMemberListResponse,
@@ -11,14 +13,52 @@ import {
   type StudyRole,
 } from "@lpr/contracts";
 import { ApiError, api } from "@/lib/api";
-import { ErrorBanner, TableScroll, styles } from "@/lib/ui";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { PageHeader } from "@/components/ui/page-header";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { EmptyState, ErrorBanner, LoadingTable } from "@/components/ui/states";
 
 /**
  * Study membership — OWNER only, enforced server-side.
  *
- * Phase 2 has no invitation email (that is Phase 12), so a colleague must
- * already hold an account. The API says so explicitly rather than creating a
- * shell account, and this screen surfaces that as its own message.
+ * There is no invitation email, so a colleague must already hold an account.
+ * The API says so explicitly rather than creating a shell account, and this
+ * screen surfaces that as its own message rather than as a bare "not found".
+ *
+ * ── Why each role carries a sentence ────────────────────────────────────────
+ * "Analyst" and "Editor" do not explain themselves, and the person choosing
+ * between them is deciding who can export every psychological answer in the
+ * study. The distinction that matters — ANALYST can export, VIEWER cannot —
+ * is invisible from the word alone, so the picker spells it out at the moment
+ * of choosing rather than in documentation.
  */
 export default function MembersPage() {
   const t = useTranslations("members");
@@ -57,6 +97,7 @@ export default function MembersPage() {
     setError(null);
     try {
       await api.post(`/api/studies/${studyId}/members`, { email, role });
+      toast.success(t("added", { email }));
       setEmail("");
       await load();
     } catch (caught) {
@@ -70,6 +111,7 @@ export default function MembersPage() {
     setError(null);
     try {
       await api.patch(`/api/studies/${studyId}/members/${userId}`, { role: next });
+      toast.success(t("roleChanged"));
       await load();
     } catch (caught) {
       setError(messageFor(caught, t));
@@ -80,6 +122,7 @@ export default function MembersPage() {
     setError(null);
     try {
       await api.delete(`/api/studies/${studyId}/members/${userId}`);
+      toast.success(t("removed"));
       await load();
     } catch (caught) {
       setError(messageFor(caught, t));
@@ -87,109 +130,144 @@ export default function MembersPage() {
   }
 
   return (
-    <div style={styles.page}>
-      <p>
-        <Link href={`/studies/${studyId}`}>← {t("backToStudy")}</Link>
-      </p>
-      <h1>{t("title")}</h1>
+    <div className="mx-auto max-w-4xl">
+      <PageHeader title={t("title")} description={t("subtitle")} />
 
       <ErrorBanner>{error}</ErrorBanner>
 
-      <section style={styles.card}>
-        <h2>{t("add")}</h2>
-        <form onSubmit={add} style={{ display: "flex", gap: 8, flexWrap: "wrap" }} noValidate>
-          <div style={{ flex: "1 1 240px" }}>
-            <label htmlFor="member-email" style={styles.label}>
-              {t("email")}
-            </label>
-            <input
-              id="member-email"
-              type="email"
-              required
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              style={styles.input}
-            />
-          </div>
-          <div style={{ flex: "0 1 160px" }}>
-            <label htmlFor="member-role" style={styles.label}>
-              {t("role")}
-            </label>
-            <select
-              id="member-role"
-              value={role}
-              onChange={(event) => setRole(event.target.value as StudyRole)}
-              style={styles.input}
-            >
-              {STUDY_ROLES.map((option) => (
-                <option key={option} value={option}>
-                  {tStudies(`roles.${option}`)}
-                </option>
-              ))}
-            </select>
-          </div>
-          <button
-            type="submit"
-            disabled={pending}
-            style={{ ...styles.button, alignSelf: "flex-end" }}
-          >
-            {t("add")}
-          </button>
-        </form>
-        <p style={{ fontSize: 14, color: "#5b6472" }}>{t("accountRequired")}</p>
-      </section>
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>{t("add")}</CardTitle>
+          <CardDescription>{t("accountRequired")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={add} noValidate className="flex flex-wrap items-end gap-3">
+            <div className="grid min-w-56 flex-1 gap-2">
+              <Label htmlFor="member-email">{t("email")}</Label>
+              <Input
+                id="member-email"
+                type="email"
+                required
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+              />
+            </div>
+            <div className="grid w-56 gap-2">
+              <Label htmlFor="member-role">{t("role")}</Label>
+              <Select value={role} onValueChange={(value) => setRole(value as StudyRole)}>
+                <SelectTrigger id="member-role" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {STUDY_ROLES.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      <span className="flex flex-col items-start">
+                        <span>{tStudies(`roles.${option}`)}</span>
+                        {/* The sentence that makes the choice decidable. */}
+                        <span className="text-muted-foreground text-xs">
+                          {t(`roleHelp.${option}`)}
+                        </span>
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button type="submit" disabled={pending}>
+              <UserPlus />
+              {t("add")}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
-      <section style={styles.card}>
-        <h2>{t("current")}</h2>
-        {members === null ? <p>{t("loading")}</p> : null}
-        {members && members.length > 0 ? (
-          <TableScroll label={t("current")}>
-            <table style={styles.table}>
-              <thead>
-                <tr>
-                  <th style={styles.cell}>{t("name")}</th>
-                  <th style={styles.cell}>{t("email")}</th>
-                  <th style={styles.cell}>{t("role")}</th>
-                  <th style={styles.cell} />
-                </tr>
-              </thead>
-              <tbody>
-                {members.map((member) => (
-                  <tr key={member.userId}>
-                    <td style={styles.cell}>{member.displayName}</td>
-                    <td style={styles.cell}>{member.email}</td>
-                    <td style={styles.cell}>
-                      <select
-                        aria-label={t("role")}
-                        value={member.role}
-                        onChange={(event) =>
-                          changeRole(member.userId, event.target.value as StudyRole)
-                        }
-                        style={{ ...styles.input, minHeight: 36 }}
-                      >
-                        {STUDY_ROLES.map((option) => (
-                          <option key={option} value={option}>
-                            {tStudies(`roles.${option}`)}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td style={styles.cell}>
-                      <button
-                        type="button"
-                        onClick={() => remove(member.userId)}
-                        style={styles.secondaryButton}
-                      >
-                        {t("remove")}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </TableScroll>
-        ) : null}
-      </section>
+      <Card className="overflow-hidden">
+        <CardHeader>
+          <CardTitle>{t("current")}</CardTitle>
+        </CardHeader>
+        <CardContent className="px-0">
+          {members === null ? (
+            <div className="px-6">
+              <LoadingTable rows={3} columns={4} />
+            </div>
+          ) : members.length === 0 ? (
+            <div className="px-6">
+              <EmptyState icon={Users} title={t("noMembers")} />
+            </div>
+          ) : (
+            <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={t("current")}>
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead>{t("name")}</TableHead>
+                    <TableHead>{t("email")}</TableHead>
+                    <TableHead className="w-48">{t("role")}</TableHead>
+                    <TableHead className="w-28" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {members.map((member) => (
+                    <TableRow key={member.userId}>
+                      <TableCell className="font-medium">{member.displayName}</TableCell>
+                      <TableCell className="text-muted-foreground">{member.email}</TableCell>
+                      <TableCell>
+                        <Select
+                          value={member.role}
+                          onValueChange={(value) =>
+                            void changeRole(member.userId, value as StudyRole)
+                          }
+                        >
+                          <SelectTrigger aria-label={t("role")} className="w-full" size="sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {STUDY_ROLES.map((option) => (
+                              <SelectItem key={option} value={option}>
+                                {tStudies(`roles.${option}`)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell>
+                        {/*
+                          Confirmed. Removing a member is instant and silent
+                          from their side — they simply stop being able to open
+                          the study — and the button sat one row away from a
+                          role picker people use often.
+                        */}
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button type="button" variant="ghost" size="sm">
+                              {t("remove")}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>
+                                {t("confirmRemove", { name: member.displayName })}
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                {t("confirmRemoveBody")}
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => void remove(member.userId)}>
+                                {t("confirmRemoveAction")}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

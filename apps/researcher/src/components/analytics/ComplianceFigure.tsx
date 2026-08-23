@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import type { ComplianceFigure, StepComplianceSummary } from "@lpr/contracts";
+import { cn } from "@/lib/utils";
 
 /**
  * How a compliance figure is rendered — the only place that decides.
@@ -23,35 +24,61 @@ import type { ComplianceFigure, StepComplianceSummary } from "@lpr/contracts";
  *  3. **A single-occurrence step never gets a percentage.** "Did they do the
  *     endline?" is a yes-or-no question, and 100% is a category error that
  *     makes a table of anchors and blocks unreadable (§6).
+ *
+ * ── The bar, and why it does not replace the number ─────────────────────────
+ * A column of percentages is hard to scan; a bar is not. But a bar alone
+ * cannot carry a denominator, and a denominator is the thing §1 says must not
+ * be dropped. So the bar is decoration behind the figure — `aria-hidden`,
+ * because a screen reader that announced it would read the number twice — and
+ * the text remains the source of truth.
  */
 export function ComplianceFigureView({
   figure,
   label,
+  showBar = false,
 }: {
   figure: ComplianceFigure;
   label?: string;
+  showBar?: boolean;
 }) {
   const t = useTranslations("analytics");
 
   if (figure.percent === null) {
     return (
-      <span style={{ color: "#5b6472" }} title={t("notApplicableHint")}>
+      <span className="text-muted-foreground" title={t("notApplicableHint")}>
         {t("notApplicable")}
       </span>
     );
   }
 
   return (
-    <span>
-      <strong>{figure.percent}%</strong>{" "}
-      {/*
-        The denominator, always. Not a tooltip and not an expander — a figure
-        whose basis is one click away is a figure people quote without it.
-      */}
-      <span style={{ color: "#5b6472", fontSize: 13 }}>
-        ({figure.numerator}/{figure.denominator}
-        {label === undefined ? "" : ` ${label}`})
+    <span className="inline-flex min-w-0 flex-col gap-1">
+      <span className="whitespace-nowrap">
+        <strong className="tabular-nums">{figure.percent}%</strong>{" "}
+        {/*
+          The denominator, always. Not a tooltip and not an expander — a figure
+          whose basis is one click away is a figure people quote without it.
+        */}
+        <span className="text-muted-foreground text-xs tabular-nums">
+          ({figure.numerator}/{figure.denominator}
+          {label === undefined ? "" : ` ${label}`})
+        </span>
       </span>
+      {showBar ? (
+        <span aria-hidden className="bg-muted block h-1 w-16 overflow-hidden rounded-full">
+          <span
+            className={cn(
+              "block h-full rounded-full",
+              figure.percent >= 80
+                ? "bg-success"
+                : figure.percent >= 50
+                  ? "bg-warning"
+                  : "bg-danger",
+            )}
+            style={{ width: `${String(figure.percent)}%` }}
+          />
+        </span>
+      ) : null}
     </span>
   );
 }
@@ -69,18 +96,25 @@ export function StepFigureView({ step }: { step: StepComplianceSummary }) {
   if (!step.countsTowardCompliance) {
     // Excluded by the researcher's own configuration. Shown rather than hidden,
     // because a step missing from the table looks like a bug.
-    return <span style={{ color: "#5b6472" }}>{t("notCounted")}</span>;
+    return <span className="text-muted-foreground">{t("notCounted")}</span>;
   }
 
   if (step.kind === "ADHERENCE") {
-    return <ComplianceFigureView figure={step.compliance} />;
+    return <ComplianceFigureView figure={step.compliance} showBar />;
   }
 
   const state = step.state ?? "NOT_YET_DUE";
-  const colour = state === "COMPLETED" ? "#067647" : state === "MISSED" ? "#b42318" : "#5b6472";
 
   return (
-    <span style={{ color: colour, fontWeight: state === "MISSED" ? 600 : 400 }}>
+    <span
+      className={cn(
+        "whitespace-nowrap",
+        state === "COMPLETED" && "text-success-muted-foreground font-medium",
+        // Amber rather than red: a missed measurement is data, not a fault.
+        state === "MISSED" && "text-warning-muted-foreground font-medium",
+        state !== "COMPLETED" && state !== "MISSED" && "text-muted-foreground",
+      )}
+    >
       {t(`state${state}`)}
     </span>
   );

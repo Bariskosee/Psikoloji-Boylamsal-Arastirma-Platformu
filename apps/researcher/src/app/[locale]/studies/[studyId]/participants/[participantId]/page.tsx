@@ -1,12 +1,26 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { ArrowLeft, Search } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import type { ParticipantDetailResponse, TimelineEntry } from "@lpr/contracts";
 import { api } from "@/lib/api";
 import { ComplianceFigureView, StepFigureView } from "@/components/analytics/ComplianceFigure";
-import { ErrorBanner, styles } from "@/lib/ui";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
+import { SessionStatusBadge, StatusBadge } from "@/components/ui/status-badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { ErrorState, LoadingTable } from "@/components/ui/states";
+import { cn } from "@/lib/utils";
 
 /**
  * One participant's timeline (PLAN.md Phase 10).
@@ -34,96 +48,140 @@ export default function ParticipantDetailPage({
   const [detail, setDetail] = useState<ParticipantDetailResponse | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
 
-  useEffect(() => {
-    void (async () => {
-      try {
-        setDetail(
-          await api.get<ParticipantDetailResponse>(
-            `/api/studies/${studyId}/participants/${participantId}`,
-          ),
-        );
-        setStatus("ready");
-      } catch {
-        setStatus("error");
-      }
-    })();
+  const load = useCallback(async () => {
+    setStatus("loading");
+    try {
+      setDetail(
+        await api.get<ParticipantDetailResponse>(
+          `/api/studies/${studyId}/participants/${participantId}`,
+        ),
+      );
+      setStatus("ready");
+    } catch {
+      setStatus("error");
+    }
   }, [studyId, participantId]);
 
-  if (status === "loading") return <p style={styles.page}>…</p>;
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  if (status === "loading") {
+    return (
+      <div className="mx-auto max-w-5xl">
+        <LoadingTable rows={8} columns={5} />
+      </div>
+    );
+  }
+
   if (status === "error" || detail === null) {
     return (
-      <div style={styles.page}>
-        <ErrorBanner>{t("loadFailed")}</ErrorBanner>
+      <div className="mx-auto max-w-5xl">
+        <ErrorState title={t("loadFailed")} onRetry={() => void load()} retryLabel={t("retry")} />
       </div>
     );
   }
 
   return (
-    <div style={styles.page}>
-      <h1 style={{ fontFamily: "ui-monospace, monospace" }}>{detail.publicCode}</h1>
-      <p style={{ color: "#5b6472" }}>
-        {detail.status} · {t("enrolled")} {new Date(detail.enrolledAt).toLocaleDateString()}
-        {detail.groupKey === null ? "" : ` · ${t("group")} ${detail.groupKey}`}
-      </p>
-
-      <section style={styles.card}>
-        <p style={{ marginTop: 0 }}>
-          {t("elapsed")}: <ComplianceFigureView figure={detail.elapsed} />
-        </p>
-        {/*
-          Labelled "strict" wherever it appears, as §4 requires. Mid-study it
-          reads as damningly low for someone doing everything asked of them,
-          which is why it is never the headline figure.
-        */}
-        <p title={t("strictHint")} style={{ color: "#5b6472", marginBottom: 0 }}>
-          {t("strict")}: <ComplianceFigureView figure={detail.strict} />
-        </p>
-      </section>
-
-      <section style={styles.card}>
-        <h2 style={{ marginTop: 0, fontSize: 18 }}>{t("step")}</h2>
-        {detail.perStep.map((step) => (
-          <p
-            key={step.stepKey}
-            style={{ display: "flex", justifyContent: "space-between", margin: "6px 0" }}
-          >
+    <div className="mx-auto max-w-5xl">
+      <PageHeader
+        title={<span className="font-mono">{detail.publicCode}</span>}
+        description={
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <StatusBadge tone={detail.status === "ACTIVE" ? "success" : "neutral"}>
+              {detail.status}
+            </StatusBadge>
             <span>
-              {step.stepKey}
-              {step.occurrenceCount > 1 ? (
-                <span style={{ color: "#5b6472" }}> ×{step.occurrenceCount}</span>
-              ) : null}
+              {t("enrolled")} {new Date(detail.enrolledAt).toLocaleDateString()}
             </span>
-            <StepFigureView step={step} />
-          </p>
-        ))}
-      </section>
+            {detail.groupKey === null ? null : (
+              <span>
+                {t("group")} {detail.groupKey}
+              </span>
+            )}
+          </span>
+        }
+        actions={
+          <Button asChild variant="outline">
+            <Link href={`/studies/${studyId}/participants`}>
+              <ArrowLeft />
+              {t("backToParticipants")}
+            </Link>
+          </Button>
+        }
+      />
 
-      <section style={styles.card}>
-        <h2 style={{ marginTop: 0, fontSize: 18 }}>{t("timeline")}</h2>
-        <div style={{ overflowX: "auto" }}>
-          <table style={styles.table}>
-            <thead>
-              <tr>
-                <th style={styles.cell}>{t("step")}</th>
-                <th style={styles.cell}>{t("occurrence")}</th>
-                <th style={styles.cell}>{t("status")}</th>
-                <th style={styles.cell}>{t("window")}</th>
-                <th style={styles.cell}>{t("responses")}</th>
-                <th style={styles.cell} />
-              </tr>
-            </thead>
-            <tbody>
-              {detail.timeline.map((entry) => (
-                <TimelineRow key={entry.sessionId} entry={entry} studyId={studyId} />
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("elapsed")}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="text-lg">
+              <ComplianceFigureView figure={detail.elapsed} showBar />
+            </div>
+            {/*
+              Labelled "strict" wherever it appears, as §4 requires. Mid-study
+              it reads as damningly low for someone doing everything asked of
+              them, which is why it is never the headline figure — here it is
+              deliberately smaller and second.
+            */}
+            <p className="text-muted-foreground text-sm" title={t("strictHint")}>
+              {t("strict")}: <ComplianceFigureView figure={detail.strict} />
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("stepsHeading")}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <dl className="space-y-2.5">
+              {detail.perStep.map((step) => (
+                <div key={step.stepKey} className="flex items-center justify-between gap-4">
+                  <dt className="min-w-0 truncate text-sm">
+                    {step.stepKey}
+                    {step.occurrenceCount > 1 ? (
+                      <span className="text-muted-foreground"> ×{step.occurrenceCount}</span>
+                    ) : null}
+                  </dt>
+                  <dd className="shrink-0 text-sm">
+                    <StepFigureView step={step} />
+                  </dd>
+                </div>
               ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+            </dl>
+          </CardContent>
+        </Card>
+      </div>
 
-      <Link href={`/studies/${studyId}/participants`} style={styles.secondaryButton}>
-        {t("backToParticipants")}
-      </Link>
+      <Card className="mt-6 overflow-hidden py-0">
+        <CardHeader className="pt-6">
+          <CardTitle>{t("timeline")}</CardTitle>
+        </CardHeader>
+        <CardContent className="px-0 pb-0">
+          <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={t("timeline")}>
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>{t("step")}</TableHead>
+                  <TableHead className="text-right">{t("occurrence")}</TableHead>
+                  <TableHead>{t("status")}</TableHead>
+                  <TableHead>{t("window")}</TableHead>
+                  <TableHead className="text-right">{t("responses")}</TableHead>
+                  <TableHead className="w-24" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {detail.timeline.map((entry) => (
+                  <TimelineRow key={entry.sessionId} entry={entry} studyId={studyId} />
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -131,56 +189,53 @@ export default function ParticipantDetailPage({
 function TimelineRow({ entry, studyId }: { entry: TimelineEntry; studyId: string }) {
   const t = useTranslations("analytics");
 
-  /**
-   * `CANCELLED` reads as "not applicable" and is greyed, not reddened.
-   *
-   * Colour carries meaning on a table this dense, and red would tell a reader
-   * at a glance that the participant failed something. They did not: it was
-   * never offered.
-   */
-  const colour =
-    entry.status === "COMPLETED"
-      ? "#067647"
-      : entry.status.startsWith("EXPIRED")
-        ? "#b42318"
-        : "#5b6472";
-
-  const label =
-    entry.status === "CANCELLED"
-      ? t("stateEXCLUDED")
-      : entry.status.startsWith("EXPIRED")
-        ? t("stateMISSED")
-        : entry.status;
-
   return (
-    <tr style={{ opacity: entry.countsTowardCompliance ? 1 : 0.6 }}>
-      <td style={styles.cell}>{entry.stepKey}</td>
-      <td style={styles.cell}>{entry.occurrenceIndex}</td>
-      <td style={{ ...styles.cell, color: colour }}>
-        {label}
-        {entry.cancellationReason === null ? null : (
-          <span style={{ color: "#5b6472", fontSize: 12 }}> ({entry.cancellationReason})</span>
+    /*
+      A session excluded from compliance is dimmed rather than hidden or
+      recoloured. It happened — or rather, it deliberately did not — and a
+      reader needs to see the row to understand the shape of the protocol.
+    */
+    <TableRow className={cn(!entry.countsTowardCompliance && "opacity-60")}>
+      <TableCell className="font-medium whitespace-nowrap">{entry.stepKey}</TableCell>
+      <TableCell className="text-right tabular-nums">{entry.occurrenceIndex}</TableCell>
+      <TableCell>
+        {/*
+          `CANCELLED` reads as "not applicable" and is neutral, not red. They
+          did not fail it: it was never offered.
+        */}
+        {entry.status === "CANCELLED" ? (
+          <StatusBadge tone="neutral">{t("stateEXCLUDED")}</StatusBadge>
+        ) : (
+          <SessionStatusBadge status={entry.status} />
         )}
-      </td>
-      <td style={{ ...styles.cell, fontSize: 12, color: "#5b6472" }}>
+        {entry.cancellationReason === null ? null : (
+          <span className="text-muted-foreground ml-1.5 text-xs">({entry.cancellationReason})</span>
+        )}
+      </TableCell>
+      <TableCell className="text-muted-foreground text-xs whitespace-nowrap">
         {entry.availableFrom === null
           ? "—"
           : new Date(entry.availableFrom).toLocaleString(undefined, {
               dateStyle: "short",
               timeStyle: "short",
             })}
-      </td>
-      <td style={styles.cell}>{entry.responseCount}</td>
-      <td style={styles.cell}>
+      </TableCell>
+      <TableCell className="text-right tabular-nums">{entry.responseCount}</TableCell>
+      <TableCell>
         {/*
           Inspection is offered only where there is something to inspect. A link
           on a scheduled session would lead to a page of seven "not yet due"
           rows, which teaches a reader the link is broken.
         */}
         {entry.responseCount > 0 || entry.status === "COMPLETED" ? (
-          <Link href={`/studies/${studyId}/sessions/${entry.sessionId}`}>{t("inspect")}</Link>
+          <Button asChild variant="ghost" size="sm">
+            <Link href={`/studies/${studyId}/sessions/${entry.sessionId}`}>
+              <Search />
+              {t("inspect")}
+            </Link>
+          </Button>
         ) : null}
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 }

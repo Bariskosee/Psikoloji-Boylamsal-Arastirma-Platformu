@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import { Link, useRouter } from "@/i18n/navigation";
-import { tokens } from "@lpr/ui";
 import type {
   ProtocolDetail,
   ProtocolPreviewResponse,
@@ -13,7 +12,15 @@ import type {
   StudyResponse,
 } from "@lpr/contracts";
 import { ApiError, api } from "@/lib/api";
-import { ErrorBanner, StatusBadge, styles } from "@/lib/ui";
+import { ArrowDown, ArrowUp, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { EmptyState, ErrorBanner, ErrorState, LoadingCards } from "@/components/ui/states";
+import { cn } from "@/lib/utils";
 import { StepEditor, type QuestionnaireChoice } from "@/components/protocol/StepEditor";
 import { TimelinePreview } from "@/components/protocol/TimelinePreview";
 
@@ -170,108 +177,113 @@ export default function ProtocolBuilderPage() {
 
   if (status === "error") {
     return (
-      <div style={styles.page}>
-        <p>
-          <Link href={`/studies/${studyId}/protocols`}>← {t("backToList")}</Link>
+      <div className="mx-auto max-w-3xl">
+        <ErrorState title={error ?? t("errors.save")} />
+        <p className="mt-4">
+          <Link
+            href={`/studies/${studyId}/protocols`}
+            className="text-primary text-sm underline-offset-4 hover:underline"
+          >
+            {t("backToList")}
+          </Link>
         </p>
-        <ErrorBanner>{error}</ErrorBanner>
       </div>
     );
   }
 
-  if (protocol === null) return <p style={styles.page}>{t("loading")}</p>;
+  if (protocol === null) {
+    return (
+      <div className="mx-auto max-w-6xl">
+        <LoadingCards count={2} />
+      </div>
+    );
+  }
 
   const steps = protocol.draft.steps;
   const nextVersion = (protocol.publishedVersions[0]?.versionNumber ?? 0) + 1;
 
   return (
-    <div style={styles.page}>
-      <p>
-        <Link href={`/studies/${studyId}/protocols`}>← {t("backToList")}</Link>
-      </p>
-
-      <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-        <h1 style={{ margin: 0 }}>{protocol.name}</h1>
-        <StatusBadge status={t("draft")} />
-      </div>
+    <div className="mx-auto max-w-6xl">
+      <PageHeader
+        title={
+          <span className="flex flex-wrap items-center gap-3">
+            {protocol.name}
+            <StatusBadge tone="warning">{t("draft")}</StatusBadge>
+          </span>
+        }
+        description={protocol.description || undefined}
+      />
 
       <ErrorBanner>{error}</ErrorBanner>
 
-      <div
-        style={{
-          display: "grid",
-          // `min(…, 100%)` so the two columns can collapse on a phone instead
-          // of forcing the page to scroll sideways.
-          gridTemplateColumns: "repeat(auto-fit, minmax(min(380px, 100%), 1fr))",
-          gap: tokens.spacing.md,
-          marginTop: tokens.spacing.md,
-        }}
-      >
-        <section>
-          <h2>{t("steps")}</h2>
+      {/*
+        `min(…, 100%)` so the two columns can collapse on a phone instead of
+        forcing the page to scroll sideways.
+      */}
+      <div className="grid items-start gap-6 [grid-template-columns:repeat(auto-fit,minmax(min(380px,100%),1fr))]">
+        <section aria-labelledby="steps-heading">
+          <h2 id="steps-heading" className="mb-3 text-lg font-semibold">
+            {t("steps")}
+          </h2>
 
-          {steps.length === 0 ? <p>{t("noSteps")}</p> : null}
+          {steps.length === 0 ? <EmptyState title={t("noSteps")} className="mb-4" /> : null}
 
-          <ol style={{ listStyle: "none", padding: 0, margin: 0 }}>
+          <ol className="mb-4 space-y-2">
             {steps.map((step, index) => (
               <li
                 key={step.id}
-                style={{
-                  border: "1px solid #d8dbe0",
-                  borderRadius: tokens.radiusPx,
-                  marginBottom: tokens.spacing.sm,
-                  background: "#fff",
-                }}
+                className={cn(
+                  "bg-card rounded-lg border",
+                  openStepId === step.id && "ring-primary/30 ring-2",
+                )}
               >
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 8,
-                    alignItems: "center",
-                    flexWrap: "wrap",
-                    padding: tokens.spacing.sm,
-                  }}
-                >
-                  <strong style={{ flex: "1 1 auto" }}>
+                <div className="flex flex-wrap items-center gap-2 p-2.5">
+                  <strong className="flex-1 text-sm">
                     {index + 1}. {step.stepKey}
                   </strong>
-                  <span style={{ fontSize: 13, color: "#5b6472" }}>
+                  <span className="text-muted-foreground text-xs whitespace-nowrap">
                     {t(`triggers.${step.triggerType}`)}
                     {step.occurrenceCount > 1 ? ` · ×${String(step.occurrenceCount)}` : ""}
                   </span>
-                  <button
-                    type="button"
-                    aria-label={t("moveUp")}
-                    disabled={busy || index === 0}
-                    onClick={() => void move(step, -1)}
-                    style={styles.secondaryButton}
-                  >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={t("moveDown")}
-                    disabled={busy || index === steps.length - 1}
-                    onClick={() => void move(step, 1)}
-                    style={styles.secondaryButton}
-                  >
-                    ↓
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setOpenStepId(openStepId === step.id ? null : step.id)}
-                    style={styles.secondaryButton}
-                  >
-                    {openStepId === step.id ? t("close") : t("edit")}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => void mutate(() => api.delete(`${base}/steps/${step.id}`))}
-                    style={styles.secondaryButton}
-                  >
-                    {t("remove")}
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      aria-label={t("moveUp")}
+                      disabled={busy || index === 0}
+                      onClick={() => void move(step, -1)}
+                    >
+                      <ArrowUp />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      aria-label={t("moveDown")}
+                      disabled={busy || index === steps.length - 1}
+                      onClick={() => void move(step, 1)}
+                    >
+                      <ArrowDown />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setOpenStepId(openStepId === step.id ? null : step.id)}
+                    >
+                      {openStepId === step.id ? t("close") : t("edit")}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={busy}
+                      onClick={() => void mutate(() => api.delete(`${base}/steps/${step.id}`))}
+                    >
+                      {t("remove")}
+                    </Button>
+                  </div>
                 </div>
 
                 {openStepId === step.id ? (
@@ -289,81 +301,93 @@ export default function ProtocolBuilderPage() {
             ))}
           </ol>
 
-          <button
-            type="button"
-            onClick={() => void addStep()}
-            disabled={busy}
-            style={styles.button}
-          >
-            {t("add")} — {t("addStep")}
-          </button>
+          <Button type="button" variant="outline" onClick={() => void addStep()} disabled={busy}>
+            <Plus />
+            {t("addStep")}
+          </Button>
 
           {confirmingPublish ? (
-            <section
+            /*
+              Publishing freezes the protocol permanently, so the confirmation
+              is styled as a consequence rather than as a form: destructive
+              border, the warning in bold, and an acknowledgement that has to be
+              ticked before the button is live.
+            */
+            <Card
               aria-labelledby="protocol-publish-heading"
-              style={{ ...styles.card, borderColor: "#b42318", background: "#fffaf9" }}
+              className="border-danger/50 bg-danger-muted/40 mt-6"
             >
-              <h3 id="protocol-publish-heading" style={{ marginTop: 0 }}>
-                {t("publishHeading", { version: nextVersion })}
-              </h3>
-              <p style={{ marginTop: 0 }}>{t("publishSummary", { count: steps.length })}</p>
-              <p style={{ fontWeight: 600 }}>{t("publishImmutableWarning")}</p>
-              <label style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                <input
-                  type="checkbox"
-                  checked={acknowledged}
-                  onChange={(event) => setAcknowledged(event.target.checked)}
-                />
-                <span>{t("publishAcknowledge")}</span>
-              </label>
-              <div style={{ display: "flex", gap: 8, marginTop: tokens.spacing.sm }}>
-                <button
-                  type="button"
-                  disabled={!acknowledged || busy}
-                  onClick={() => void publish()}
-                  style={styles.button}
-                >
-                  {busy ? t("publishing") : t("publishConfirm")}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setConfirmingPublish(false);
-                    setAcknowledged(false);
-                  }}
-                  style={styles.secondaryButton}
-                >
-                  {t("cancel")}
-                </button>
-              </div>
-            </section>
+              <CardHeader>
+                <CardTitle id="protocol-publish-heading" className="text-base">
+                  {t("publishHeading", { version: nextVersion })}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm">{t("publishSummary", { count: steps.length })}</p>
+                <p className="text-danger-muted-foreground text-sm font-semibold">
+                  {t("publishImmutableWarning")}
+                </p>
+                <Label htmlFor="protocol-ack" className="flex items-start gap-2 font-normal">
+                  <Checkbox
+                    id="protocol-ack"
+                    checked={acknowledged}
+                    onCheckedChange={(checked) => setAcknowledged(checked === true)}
+                  />
+                  <span className="text-sm">{t("publishAcknowledge")}</span>
+                </Label>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <Button
+                    type="button"
+                    disabled={!acknowledged || busy}
+                    onClick={() => void publish()}
+                  >
+                    {busy ? t("publishing") : t("publishConfirm")}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setConfirmingPublish(false);
+                      setAcknowledged(false);
+                    }}
+                  >
+                    {t("cancel")}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           ) : (
-            <button
-              type="button"
-              onClick={() => setConfirmingPublish(true)}
-              disabled={busy || steps.length === 0}
-              style={{ ...styles.button, marginTop: tokens.spacing.sm }}
-            >
-              {t("publishThisVersion")}
-            </button>
+            <div className="mt-6">
+              <Button
+                type="button"
+                onClick={() => setConfirmingPublish(true)}
+                disabled={busy || steps.length === 0}
+              >
+                {t("publishThisVersion")}
+              </Button>
+            </div>
           )}
 
           {protocol.publishedVersions.length > 0 ? (
-            <section style={styles.card}>
-              <h3 style={{ marginTop: 0 }}>{t("publishedVersions")}</h3>
-              <ul>
-                {protocol.publishedVersions.map((version) => (
-                  <li key={version.id}>
-                    {t("versionLine", {
-                      version: version.versionNumber ?? 0,
-                      count: version.stepCount,
-                      at: version.publishedAt ?? "",
-                    })}
-                  </li>
-                ))}
-              </ul>
-              <p style={{ fontSize: 13, color: "#5b6472" }}>{t("publishedVersionsHint")}</p>
-            </section>
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle className="text-base">{t("publishedVersions")}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-1 text-sm">
+                  {protocol.publishedVersions.map((version) => (
+                    <li key={version.id}>
+                      {t("versionLine", {
+                        version: version.versionNumber ?? 0,
+                        count: version.stepCount,
+                        at: version.publishedAt ?? "",
+                      })}
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-muted-foreground mt-3 text-xs">{t("publishedVersionsHint")}</p>
+              </CardContent>
+            </Card>
           ) : null}
         </section>
 

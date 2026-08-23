@@ -54,14 +54,29 @@ export function QuestionPreview({
       style={{
         listStyle: "none",
         padding: tokens.spacing.md,
-        borderBottom: "1px solid #e6e8eb",
+        borderBottom: "1px solid var(--border)",
       }}
     >
-      <p style={{ margin: `0 0 ${tokens.spacing.sm}px`, fontWeight: 600 }}>
-        <span style={{ color: "#5b6472", fontWeight: 400 }}>{index}. </span>
-        {text ? text.text : <em style={{ color: "#912018" }}>{untranslatedLabel}</em>}
+      {/*
+        The id names the controls below, exactly as the participant screen does.
+
+        The preview exists so a researcher can judge what a participant will
+        experience. A preview that is LESS accessible than the real thing
+        misrepresents it — and this is the screen where somebody would notice
+        an unlabelled answer box, if it showed one.
+      */}
+      <p
+        id={`preview-${question.id}`}
+        style={{ margin: `0 0 ${tokens.spacing.sm}px`, fontWeight: 600 }}
+      >
+        <span style={{ color: "var(--muted-foreground)", fontWeight: 400 }}>{index}. </span>
+        {text ? (
+          text.text
+        ) : (
+          <em style={{ color: "var(--danger-muted-foreground)" }}>{untranslatedLabel}</em>
+        )}
         {question.isRequired ? (
-          <span aria-label={requiredLabel} style={{ color: "#b42318" }}>
+          <span aria-label={requiredLabel} style={{ color: "var(--danger)" }}>
             {" *"}
           </span>
         ) : null}
@@ -69,6 +84,7 @@ export function QuestionPreview({
       <QuestionControl
         question={question}
         locale={locale}
+        labelledBy={`preview-${question.id}`}
         untranslatedLabel={untranslatedLabel}
         exclusiveLabel={exclusiveLabel}
       />
@@ -78,11 +94,14 @@ export function QuestionPreview({
 
 function QuestionControl({
   question,
+  labelledBy,
   locale,
   untranslatedLabel,
   exclusiveLabel,
 }: {
   question: QuestionResponse;
+  /** Id of the element carrying the question text. */
+  labelledBy: string;
   locale: Locale;
   untranslatedLabel: string;
   exclusiveLabel: string;
@@ -95,9 +114,24 @@ function QuestionControl({
           ? selectionHint(question.config as MultiChoiceConfig)
           : null;
       return (
-        <div>
+        /*
+          A choice question is a GROUP, named by its question. Without it a
+          screen-reader user arrowing onto an option hears the option's words
+          with no question attached — the same defect the participant
+          application was fixed for.
+        */
+        <div
+          role={question.type === "SINGLE_CHOICE" ? "radiogroup" : "group"}
+          aria-labelledby={labelledBy}
+        >
           {hint ? (
-            <p style={{ margin: `0 0 ${tokens.spacing.xs}px`, fontSize: 13, color: "#5b6472" }}>
+            <p
+              style={{
+                margin: `0 0 ${tokens.spacing.xs}px`,
+                fontSize: 13,
+                color: "var(--muted-foreground)",
+              }}
+            >
               {hint.max === null ? `≥ ${hint.min}` : `${hint.min}–${hint.max}`}
             </p>
           ) : null}
@@ -125,7 +159,9 @@ function QuestionControl({
                   the participant runtime, which Phase 3 does not build.
                 */}
                 {option.isExclusive && question.type === "MULTI_CHOICE" ? (
-                  <span style={{ fontSize: 12, color: "#5b6472" }}>({exclusiveLabel})</span>
+                  <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                    ({exclusiveLabel})
+                  </span>
                 ) : null}
               </label>
             );
@@ -152,7 +188,7 @@ function QuestionControl({
                   fontSize: 14,
                 }}
               >
-                <input type="radio" name={question.id} disabled />
+                <input type="radio" name={question.id} disabled aria-labelledby={labelledBy} />
                 <span>{value}</span>
               </label>
             ))}
@@ -163,7 +199,7 @@ function QuestionControl({
                 display: "flex",
                 justifyContent: "space-between",
                 fontSize: 12,
-                color: "#5b6472",
+                color: "var(--muted-foreground)",
               }}
             >
               <span>{config.minLabel}</span>
@@ -180,6 +216,7 @@ function QuestionControl({
         <input
           type="number"
           disabled
+          aria-labelledby={labelledBy}
           min={config.minValue ?? undefined}
           max={config.maxValue ?? undefined}
           step={config.step ?? undefined}
@@ -192,13 +229,20 @@ function QuestionControl({
       const config = question.config as FreeTextConfig;
       return config.multiline ? (
         <textarea
+          aria-labelledby={labelledBy}
           disabled
           rows={3}
           maxLength={config.maxLength}
           style={{ ...previewInputStyle, minHeight: 80 }}
         />
       ) : (
-        <input type="text" disabled maxLength={config.maxLength} style={previewInputStyle} />
+        <input
+          type="text"
+          disabled
+          aria-labelledby={labelledBy}
+          maxLength={config.maxLength}
+          style={previewInputStyle}
+        />
       );
     }
   }
@@ -210,8 +254,8 @@ const previewInputStyle = {
   fontSize: 16,
   minHeight: tokens.touchTargetMinPx,
   borderRadius: tokens.radiusPx,
-  border: "1px solid #858c96",
-  background: "#f4f5f7",
+  border: "1px solid var(--input)",
+  background: "var(--muted)",
   boxSizing: "border-box",
 } as const;
 

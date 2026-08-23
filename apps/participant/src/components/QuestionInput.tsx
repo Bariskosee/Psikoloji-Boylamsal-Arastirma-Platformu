@@ -159,9 +159,9 @@ export function QuestionInput({
                   alignItems: "center",
                   justifyContent: "center",
                   gap: 4,
-                  border: `1px solid ${value.valueNumber === point ? "#1f2a37" : "#858c96"}`,
-                  background: value.valueNumber === point ? "#1f2a37" : "#fff",
-                  color: value.valueNumber === point ? "#fff" : "#1f2a37",
+                  border: `1px solid ${value.valueNumber === point ? "var(--foreground)" : "var(--input)"}`,
+                  background: value.valueNumber === point ? "var(--foreground)" : "var(--card)",
+                  color: value.valueNumber === point ? "var(--card)" : "var(--foreground)",
                   borderRadius: tokens.radiusPx,
                   padding: tokens.spacing.xs,
                   cursor: "pointer",
@@ -200,7 +200,7 @@ export function QuestionInput({
                 display: "flex",
                 justifyContent: "space-between",
                 fontSize: 14,
-                color: "#5b6472",
+                color: "var(--muted-foreground)",
                 marginTop: 4,
               }}
             >

@@ -45,6 +45,25 @@
       "passwordTooWeak": "That password does not meet the policy."
     }
   },
+  "nav": {
+    "studies": "Studies",
+    "operations": "Operations",
+    "overview": "Overview",
+    "questionnaires": "Questionnaires",
+    "protocols": "Protocols",
+    "participants": "Participants",
+    "monitoring": "Monitoring",
+    "analytics": "Analytics",
+    "export": "Export",
+    "members": "Members",
+    "study": "Study",
+    "openMenu": "Open the navigation menu",
+    "account": "Account",
+    "workspace": "Research platform",
+    "allStudies": "All studies",
+    "skipToContent": "Skip to content",
+    "sectionsFor": "Sections of this study"
+  },
   "studies": {
     "title": "Studies",
     "create": "New study",
@@ -101,7 +120,31 @@
       "EDITOR": "Editor",
       "ANALYST": "Analyst",
       "VIEWER": "Viewer"
-    }
+    },
+    "subtitle": "Every study you are a member of. Open one to design its instruments, watch compliance, and export its data.",
+    "emptyHint": "A study is the container for a questionnaire set, a longitudinal protocol, and the participants enrolled in it.",
+    "openStudy": "Open",
+    "participantsCount": "{count, plural, =0 {No participants} one {# participant} other {# participants}}",
+    "copyCode": "Copy code",
+    "copied": "Copied to the clipboard",
+    "retry": "Try again",
+    "atAGlance": "At a glance",
+    "openMonitoring": "Full monitoring",
+    "enrollmentHint": "Participants join by scanning this code or opening the link. Both stop working when the study is not active.",
+    "copyLink": "Copy link",
+    "saved": "Changes saved",
+    "statusChanged": "Study is now {status}",
+    "settingsHint": "Name and description are shown to your team, not to participants.",
+    "fixedAtCreation": "Fixed when the study was created",
+    "confirmTransition": "Change the study to {status}?",
+    "confirmTransitionBody": "Participants are affected immediately. Closing or archiving a study cannot be undone.",
+    "confirm": "Yes, change it",
+    "cancel": "Cancel",
+    "readOnlyRole": "You have read-only access to this study.",
+    "createSubtitle": "Two of these cannot be changed afterwards. The rest can.",
+    "permanent": "Cannot be changed later",
+    "localesHint": "Participants see the study in whichever of these their device asks for.",
+    "createHint": "You will design questionnaires and the protocol after the study exists."
   },
   "members": {
     "title": "Study members",
@@ -121,6 +164,22 @@
       "lastOwner": "A study must keep at least one OWNER.",
       "forbidden": "Only an OWNER can manage members.",
       "unknown": "Something went wrong. Please try again."
+    },
+    "subtitle": "Who can see and change this study. Roles take effect immediately.",
+    "added": "{email} added",
+    "roleChanged": "Role updated",
+    "removed": "Member removed",
+    "confirmRemove": "Remove {name} from this study?",
+    "confirmRemoveBody": "They lose access immediately. Any data they collected stays with the study.",
+    "confirmRemoveAction": "Remove",
+    "cancel": "Cancel",
+    "noMembers": "No other members yet.",
+    "you": "You",
+    "roleHelp": {
+      "OWNER": "Full control, including membership and the study lifecycle.",
+      "EDITOR": "Designs questionnaires and protocols; cannot manage members.",
+      "ANALYST": "Reads monitoring and exports data; cannot change instruments.",
+      "VIEWER": "Reads monitoring only; cannot export."
     }
   },
   "questionnaires": {
@@ -211,7 +270,12 @@
       "publishNeedsOptions": "Question {position} needs at least two options before you can publish.",
       "publishSelectionBounds": "Question {position} asks for more selections than it has options.",
       "forbidden": "You do not have access to this study's questionnaires. Ask an owner for editor access."
-    }
+    },
+    "subtitle": "A questionnaire is a stable label; what a participant answers is one of its versions.",
+    "emptyHint": "Create one, add questions, then publish a version to use it in a protocol.",
+    "openBuilder": "Open",
+    "retry": "Try again",
+    "created": "{name} created"
   },
   "protocols": {
     "title": "Protocols",
@@ -338,7 +402,9 @@
       "PROTOCOL_STEP_COMPLETION_OF_RECURRING": "A step is triggered by the completion of a repeating step. A participant who misses one occurrence would never receive it. Anchor it on that block's start plus a duration, or on a named occurrence becoming available.",
       "PROTOCOL_DUPLICATE_STEP_KEY": "Two steps share a key, which would merge their export columns.",
       "QUESTIONNAIRE_VERSION_NOT_PUBLISHED": "A step can only administer a published questionnaire version."
-    }
+    },
+    "subtitle": "A protocol defines when each questionnaire is offered, and for how long. Publishing freezes it.",
+    "emptyHint": "Create one, add steps that point at published questionnaire versions, then publish it."
   },
   "join": {
     "loading": "Loading…",
@@ -379,7 +445,12 @@
     "recover": "I have a recovery code",
     "notSignedIn": "We could not find your participation on this device.",
     "notifications": "Notifications",
-    "install": "Add to Home Screen"
+    "install": "Add to Home Screen",
+    "closingSoon": "Closes soon",
+    "openNow": "Open now",
+    "moreOptions": "More",
+    "manage": "Your participation",
+    "withdrawHeading": "Leaving the study"
   },
   "recover": {
     "title": "Use your recovery code",
@@ -630,6 +701,32 @@
     "download": "Download",
     "missingnessTitle": "How missing values are recorded",
     "missingnessBody": "A blank cell can mean at least six different things, so this export never leaves you to guess. Every value is paired with a status column, and a value is present only when the status says ANSWERED. Nothing missing is ever written as zero.",
-    "missingnessWarning": "If you see a zero, it is a real answer of zero."
+    "missingnessWarning": "If you see a zero, it is a real answer of zero.",
+    "sessionStatus": {
+      "PENDING_TRIGGER": "Waiting for its trigger",
+      "SCHEDULED": "Scheduled",
+      "AVAILABLE": "Open now",
+      "STARTED": "In progress",
+      "COMPLETED": "Completed",
+      "EXPIRED_UNSTARTED": "Missed — never opened",
+      "EXPIRED_PARTIAL": "Missed — partly answered",
+      "CANCELLED": "Cancelled"
+    },
+    "monitoringSubtitle": "Compliance across the whole study, and how each day closed. Figures never show a percentage without the number of participants behind it.",
+    "dailyGroupClosed": "Windows that have closed",
+    "dailyGroupOpen": "Still open",
+    "retry": "Try again",
+    "sessionBreakdown": "Sessions",
+    "participantsSubtitle": "Per-step compliance beside the overall figure, because one number hides the one that matters.",
+    "noParticipantsHint": "Participants appear here as soon as they enrol with the study's code.",
+    "stepsHeading": "By step",
+    "showingCount": "Showing {count}",
+    "analyticsSubtitle": "Descriptive distributions across the study. Percentages are over answered cells, and the number not answered is always beside them.",
+    "noDistributionsHint": "Charts appear once participants have completed sessions containing choice or numeric questions.",
+    "exportSubtitle": "Analysis-ready files. Long is authoritative; the others exist so a recipient holding only these files can interpret the dataset without access to the platform.",
+    "exportAudited": "Every download is recorded with its format and row count.",
+    "opsSubtitle": "Whether the platform's background machinery is running. An empty sweeper list means scheduling has stopped.",
+    "opsSweepersHint": "A halted sweeper looks exactly like one with nothing to do; the heartbeat is the only evidence.",
+    "opsSubsLostHint": "A large loss in one week usually means the VAPID keys changed."
   }
 }

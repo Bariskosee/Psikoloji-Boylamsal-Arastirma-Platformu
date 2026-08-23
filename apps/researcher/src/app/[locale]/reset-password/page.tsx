@@ -5,7 +5,11 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Link } from "@/i18n/navigation";
 import { ApiError, api } from "@/lib/api";
-import { ErrorBanner, styles } from "@/lib/ui";
+import { AuthCard } from "@/components/shell/AuthCard";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ErrorBanner } from "@/components/ui/states";
 
 /**
  * Spend a reset link and choose a new password (PLAN.md Phase 12, FR-06).
@@ -64,77 +68,70 @@ function ResetPasswordForm() {
 
   if (done) {
     return (
-      <div style={{ maxWidth: 420, margin: "0 auto" }}>
-        <h1>{t("resetConfirmTitle")}</h1>
-        <p style={{ lineHeight: 1.7 }} role="status">
+      <AuthCard title={t("resetConfirmTitle")}>
+        <p className="text-sm leading-relaxed" role="status">
           {t("resetConfirmDone")}
         </p>
-        <Link href="/login" style={styles.button}>
-          {t("backToSignIn")}
-        </Link>
-      </div>
+        <Button asChild className="mt-5 w-full">
+          <Link href="/login">{t("backToSignIn")}</Link>
+        </Button>
+      </AuthCard>
+    );
+  }
+
+  if (token === "") {
+    return (
+      <AuthCard title={t("resetConfirmTitle")}>
+        {/*
+          A link that arrived without its token — mangled by a mail client, or
+          copied by hand. Say what to do rather than presenting a form that
+          cannot possibly work.
+        */}
+        <ErrorBanner>{t("resetMissingToken")}</ErrorBanner>
+        <Button asChild variant="outline" className="w-full">
+          <Link href="/forgot-password">{t("resetRequestSubmit")}</Link>
+        </Button>
+      </AuthCard>
     );
   }
 
   return (
-    <div style={{ maxWidth: 420, margin: "0 auto" }}>
-      <h1>{t("resetConfirmTitle")}</h1>
+    <AuthCard title={t("resetConfirmTitle")} description={t("resetConfirmIntro")}>
+      <form onSubmit={onSubmit} noValidate className="space-y-4">
+        <ErrorBanner>{error}</ErrorBanner>
 
-      {token === "" ? (
-        <>
-          {/*
-            A link that arrived without its token — mangled by a mail client,
-            or copied by hand. Say what to do rather than presenting a form
-            that cannot possibly work.
-          */}
-          <ErrorBanner>{t("resetMissingToken")}</ErrorBanner>
-          <Link href="/forgot-password" style={styles.secondaryButton}>
-            {t("resetRequestSubmit")}
-          </Link>
-        </>
-      ) : (
-        <form onSubmit={onSubmit} noValidate>
-          <ErrorBanner>{error}</ErrorBanner>
-          <p style={{ lineHeight: 1.7 }}>{t("resetConfirmIntro")}</p>
+        <div className="grid gap-2">
+          <Label htmlFor="new-password">{t("newPassword")}</Label>
+          <Input
+            id="new-password"
+            name="new-password"
+            type="password"
+            autoComplete="new-password"
+            autoFocus
+            required
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+          />
+        </div>
 
-          <div style={styles.field}>
-            <label htmlFor="new-password" style={styles.label}>
-              {t("newPassword")}
-            </label>
-            <input
-              id="new-password"
-              name="new-password"
-              type="password"
-              autoComplete="new-password"
-              required
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              style={styles.input}
-            />
-          </div>
+        <div className="grid gap-2">
+          <Label htmlFor="confirm-password">{t("confirmPassword")}</Label>
+          <Input
+            id="confirm-password"
+            name="confirm-password"
+            type="password"
+            autoComplete="new-password"
+            required
+            value={confirmation}
+            onChange={(event) => setConfirmation(event.target.value)}
+          />
+        </div>
 
-          <div style={styles.field}>
-            <label htmlFor="confirm-password" style={styles.label}>
-              {t("confirmPassword")}
-            </label>
-            <input
-              id="confirm-password"
-              name="confirm-password"
-              type="password"
-              autoComplete="new-password"
-              required
-              value={confirmation}
-              onChange={(event) => setConfirmation(event.target.value)}
-              style={styles.input}
-            />
-          </div>
-
-          <button type="submit" disabled={pending} style={styles.button}>
-            {pending ? t("resetConfirmSaving") : t("resetConfirmSubmit")}
-          </button>
-        </form>
-      )}
-    </div>
+        <Button type="submit" disabled={pending} className="w-full">
+          {pending ? t("resetConfirmSaving") : t("resetConfirmSubmit")}
+        </Button>
+      </form>
+    </AuthCard>
   );
 }
 

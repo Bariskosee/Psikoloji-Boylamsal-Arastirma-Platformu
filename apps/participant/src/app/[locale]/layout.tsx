@@ -4,6 +4,7 @@ import { getMessages, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import { ServiceWorkerUpdater } from "@/components/ServiceWorkerUpdater";
+import "../globals.css";
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
@@ -48,9 +49,17 @@ export default async function LocaleLayout({
           to find real errors.
         */}
         <link rel="icon" href="/icons/icon-192.png" type="image/png" />
+        {/*
+          Both names, deliberately. `mobile-web-app-capable` is the standard
+          one current browsers read and the only one that does not log a
+          deprecation warning; the Apple-prefixed name is still what older iOS
+          versions honour, and dropping it would break standalone launch on
+          exactly the devices this platform cares most about (ADR-007).
+        */}
+        <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="theme-color" content="#1f2a37" />
+        <meta name="theme-color" content="#0d4f63" />
         {/*
           `viewport-fit=cover` plus the safe-area padding below: without it the
           layout runs under the home indicator on a notched iPhone, and the last
@@ -59,10 +68,13 @@ export default async function LocaleLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
       </head>
       <body
+        className="bg-background text-foreground antialiased"
         style={{
-          fontFamily: "system-ui, -apple-system, sans-serif",
           margin: 0,
-          padding: "2rem 1rem",
+          padding: "1.5rem 1rem",
+          // `viewport-fit=cover` above plus this: without it the layout runs
+          // under the home indicator on a notched iPhone, and the last button
+          // on a questionnaire page becomes unreachable.
           paddingBottom: "calc(2rem + env(safe-area-inset-bottom))",
           lineHeight: 1.6,
         }}

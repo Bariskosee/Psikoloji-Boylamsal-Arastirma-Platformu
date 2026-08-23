@@ -12,9 +12,24 @@ import {
   type QuestionnaireVersionDetail,
   type StudyResponse,
 } from "@lpr/contracts";
-import { tokens } from "@lpr/ui";
 import { ApiError, api } from "@/lib/api";
-import { ErrorBanner, StatusBadge, styles } from "@/lib/ui";
+import { ArrowDown, ArrowUp, GripVertical, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { PageHeader } from "@/components/ui/page-header";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { EmptyState, ErrorBanner, ErrorState, LoadingCards } from "@/components/ui/states";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import { defaultConfigFor, groupByPage, moveItem } from "@/lib/questionnaire";
 import { PreviewPane } from "@/components/questionnaire/PreviewPane";
 import { PublishDialog } from "@/components/questionnaire/PublishDialog";
@@ -85,13 +100,26 @@ export default function QuestionnaireBuilderPage() {
 
   if (error && !questionnaire) {
     return (
-      <div style={styles.page}>
-        <ErrorBanner>{error}</ErrorBanner>
-        <Link href={`/studies/${studyId}/questionnaires`}>{t("backToList")}</Link>
+      <div className="mx-auto max-w-3xl">
+        <ErrorState title={error} onRetry={() => void load()} retryLabel={t("retry")} />
+        <p className="mt-4">
+          <Link
+            href={`/studies/${studyId}/questionnaires`}
+            className="text-primary text-sm underline-offset-4 hover:underline"
+          >
+            {t("backToList")}
+          </Link>
+        </p>
       </div>
     );
   }
-  if (!questionnaire || !study) return <p>{t("loading")}</p>;
+  if (!questionnaire || !study) {
+    return (
+      <div className="mx-auto max-w-6xl">
+        <LoadingCards count={2} />
+      </div>
+    );
+  }
 
   const draft = questionnaire.draft;
   const locales = study.supportedLocales as readonly Locale[];
@@ -172,108 +200,73 @@ export default function QuestionnaireBuilderPage() {
   }
 
   return (
-    <div style={styles.page}>
-      <p>
-        <Link href={`/studies/${studyId}/questionnaires`}>← {t("backToList")}</Link>
-      </p>
-
-      <header style={{ display: "flex", alignItems: "center", gap: tokens.spacing.sm }}>
-        <h1 style={{ margin: 0 }}>{questionnaire.name}</h1>
-        <StatusBadge status={t("draftBadge")} />
-      </header>
-
-      {canEdit ? (
-        <section style={styles.card}>
-          <div style={styles.field}>
-            <label htmlFor="questionnaire-name" style={styles.label}>
-              {t("name")}
-            </label>
-            <input
-              id="questionnaire-name"
-              defaultValue={questionnaire.name}
-              onBlur={(event) => {
-                const value = event.target.value.trim();
-                if (value && value !== questionnaire.name) void editQuestionnaire({ name: value });
-              }}
-              style={styles.input}
-            />
-          </div>
-          <div style={styles.field}>
-            <label htmlFor="questionnaire-description" style={styles.label}>
-              {t("description")}
-            </label>
-            <textarea
-              id="questionnaire-description"
-              rows={2}
-              defaultValue={questionnaire.description}
-              onBlur={(event) => {
-                // Unlike the name, an empty description is a legitimate value —
-                // the contract allows "" and clearing it is a real intent.
-                const value = event.target.value.trim();
-                if (value !== questionnaire.description) {
-                  void editQuestionnaire({ description: value });
-                }
-              }}
-              style={{ ...styles.input, minHeight: 60 }}
-            />
-          </div>
-          <p style={{ fontSize: 13, color: "#5b6472", margin: 0 }}>{t("nameHint")}</p>
-        </section>
-      ) : null}
+    <div className="mx-auto max-w-6xl">
+      <PageHeader
+        title={
+          <span className="flex flex-wrap items-center gap-3">
+            {questionnaire.name}
+            <StatusBadge tone="warning">{t("draftBadge")}</StatusBadge>
+          </span>
+        }
+        description={questionnaire.description || undefined}
+        actions={
+          canEdit ? (
+            showPublish ? null : (
+              <Button
+                type="button"
+                onClick={() => setShowPublish(true)}
+                disabled={draft.questions.length === 0}
+              >
+                {t("publish")}
+              </Button>
+            )
+          ) : undefined
+        }
+      />
 
       <ErrorBanner>{error}</ErrorBanner>
+
       {publishedNotice ? (
-        <p
+        <div
           role="status"
-          style={{
-            padding: tokens.spacing.sm,
-            border: "1px solid #1a7f37",
-            background: "#f0fdf4",
-            borderRadius: tokens.radiusPx,
-          }}
+          className="border-success/40 bg-success-muted text-success-muted-foreground mb-4 rounded-lg border px-4 py-3 text-sm"
         >
           {publishedNotice}
-        </p>
+        </div>
       ) : null}
 
-      {questionnaire.publishedVersions.length > 0 ? (
-        <section style={styles.card}>
-          <h2 style={{ marginTop: 0 }}>{t("publishedVersions")}</h2>
-          <ul style={{ margin: 0, paddingLeft: tokens.spacing.lg }}>
-            {questionnaire.publishedVersions.map((version) => (
-              <li key={version.id}>
-                v{version.versionNumber} — {t("questionCount", { count: version.questionCount })}
-                {version.publishedAt
-                  ? ` — ${new Date(version.publishedAt).toLocaleString(uiLocale)}`
-                  : ""}
-              </li>
-            ))}
-          </ul>
-          <p style={{ fontSize: 13, color: "#5b6472", marginBottom: 0 }}>
-            {t("publishedImmutableHint")}
-          </p>
-        </section>
+      {canEdit && showPublish ? (
+        <div className="mb-6">
+          <PublishDialog
+            questionCount={draft.questions.length}
+            nextVersionNumber={nextVersion}
+            publishing={publishing}
+            onPublish={publish}
+            onCancel={() => setShowPublish(false)}
+          />
+        </div>
       ) : null}
 
-      <div
-        style={{
-          display: "grid",
-          // `min(340px, 100%)`, not a bare 340px: a bare minimum is a hard
-          // floor, so on a 320px phone the track stays 340px wide and the whole
-          // page scrolls sideways. Phase 3 requires previewing the builder at
-          // phone width, which is exactly where the bare value fails.
-          gridTemplateColumns: "repeat(auto-fit, minmax(min(340px, 100%), 1fr))",
-          gap: tokens.spacing.lg,
-          alignItems: "start",
-        }}
-      >
+      {/*
+        Two panes on a wide screen, stacked on a narrow one.
+
+        `min(340px, 100%)`, not a bare 340px: a bare minimum is a hard floor, so
+        on a 320px phone the track stays 340px wide and the whole page scrolls
+        sideways. Phase 3 requires previewing the builder at phone width, which
+        is exactly where the bare value fails.
+      */}
+      <div className="grid items-start gap-6 [grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr))]">
         {/* ── Builder ─────────────────────────────────────────────────────── */}
-        <section>
-          <h2>{t("questions")}</h2>
+        <section aria-labelledby="questions-heading">
+          <h2 id="questions-heading" className="mb-3 text-lg font-semibold">
+            {t("questions")}
+          </h2>
 
-          {draft.questions.length === 0 ? <p>{t("noQuestions")}</p> : null}
+          {draft.questions.length === 0 ? (
+            <EmptyState title={t("noQuestions")} className="mb-4" />
+          ) : null}
 
-          <ol style={{ listStyle: "none", padding: 0, margin: 0 }}>
+          <ol className="mb-4 space-y-2">
             {draft.questions.map((question, index) => (
               <li
                 key={question.id}
@@ -284,69 +277,70 @@ export default function QuestionnaireBuilderPage() {
                   if (dragIndex !== null) void reorder(dragIndex, index);
                   setDragIndex(null);
                 }}
-                style={{
-                  ...styles.card,
-                  padding: 0,
-                  marginBottom: tokens.spacing.sm,
-                  opacity: dragIndex === index ? 0.5 : 1,
-                }}
+                className={cn(
+                  "bg-card rounded-lg border transition-opacity",
+                  dragIndex === index && "opacity-50",
+                  expanded === question.id && "ring-primary/30 ring-2",
+                )}
               >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: tokens.spacing.sm,
-                    padding: tokens.spacing.sm,
-                    flexWrap: "wrap",
-                  }}
-                >
-                  <span aria-hidden="true" style={{ cursor: canEdit ? "grab" : "default" }}>
-                    ⠿
-                  </span>
-                  <span style={{ fontWeight: 600, flex: "1 1 160px" }}>
+                <div className="flex flex-wrap items-center gap-2 p-2.5">
+                  <GripVertical
+                    aria-hidden
+                    className={cn(
+                      "text-muted-foreground size-4 shrink-0",
+                      canEdit ? "cursor-grab" : "cursor-default",
+                    )}
+                  />
+                  <span className="min-w-40 flex-1 text-sm font-medium">
                     {index + 1}. {question.translations[previewLocale] ?? t("untranslated")}
                   </span>
-                  <span style={{ fontSize: 12, color: "#5b6472" }}>
+                  <span className="text-muted-foreground text-xs whitespace-nowrap">
                     {t(`types.${question.type}`)} · {t("page")} {question.pageIndex + 1}
                   </span>
 
-                  {/* Keyboard-reachable equivalents of the drag handle —
-                      drag-and-drop alone is not operable without a pointer. */}
-                  <button
-                    type="button"
-                    aria-label={t("moveUp")}
-                    disabled={!canEdit || index === 0}
-                    onClick={() => void reorder(index, index - 1)}
-                    style={styles.secondaryButton}
-                  >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={t("moveDown")}
-                    disabled={!canEdit || index === draft.questions.length - 1}
-                    onClick={() => void reorder(index, index + 1)}
-                    style={styles.secondaryButton}
-                  >
-                    ↓
-                  </button>
-                  <button
-                    type="button"
-                    aria-expanded={expanded === question.id}
-                    onClick={() => setExpanded(expanded === question.id ? null : question.id)}
-                    style={styles.secondaryButton}
-                  >
-                    {expanded === question.id ? t("collapse") : t("edit")}
-                  </button>
-                  {canEdit ? (
-                    <button
+                  <div className="flex items-center gap-1">
+                    {/* Keyboard-reachable equivalents of the drag handle —
+                        drag-and-drop alone is not operable without a pointer. */}
+                    <Button
                       type="button"
-                      onClick={() => void removeQuestion(question.id)}
-                      style={styles.secondaryButton}
+                      variant="ghost"
+                      size="icon"
+                      aria-label={t("moveUp")}
+                      disabled={!canEdit || index === 0}
+                      onClick={() => void reorder(index, index - 1)}
                     >
-                      {t("remove")}
-                    </button>
-                  ) : null}
+                      <ArrowUp />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      aria-label={t("moveDown")}
+                      disabled={!canEdit || index === draft.questions.length - 1}
+                      onClick={() => void reorder(index, index + 1)}
+                    >
+                      <ArrowDown />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      aria-expanded={expanded === question.id}
+                      onClick={() => setExpanded(expanded === question.id ? null : question.id)}
+                    >
+                      {expanded === question.id ? t("collapse") : t("edit")}
+                    </Button>
+                    {canEdit ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => void removeQuestion(question.id)}
+                      >
+                        {t("remove")}
+                      </Button>
+                    ) : null}
+                  </div>
                 </div>
 
                 {expanded === question.id ? (
@@ -364,80 +358,128 @@ export default function QuestionnaireBuilderPage() {
           </ol>
 
           {canEdit ? (
-            <div
-              style={{ ...styles.card, display: "flex", gap: tokens.spacing.sm, flexWrap: "wrap" }}
-            >
-              <label htmlFor="new-question-type" style={{ ...styles.label, marginBottom: 0 }}>
-                {t("addQuestion")}
-              </label>
-              <select
-                id="new-question-type"
-                value={newType}
-                onChange={(event) => setNewType(event.target.value as QuestionType)}
-                style={{ ...styles.input, maxWidth: 220 }}
-              >
-                {QUESTION_TYPES.map((type) => (
-                  <option key={type} value={type}>
-                    {t(`types.${type}`)}
-                  </option>
-                ))}
-              </select>
-              <button type="button" onClick={addQuestion} style={styles.button}>
-                + {t("add")}
-              </button>
-            </div>
+            <Card>
+              <CardContent className="flex flex-wrap items-end gap-3 pt-6">
+                <div className="grid min-w-52 flex-1 gap-2">
+                  <Label htmlFor="new-question-type">{t("addQuestion")}</Label>
+                  <Select
+                    value={newType}
+                    onValueChange={(value) => setNewType(value as QuestionType)}
+                  >
+                    <SelectTrigger id="new-question-type" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {QUESTION_TYPES.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {t(`types.${type}`)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button type="button" onClick={addQuestion}>
+                  <Plus />
+                  {t("add")}
+                </Button>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {questionnaire.publishedVersions.length > 0 ? (
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle className="text-base">{t("publishedVersions")}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-1.5 text-sm">
+                  {questionnaire.publishedVersions.map((version) => (
+                    <li key={version.id} className="flex flex-wrap items-center gap-2">
+                      <StatusBadge tone="success">v{version.versionNumber}</StatusBadge>
+                      <span className="text-muted-foreground">
+                        {t("questionCount", { count: version.questionCount })}
+                        {version.publishedAt
+                          ? ` — ${new Date(version.publishedAt).toLocaleString(uiLocale)}`
+                          : ""}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-muted-foreground mt-3 text-xs">{t("publishedImmutableHint")}</p>
+              </CardContent>
+            </Card>
           ) : null}
 
           {canEdit ? (
-            showPublish ? (
-              <PublishDialog
-                questionCount={draft.questions.length}
-                nextVersionNumber={nextVersion}
-                publishing={publishing}
-                onPublish={publish}
-                onCancel={() => setShowPublish(false)}
-              />
-            ) : (
-              <button
-                type="button"
-                onClick={() => setShowPublish(true)}
-                disabled={draft.questions.length === 0}
-                style={styles.button}
-              >
-                {t("publish")}
-              </button>
-            )
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle className="text-base">{t("name")}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="questionnaire-name">{t("name")}</Label>
+                  <Input
+                    id="questionnaire-name"
+                    defaultValue={questionnaire.name}
+                    onBlur={(event) => {
+                      const value = event.target.value.trim();
+                      if (value && value !== questionnaire.name) {
+                        void editQuestionnaire({ name: value });
+                      }
+                    }}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="questionnaire-description">{t("description")}</Label>
+                  <Textarea
+                    id="questionnaire-description"
+                    rows={2}
+                    defaultValue={questionnaire.description}
+                    onBlur={(event) => {
+                      // Unlike the name, an empty description is a legitimate
+                      // value — the contract allows "" and clearing it is a
+                      // real intent.
+                      const value = event.target.value.trim();
+                      if (value !== questionnaire.description) {
+                        void editQuestionnaire({ description: value });
+                      }
+                    }}
+                  />
+                </div>
+                <p className="text-muted-foreground text-xs">{t("nameHint")}</p>
+              </CardContent>
+            </Card>
           ) : null}
         </section>
 
         {/* ── Preview ─────────────────────────────────────────────────────── */}
-        <section>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: tokens.spacing.sm,
-              flexWrap: "wrap",
-            }}
-          >
-            <h2 style={{ margin: 0 }}>{t("preview")}</h2>
-            <label htmlFor="preview-locale" style={{ fontSize: 14 }}>
-              {t("previewLanguage")}
-            </label>
-            <select
-              id="preview-locale"
-              value={previewLocale}
-              onChange={(event) => setPreviewLocale(event.target.value as Locale)}
-              style={{ ...styles.input, maxWidth: 120 }}
-            >
-              {locales.map((locale) => (
-                <option key={locale} value={locale}>
-                  {locale.toUpperCase()}
-                </option>
-              ))}
-            </select>
+        <section aria-labelledby="preview-heading">
+          <div className="mb-1 flex flex-wrap items-end justify-between gap-3">
+            <h2 id="preview-heading" className="text-lg font-semibold">
+              {t("preview")}
+            </h2>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="preview-locale" className="text-sm font-normal">
+                {t("previewLanguage")}
+              </Label>
+              <Select
+                value={previewLocale}
+                onValueChange={(value) => setPreviewLocale(value as Locale)}
+              >
+                <SelectTrigger id="preview-locale" size="sm" className="w-24">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {locales.map((locale) => (
+                    <SelectItem key={locale} value={locale}>
+                      {locale.toUpperCase()}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-          <p style={{ fontSize: 13, color: "#5b6472" }}>{t("previewHint")}</p>
+          <p className="text-muted-foreground mb-3 text-xs">{t("previewHint")}</p>
 
           <PreviewPane
             version={draft}

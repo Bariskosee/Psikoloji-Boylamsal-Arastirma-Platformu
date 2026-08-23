@@ -64,12 +64,14 @@ export function QuestionEditor({
     mutate(() => api.patch(`${basePath}/questions/${question.id}`, body));
 
   return (
-    <div style={{ padding: tokens.spacing.md, background: "#fbfbfc" }}>
+    <div style={{ padding: tokens.spacing.md, background: "var(--muted)" }}>
       <div style={{ display: "flex", gap: tokens.spacing.md, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: "#5b6472" }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-foreground)" }}>
           {t(`types.${question.type}`)}
         </span>
-        <code style={{ fontSize: 12, color: "#5b6472" }}>{question.questionKey}</code>
+        <code style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+          {question.questionKey}
+        </code>
       </div>
 
       {/* ── Text, one field per supported language ───────────────────────── */}
@@ -321,7 +323,10 @@ function OptionEditor({
     <fieldset style={fieldsetStyle}>
       <legend style={legendStyle}>{t("options")}</legend>
       {question.options.length < 2 ? (
-        <p role="status" style={{ fontSize: 13, color: "#912018", margin: 0 }}>
+        <p
+          role="status"
+          style={{ fontSize: 13, color: "var(--danger-muted-foreground)", margin: 0 }}
+        >
           {t("optionsMinimum")}
         </p>
       ) : null}
@@ -579,20 +584,20 @@ function NumberField({
 }
 
 const fieldsetStyle = {
-  border: "1px solid #e6e8eb",
+  border: "1px solid var(--border)",
   borderRadius: tokens.radiusPx,
   padding: tokens.spacing.sm,
   marginTop: tokens.spacing.md,
 } as const;
 
-const legendStyle = { fontSize: 13, fontWeight: 600, color: "#5b6472" } as const;
+const legendStyle = { fontSize: 13, fontWeight: 600, color: "var(--muted-foreground)" } as const;
 
 const iconButtonStyle = {
   width: 28,
   height: 24,
-  border: "1px solid #858c96",
+  border: "1px solid var(--input)",
   borderRadius: 4,
-  background: "#fff",
+  background: "var(--card)",
   cursor: "pointer",
   lineHeight: 1,
 } as const;

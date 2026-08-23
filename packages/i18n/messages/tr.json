@@ -45,6 +45,25 @@
       "passwordTooWeak": "Bu parola politikayı karşılamıyor."
     }
   },
+  "nav": {
+    "studies": "Çalışmalar",
+    "operations": "Operasyon",
+    "overview": "Genel bakış",
+    "questionnaires": "Anketler",
+    "protocols": "Protokoller",
+    "participants": "Katılımcılar",
+    "monitoring": "İzleme",
+    "analytics": "Analiz",
+    "export": "Dışa aktarma",
+    "members": "Ekip",
+    "study": "Çalışma",
+    "openMenu": "Gezinme menüsünü aç",
+    "account": "Hesap",
+    "workspace": "Araştırma platformu",
+    "allStudies": "Tüm çalışmalar",
+    "skipToContent": "İçeriğe geç",
+    "sectionsFor": "Bu çalışmanın bölümleri"
+  },
   "studies": {
     "title": "Çalışmalar",
     "create": "Yeni çalışma",
@@ -101,7 +120,31 @@
       "EDITOR": "Düzenleyici",
       "ANALYST": "Analist",
       "VIEWER": "İzleyici"
-    }
+    },
+    "subtitle": "Üyesi olduğunuz tüm çalışmalar. Araçlarını tasarlamak, uyumu izlemek ve verisini dışa aktarmak için birini açın.",
+    "emptyHint": "Bir çalışma; anket setini, boylamsal protokolü ve ona kayıtlı katılımcıları bir arada tutar.",
+    "openStudy": "Aç",
+    "participantsCount": "{count, plural, =0 {Katılımcı yok} one {# katılımcı} other {# katılımcı}}",
+    "copyCode": "Kodu kopyala",
+    "copied": "Panoya kopyalandı",
+    "retry": "Yeniden dene",
+    "atAGlance": "Özet",
+    "openMonitoring": "Tüm izleme",
+    "enrollmentHint": "Katılımcılar bu kodu okutarak veya bağlantıyı açarak katılır. Çalışma etkin değilken ikisi de çalışmaz.",
+    "copyLink": "Bağlantıyı kopyala",
+    "saved": "Değişiklikler kaydedildi",
+    "statusChanged": "Çalışma artık: {status}",
+    "settingsHint": "Ad ve açıklama ekibinize görünür, katılımcılara değil.",
+    "fixedAtCreation": "Çalışma oluşturulurken belirlendi",
+    "confirmTransition": "Çalışma {status} durumuna geçirilsin mi?",
+    "confirmTransitionBody": "Katılımcılar bundan hemen etkilenir. Bir çalışmayı kapatmak veya arşivlemek geri alınamaz.",
+    "confirm": "Evet, değiştir",
+    "cancel": "Vazgeç",
+    "readOnlyRole": "Bu çalışmada yalnızca görüntüleme yetkiniz var.",
+    "createSubtitle": "Bunlardan ikisi sonradan değiştirilemez. Diğerleri değiştirilebilir.",
+    "permanent": "Sonradan değiştirilemez",
+    "localesHint": "Katılımcılar çalışmayı, cihazlarının istediği dilde görür.",
+    "createHint": "Anketleri ve protokolü, çalışma oluşturulduktan sonra tasarlayacaksınız."
   },
   "members": {
     "title": "Çalışma üyeleri",
@@ -121,6 +164,22 @@
       "lastOwner": "Bir çalışmada en az bir SAHİP kalmalıdır.",
       "forbidden": "Üyeleri yalnızca bir SAHİP yönetebilir.",
       "unknown": "Bir şeyler ters gitti. Lütfen tekrar deneyin."
+    },
+    "subtitle": "Bu çalışmayı kimler görebilir ve değiştirebilir. Rol değişiklikleri anında geçerli olur.",
+    "added": "{email} eklendi",
+    "roleChanged": "Rol güncellendi",
+    "removed": "Üye çıkarıldı",
+    "confirmRemove": "{name} bu çalışmadan çıkarılsın mı?",
+    "confirmRemoveBody": "Erişimi anında sona erer. Topladığı veriler çalışmada kalır.",
+    "confirmRemoveAction": "Çıkar",
+    "cancel": "Vazgeç",
+    "noMembers": "Henüz başka üye yok.",
+    "you": "Siz",
+    "roleHelp": {
+      "OWNER": "Üyelik ve çalışma yaşam döngüsü dahil tam yetki.",
+      "EDITOR": "Anket ve protokol tasarlar; üyeleri yönetemez.",
+      "ANALYST": "İzlemeyi okur ve veriyi dışa aktarır; araçları değiştiremez.",
+      "VIEWER": "Yalnızca izlemeyi okur; dışa aktaramaz."
     }
   },
   "questionnaires": {
@@ -211,7 +270,12 @@
       "publishNeedsOptions": "{position}. sorunun yayımlanabilmesi için en az iki seçeneği olmalı.",
       "publishSelectionBounds": "{position}. soru, seçenek sayısından fazla seçim istiyor.",
       "forbidden": "Bu çalışmanın anketlerine erişiminiz yok. Düzenleyici yetkisi için çalışma sahibine başvurun."
-    }
+    },
+    "subtitle": "Anket kalıcı bir etikettir; katılımcının yanıtladığı şey onun bir sürümüdür.",
+    "emptyHint": "Bir tane oluşturun, soruları ekleyin, ardından protokolde kullanmak için bir sürüm yayımlayın.",
+    "openBuilder": "Aç",
+    "retry": "Yeniden dene",
+    "created": "{name} oluşturuldu"
   },
   "protocols": {
     "title": "Protokoller",
@@ -338,7 +402,9 @@
       "PROTOCOL_STEP_COMPLETION_OF_RECURRING": "Bir adım, tekrarlayan bir adımın tamamlanmasıyla tetikleniyor. Bir tekrarı kaçıran katılımcı bu adımı hiç almaz. Onu bloğun başlangıcı artı bir süreye, ya da adı verilmiş bir tekrarın açılmasına bağlayın.",
       "PROTOCOL_DUPLICATE_STEP_KEY": "İki adım aynı anahtarı paylaşıyor; bu, dışa aktarım sütunlarını birleştirir.",
       "QUESTIONNAIRE_VERSION_NOT_PUBLISHED": "Bir adım yalnızca yayımlanmış bir anket sürümünü uygulayabilir."
-    }
+    },
+    "subtitle": "Protokol, her anketin ne zaman ve ne kadar süreyle sunulacağını tanımlar. Yayımlamak protokolü dondurur.",
+    "emptyHint": "Bir tane oluşturun, yayımlanmış anket sürümlerini gösteren adımlar ekleyin ve yayımlayın."
   },
   "join": {
     "loading": "Yükleniyor…",
@@ -379,7 +445,12 @@
     "recover": "Kurtarma kodum var",
     "notSignedIn": "Bu cihazda katılımınızı bulamadık.",
     "notifications": "Bildirimler",
-    "install": "Ana Ekrana ekle"
+    "install": "Ana Ekrana ekle",
+    "closingSoon": "Yakında kapanıyor",
+    "openNow": "Şu an açık",
+    "moreOptions": "Diğer",
+    "manage": "Katılımınız",
+    "withdrawHeading": "Çalışmadan ayrılma"
   },
   "recover": {
     "title": "Kurtarma kodunuzu kullanın",
@@ -630,6 +701,32 @@
     "download": "İndir",
     "missingnessTitle": "Eksik değerler nasıl kaydedilir",
     "missingnessBody": "Boş bir hücre en az altı farklı şey anlamına gelebilir, bu yüzden bu dışa aktarım sizi tahmine bırakmaz. Her değerin yanında bir durum sütunu vardır ve değer yalnızca durum ANSWERED olduğunda doludur. Eksik hiçbir şey asla sıfır olarak yazılmaz.",
-    "missingnessWarning": "Bir sıfır görüyorsanız, o gerçek bir sıfır yanıtıdır."
+    "missingnessWarning": "Bir sıfır görüyorsanız, o gerçek bir sıfır yanıtıdır.",
+    "sessionStatus": {
+      "PENDING_TRIGGER": "Tetikleyicisini bekliyor",
+      "SCHEDULED": "Planlandı",
+      "AVAILABLE": "Şu an açık",
+      "STARTED": "Devam ediyor",
+      "COMPLETED": "Tamamlandı",
+      "EXPIRED_UNSTARTED": "Kaçırıldı — hiç açılmadı",
+      "EXPIRED_PARTIAL": "Kaçırıldı — kısmen yanıtlandı",
+      "CANCELLED": "İptal edildi"
+    },
+    "monitoringSubtitle": "Çalışmanın tamamındaki uyum ve her günün nasıl kapandığı. Yüzdeler, arkasındaki katılımcı sayısı olmadan hiçbir zaman gösterilmez.",
+    "dailyGroupClosed": "Kapanmış pencereler",
+    "dailyGroupOpen": "Hâlâ açık",
+    "retry": "Yeniden dene",
+    "sessionBreakdown": "Oturumlar",
+    "participantsSubtitle": "Genel rakamın yanında adım adım uyum; çünkü tek bir sayı, asıl önemli olanı gizler.",
+    "noParticipantsHint": "Katılımcılar, çalışmanın koduyla kaydolur olmaz burada görünür.",
+    "stepsHeading": "Adım bazında",
+    "showingCount": "{count} kayıt gösteriliyor",
+    "analyticsSubtitle": "Çalışma genelindeki betimsel dağılımlar. Yüzdeler yanıtlanmış hücreler üzerinden hesaplanır ve yanıtlanmayan sayı daima yanlarında yer alır.",
+    "noDistributionsHint": "Grafikler, katılımcılar seçim veya sayısal soru içeren oturumları tamamladıkça görünür.",
+    "exportSubtitle": "Analize hazır dosyalar. Uzun biçim esastır; diğerleri, yalnızca bu dosyalara sahip birinin platforma erişmeden veri setini yorumlayabilmesi için vardır.",
+    "exportAudited": "Her indirme; biçimi ve satır sayısıyla birlikte kaydedilir.",
+    "opsSubtitle": "Platformun arka plan mekanizmasının çalışıp çalışmadığı. Boş bir süpürücü listesi, zamanlamanın durduğu anlamına gelir.",
+    "opsSweepersHint": "Durmuş bir süpürücü, işi olmayan bir süpürücüyle birebir aynı görünür; tek kanıt kalp atışıdır.",
+    "opsSubsLostHint": "Bir haftada büyük bir kayıp, genellikle VAPID anahtarlarının değiştiği anlamına gelir."
   }
 }

@@ -41,8 +41,8 @@ export function PublishDialog({
       aria-labelledby="publish-heading"
       style={{
         ...styles.card,
-        borderColor: "#b42318",
-        background: "#fffaf9",
+        borderColor: "var(--danger)",
+        background: "var(--danger-muted)",
       }}
     >
       <h3 id="publish-heading" style={{ marginTop: 0 }}>
@@ -78,7 +78,7 @@ export function PublishDialog({
           style={{
             ...styles.button,
             ...(acknowledged && !publishing
-              ? { background: "#b42318", border: "1px solid #b42318" }
+              ? { background: "var(--danger)", border: "1px solid var(--danger)" }
               : { opacity: 0.6, cursor: "not-allowed" }),
           }}
         >
