@@ -214,6 +214,13 @@ export class AnalyticsService {
           FROM research.participant_sessions s, bounds b
          WHERE s.study_id = ${studyId}
            AND s.available_until IS NOT NULL
+           -- A session that is still OPEN has not closed, whatever its
+           -- available_until says: either the window ends later today, or the
+           -- expiry sweeper has not reached it yet. Without this filter it
+           -- appears in BOTH this CTE and the still_open one below and is
+           -- counted twice -- exactly the apparent double-count that
+           -- docs/compliance-formula.md section 8 says must not happen.
+           AND s.status NOT IN ('AVAILABLE', 'STARTED')
            AND (s.available_until AT TIME ZONE ${timezone})::date
                BETWEEN b.today - ${bounded - 1}::int AND b.today
       ),

@@ -282,6 +282,44 @@ describe("the timeline shows every session the protocol implies", () => {
   });
 });
 
+describe("the daily view sums correctly", () => {
+  it("counts an open session whose window closes today exactly once", async () => {
+    /**
+     * The regression this exists for, found by driving the live dashboard.
+     *
+     * A session that is still AVAILABLE but whose `available_until` falls on
+     * today appeared in BOTH halves of the query — once as a window closing
+     * today, once as a window still open — and was counted twice. The overview
+     * said two sessions were open while the daily table said three.
+     *
+     * That is precisely the failure `docs/compliance-formula.md` §8 warns
+     * about: categories that appear to double-count destroy trust in every
+     * other number on the page. A session is open or it is closed, never both.
+     */
+    const { studyId, owner } = await workedExampleE();
+
+    // The fixture's sessions all run now−2h … now+2h, so the AVAILABLE one
+    // closes today and is exactly the shape that was double-counted.
+    const response = await owner.get(`/api/studies/${studyId}/analytics/daily`).expect(200);
+
+    const totalOpen = response.body.days.reduce(
+      (sum: number, day: { open: number }) => sum + day.open,
+      0,
+    );
+    const overview = await owner.get(`/api/studies/${studyId}/analytics/overview`).expect(200);
+
+    // One AVAILABLE session in the fixture, counted once.
+    expect(overview.body.sessions.open).toBe(1);
+    expect(totalOpen).toBe(1);
+
+    // And every day's parts still sum to its own totals.
+    for (const day of response.body.days) {
+      expect(day.completed + day.missedUnstarted + day.missedPartial).toBe(day.closed);
+      expect(day.notStarted + day.inProgress).toBe(day.open);
+    }
+  });
+});
+
 describe("the participant list", () => {
   it("paginates by cursor, not offset", async () => {
     const { studyId, owner } = await workedExampleE();
