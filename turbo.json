@@ -62,7 +62,8 @@
         "SMTP_PASSWORD",
         "SMTP_SECURE",
         "MAIL_FROM",
-        "PASSWORD_RESET_RATE_LIMIT_MAX"
+        "PASSWORD_RESET_RATE_LIMIT_MAX",
+        "ENROLL_RATE_LIMIT_MAX"
       ]
     },
     "dev": {
@@ -100,7 +101,8 @@
         "SMTP_PASSWORD",
         "SMTP_SECURE",
         "MAIL_FROM",
-        "PASSWORD_RESET_RATE_LIMIT_MAX"
+        "PASSWORD_RESET_RATE_LIMIT_MAX",
+        "ENROLL_RATE_LIMIT_MAX"
       ]
     }
   }

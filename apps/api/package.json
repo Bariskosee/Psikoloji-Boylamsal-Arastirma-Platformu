@@ -11,7 +11,8 @@
     "dev": "nest start --watch",
     "start": "node dist/main.js",
     "researcher:create": "node dist/scripts/create-researcher.js",
-    "test:integration": "vitest run --config vitest.integration.config.ts"
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:load": "vitest run --config vitest.load.config.ts"
   },
   "dependencies": {
     "@lpr/contracts": "workspace:*",

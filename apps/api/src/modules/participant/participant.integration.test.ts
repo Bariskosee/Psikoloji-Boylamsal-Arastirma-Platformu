@@ -1,4 +1,5 @@
 import request from "supertest";
+import { loadEnv } from "../../config/env.js";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import { participantCredentials, participants } from "@lpr/db";
@@ -430,5 +431,57 @@ describe("withdrawal", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]?.status).toBe("WITHDRAWN");
     expect(rows[0]?.withdrawnAt).not.toBeNull();
+  });
+});
+
+/**
+ * Enrollment rate limiting (PLAN.md Phase 12, "rate-limit verification").
+ *
+ * ── The failure this covers ─────────────────────────────────────────────────
+ * The limit is keyed on IP alone, because before enrollment there is nothing
+ * else to key on. That is correct and it has a consequence: recruitment in this
+ * platform happens by QR code — a poster in a room, a link handed out in a lab
+ * session — so the normal case is a whole cohort arriving from ONE institutional
+ * address within minutes.
+ *
+ * It was hard-coded to 10 per hour. The eleventh participant in a seminar room
+ * was told to come back in an hour, and a study that loses them reads it as
+ * recruitment difficulty rather than as a setting.
+ */
+describe("enrollment rate limiting", () => {
+  it("admits a cohort far larger than the old hard-coded ten", async () => {
+    const { code, consentVersionId } = await enrollableStudy();
+
+    const statuses: number[] = [];
+    for (let attempt = 0; attempt < 15; attempt += 1) {
+      const response = await post(`/api/participant/studies/${code}/enroll`).send(
+        ENROLL_BODY(consentVersionId),
+      );
+      statuses.push(response.status);
+    }
+
+    // All fifteen, from the same address, within seconds.
+    expect(statuses.every((status) => status === 201)).toBe(true);
+  });
+
+  /**
+   * And it still refuses eventually. A limit raised to the point of being
+   * absent would be worse than the original: enrollment is unauthenticated,
+   * and anyone holding the code could otherwise fill a study with junk
+   * participants that a researcher then has to identify and exclude by hand.
+   */
+  it("still refuses once the budget is spent", async () => {
+    const { code, consentVersionId } = await enrollableStudy();
+    const limit = loadEnv().ENROLL_RATE_LIMIT_MAX;
+
+    let refused = 0;
+    for (let attempt = 0; attempt < limit + 2; attempt += 1) {
+      const response = await post(`/api/participant/studies/${code}/enroll`).send(
+        ENROLL_BODY(consentVersionId),
+      );
+      if (response.status === 429) refused += 1;
+    }
+
+    expect(refused).toBeGreaterThan(0);
   });
 });

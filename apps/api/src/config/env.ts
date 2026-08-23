@@ -67,6 +67,25 @@ const envSchema = z.object({
   /** Push subscription registrations per hour, per participant (STRUCTURE.md §11.5). */
   PUSH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(20),
 
+  /**
+   * Participant enrollments per hour, from one IP address.
+   *
+   * ── Why this is 60 and not 10 (Phase 12) ────────────────────────────────
+   * It was 10, hard-coded. Recruitment in this platform happens by QR code —
+   * a poster in a room, a link handed out in a lab session — so the normal
+   * case is a cohort enrolling from ONE institutional address within a few
+   * minutes. At 10 per hour the eleventh person is refused, is told to come
+   * back in an hour, and in practice does not: the study loses them, and the
+   * loss looks like recruitment difficulty rather than a configuration.
+   *
+   * The limit still does its job. Enrollment requires a valid code for an
+   * ACTIVE study, so the reachable abuse is somebody with the code creating
+   * junk participants, and 60 an hour bounds that while fitting a seminar
+   * room. A study running larger sessions should raise it deliberately, which
+   * is why it is configuration rather than a constant.
+   */
+  ENROLL_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(60),
+
   /** Login attempts per window, per email and per IP (STRUCTURE.md §11.5). */
   LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(5),
   LOGIN_RATE_LIMIT_WINDOW_MINUTES: z.coerce.number().int().positive().default(15),
