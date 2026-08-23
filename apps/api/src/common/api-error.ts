@@ -49,6 +49,22 @@ export const ApiErrors = {
   accountDisabled: () =>
     new ApiException("ACCOUNT_DISABLED", HttpStatus.FORBIDDEN, "Account is disabled"),
 
+  /**
+   * One error for every way a reset link can fail: expired, already spent,
+   * never existed, or belonging to a deactivated account.
+   *
+   * The caller is unauthenticated and holds only a token. Telling them WHICH
+   * failure it was confirms to somebody with a stolen link that the link was
+   * real. The distinction is made — and logged — on the server, where the
+   * reader has been authenticated some other way.
+   */
+  invalidResetToken: () =>
+    new ApiException(
+      "INVALID_RESET_TOKEN",
+      HttpStatus.BAD_REQUEST,
+      "That reset link is not valid. Request a new one.",
+    ),
+
   passwordTooWeak: (reasons: string[]) =>
     new ApiException(
       "PASSWORD_TOO_WEAK",

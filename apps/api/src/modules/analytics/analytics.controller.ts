@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query, Req } from "@nestjs/common";
+import { Controller, Get, Param, Query, Req, UseGuards } from "@nestjs/common";
 import type { Request } from "express";
 import type {
   DailyComplianceResponse,
@@ -11,6 +11,7 @@ import type {
 } from "@lpr/contracts";
 import { ApiErrors } from "../../common/api-error.js";
 import { uuidParam } from "../../common/uuid-param.pipe.js";
+import { AdminGuard } from "../auth/guards/admin.guard.js";
 import { CurrentUser } from "../auth/decorators/current-user.decorator.js";
 import { RequireStudyPermission } from "../auth/decorators/require-study-permission.decorator.js";
 import { ClockService } from "../../common/core.module.js";
@@ -130,9 +131,16 @@ export class AnalyticsController {
  * Its own controller because it is not study-scoped: sweeper liveness and the
  * dead-letter queue are properties of the deployment, not of any one study, and
  * hanging them off `/api/studies/:id` would imply an ownership that does not
- * exist.
+ * exist. Admin rather than a study role for the same reason — a study OWNER has
+ * no business reading another study's notification failure rates.
+ *
+ * The guard sits on the CONTROLLER, not on the method. Phase 12's authorization
+ * review found the check written inline in the handler: correct, and tested,
+ * but per-method — a second ops route added here would have silently inherited
+ * nothing. At the controller it is inherited by construction.
  */
 @Controller("api/ops")
+@UseGuards(AdminGuard)
 export class OperationsController {
   constructor(private readonly operations: OperationsService) {}
 

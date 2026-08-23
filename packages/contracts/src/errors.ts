@@ -25,6 +25,9 @@ export const API_ERROR_CODES = [
   "AUTHENTICATION_REQUIRED",
   "SESSION_EXPIRED",
   "ACCOUNT_DISABLED",
+  // One code for every way a reset link can fail. Distinguishing them would
+  // tell somebody holding a stolen link that it was real (Phase 12).
+  "INVALID_RESET_TOKEN",
   "PASSWORD_TOO_WEAK",
   "CSRF_FAILED",
 

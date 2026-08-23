@@ -67,9 +67,58 @@ const envSchema = z.object({
   /** Push subscription registrations per hour, per participant (STRUCTURE.md §11.5). */
   PUSH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(20),
 
+  /**
+   * Participant enrollments per hour, from one IP address.
+   *
+   * ── Why this is 60 and not 10 (Phase 12) ────────────────────────────────
+   * It was 10, hard-coded. Recruitment in this platform happens by QR code —
+   * a poster in a room, a link handed out in a lab session — so the normal
+   * case is a cohort enrolling from ONE institutional address within a few
+   * minutes. At 10 per hour the eleventh person is refused, is told to come
+   * back in an hour, and in practice does not: the study loses them, and the
+   * loss looks like recruitment difficulty rather than a configuration.
+   *
+   * The limit still does its job. Enrollment requires a valid code for an
+   * ACTIVE study, so the reachable abuse is somebody with the code creating
+   * junk participants, and 60 an hour bounds that while fitting a seminar
+   * room. A study running larger sessions should raise it deliberately, which
+   * is why it is configuration rather than a constant.
+   */
+  ENROLL_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(60),
+
   /** Login attempts per window, per email and per IP (STRUCTURE.md §11.5). */
   LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(5),
   LOGIN_RATE_LIMIT_WINDOW_MINUTES: z.coerce.number().int().positive().default(15),
+
+  /**
+   * Outbound email, used only for researcher password resets (Phase 12).
+   *
+   * ── Why an empty SMTP host is a supported configuration ─────────────────
+   * A research team may run a pilot before they have institutional mail
+   * relaying arranged. With no host configured the API still accepts reset
+   * requests and still mints tokens, and the message is written to the log
+   * instead of sent — so the flow is testable end to end and an administrator
+   * can read the link out of the log if they must.
+   *
+   * It is NOT a silent fallback in production: `main.ts` logs a warning at
+   * startup when the host is empty, in the same way the VAPID keys do, because
+   * a deployment that believes it is sending reset emails and is not would
+   * only discover it from a researcher who never received one.
+   */
+  SMTP_HOST: z.string().optional().default(""),
+  SMTP_PORT: z.coerce.number().int().positive().default(587),
+  SMTP_USER: z.string().optional().default(""),
+  SMTP_PASSWORD: z.string().optional().default(""),
+  /** STARTTLS on 587 is the default; set true for implicit TLS on 465. */
+  SMTP_SECURE: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
+  /** The From address. Required in substance whenever SMTP_HOST is set. */
+  MAIL_FROM: z.string().optional().default(""),
+
+  /** Password reset requests per hour, per account and per IP. */
+  PASSWORD_RESET_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(5),
 
   // Empty disables Sentry, which is the correct default for local development.
   SENTRY_DSN: z.string().optional().default(""),

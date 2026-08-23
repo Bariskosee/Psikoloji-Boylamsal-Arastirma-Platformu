@@ -28,6 +28,13 @@ export const AUDIT_ACTIONS = [
   "auth.login.failed",
   "auth.logout",
   "auth.password.changed",
+  /**
+   * A reset was ASKED for. Recorded even when the address matches no account,
+   * because "one address requested resets for forty researchers last night" is
+   * only visible if the misses are recorded too (Phase 12).
+   */
+  "auth.password_reset.requested",
+  "auth.password_reset.completed",
 
   // Study (Phase 2)
   "study.created",

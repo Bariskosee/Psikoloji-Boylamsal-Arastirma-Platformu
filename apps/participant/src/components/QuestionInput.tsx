@@ -27,14 +27,29 @@ export const EMPTY_ANSWER: AnswerValue = {
  *
  * Every option is a full-width label wrapping its input, so the tap target is
  * the whole row rather than a 20px circle.
+ *
+ * ── Why the question text is passed in as an ID (Phase 12, NFR-15) ──────────
+ * The question itself is rendered by the page, above this component. Without a
+ * link back to it, none of these controls carries the question in its
+ * accessible name: a free-text box announces as "edit text, blank", and a
+ * participant arrowing onto the third radio hears "Somewhat" with no idea which
+ * item it belongs to. They can answer the wrong question, and nothing
+ * downstream can tell that it happened.
+ *
+ * `labelledBy` is the id of the element holding the question text. Text inputs
+ * point at it directly; choice questions expose a labelled group, so the
+ * question is announced once on entry rather than repeated on every option.
  */
 export function QuestionInput({
   question,
+  labelledBy,
   value,
   disabled,
   onChange,
 }: {
   question: RuntimeQuestion;
+  /** Id of the element rendering the question text. */
+  labelledBy: string;
   value: AnswerValue;
   disabled: boolean;
   onChange: (value: AnswerValue) => void;
@@ -44,7 +59,7 @@ export function QuestionInput({
   switch (question.type) {
     case "SINGLE_CHOICE":
       return (
-        <>
+        <div role="radiogroup" aria-labelledby={labelledBy}>
           {question.options.map((option) => (
             <Row key={option.id}>
               <input
@@ -72,12 +87,17 @@ export function QuestionInput({
               {t("clear")}
             </button>
           )}
-        </>
+        </div>
       );
 
     case "MULTI_CHOICE":
       return (
-        <>
+        /*
+         * `group`, not `radiogroup`: checkboxes are independent, and announcing
+         * them as a radio group would tell a screen-reader user that choosing
+         * one clears the others — the opposite of what this control does.
+         */
+        <div role="group" aria-labelledby={labelledBy}>
           {question.options.map((option) => {
             const checked = value.selectedOptionIds.includes(option.id);
             return (
@@ -114,7 +134,7 @@ export function QuestionInput({
               </Row>
             );
           })}
-        </>
+        </div>
       );
 
     case "LIKERT": {
@@ -125,7 +145,7 @@ export function QuestionInput({
       const points = Array.from({ length: max - min + 1 }, (_, index) => min + index);
 
       return (
-        <>
+        <div role="radiogroup" aria-labelledby={labelledBy}>
           <div style={{ display: "flex", gap: tokens.spacing.xs, flexWrap: "wrap" }}>
             {points.map((point) => (
               <label
@@ -139,7 +159,7 @@ export function QuestionInput({
                   alignItems: "center",
                   justifyContent: "center",
                   gap: 4,
-                  border: `1px solid ${value.valueNumber === point ? "#1f2a37" : "#b6bcc4"}`,
+                  border: `1px solid ${value.valueNumber === point ? "#1f2a37" : "#858c96"}`,
                   background: value.valueNumber === point ? "#1f2a37" : "#fff",
                   color: value.valueNumber === point ? "#fff" : "#1f2a37",
                   borderRadius: tokens.radiusPx,
@@ -152,6 +172,19 @@ export function QuestionInput({
                   name={question.id}
                   checked={value.valueNumber === point}
                   disabled={disabled}
+                  /*
+                   * The end points carry their anchor text in the accessible
+                   * name. A scale announced as "1, 2, 3, 4, 5" tells a
+                   * screen-reader user nothing about which end means what, and
+                   * the anchors below are rendered as sighted-only text.
+                   */
+                  aria-label={
+                    point === min && minLabel !== ""
+                      ? `${String(point)} — ${minLabel}`
+                      : point === max && maxLabel !== ""
+                        ? `${String(point)} — ${maxLabel}`
+                        : String(point)
+                  }
                   onChange={() => onChange({ ...EMPTY_ANSWER, valueNumber: point })}
                   // Visually hidden, not removed: the radio is what a screen
                   // reader announces and what the keyboard drives.
@@ -175,7 +208,7 @@ export function QuestionInput({
               <span>{maxLabel}</span>
             </div>
           ) : null}
-        </>
+        </div>
       );
     }
 
@@ -189,6 +222,9 @@ export function QuestionInput({
           type="number"
           value={value.valueNumber ?? ""}
           disabled={disabled}
+          // The question, not the placeholder. A placeholder vanishes the
+          // moment the participant types and is not an accessible name.
+          aria-labelledby={labelledBy}
           placeholder={t("numberPlaceholder")}
           // `decimal` rather than `numeric`: it brings up a keypad that has a
           // separator, which a step of 0.5 needs.
@@ -213,6 +249,7 @@ export function QuestionInput({
       const shared = {
         value: value.valueText ?? "",
         disabled,
+        "aria-labelledby": labelledBy,
         maxLength,
         placeholder: t("textPlaceholder"),
         onChange: (event: { target: { value: string } }) =>

@@ -19,3 +19,4 @@
  * The `.js` form built cleanly only while nothing imported this package.
  */
 export * from "./tokens";
+export * from "./colors";

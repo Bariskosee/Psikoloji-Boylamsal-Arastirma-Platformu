@@ -103,7 +103,7 @@ export class ParticipantController {
     @Req() request: ParticipantRequest,
     @Res({ passthrough: true }) response: Response,
   ): Promise<EnrollResponse> {
-    this.limit(`enroll:${clientKey(request)}`, 10);
+    this.limit(`enroll:${clientKey(request)}`, this.env.ENROLL_RATE_LIMIT_MAX);
 
     const result = await this.participants.enroll(code, body, this.clock.now());
 

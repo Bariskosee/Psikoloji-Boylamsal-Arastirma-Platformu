@@ -63,9 +63,29 @@ async function bootstrap(): Promise<void> {
   app.enableShutdownHooks();
 
   await app.listen(env.API_PORT);
-  new Logger("bootstrap").log(
+
+  const logger = new Logger("bootstrap");
+  logger.log(
     `api listening on ${env.API_PORT} (${env.NODE_ENV}); sentry ${env.SENTRY_DSN ? "on" : "off"}`,
   );
+
+  /**
+   * Said out loud at startup, not left to be discovered.
+   *
+   * Without SMTP the password-reset flow still works — the link is written to
+   * this log instead of sent — which is deliberate, so a team can pilot before
+   * mail relaying is arranged. What must never happen is a deployment that
+   * BELIEVES it is emailing reset links and is not: the only symptom would be
+   * a researcher who says they never got one, weeks later, and by then nobody
+   * connects the two.
+   */
+  if (env.SMTP_HOST === "") {
+    logger.warn(
+      "SMTP_HOST is empty: password-reset emails will be WRITTEN TO THIS LOG rather than sent. " +
+        "Fine for local work; in production it means no researcher can recover their account " +
+        "without an operator reading the log.",
+    );
+  }
 }
 
 void bootstrap().catch((error: unknown) => {

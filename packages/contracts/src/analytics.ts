@@ -287,6 +287,28 @@ export const operationsHealthSchema = z.object({
     /** Deactivated in the last 7 days — the attrition signal. */
     recentlyLost: z.number().int(),
   }),
+  /**
+   * What is wrong, already judged (PLAN.md Phase 12).
+   *
+   * The counts above are evidence; these are the conclusion. They travel in the
+   * same response deliberately: an operator should not have to know that a
+   * sweeper age of 1800 against a 300-second interval is bad, and a monitor
+   * should not have to reimplement that arithmetic in a query language to page
+   * on it. `@lpr/domain` decides, once, and both readers get the same verdict.
+   *
+   * Admin-only, like everything else on this endpoint — an alert list names
+   * which part of the platform is currently weak, which is not something to
+   * serve anonymously.
+   */
+  alerts: z.array(
+    z.object({
+      code: z.string(),
+      severity: z.enum(["CRITICAL", "WARNING"]),
+      summary: z.string(),
+      /** The file under `docs/runbooks/` that says what to do next. */
+      runbook: z.string(),
+    }),
+  ),
 });
 
 export type OperationsHealthResponse = z.infer<typeof operationsHealthSchema>;

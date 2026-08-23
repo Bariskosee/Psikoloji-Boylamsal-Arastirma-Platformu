@@ -128,7 +128,8 @@ This document is the authority for technical design. Product behaviour is define
 │   ├── reference-protocol.md
 │   ├── compliance-formula.md
 │   ├── export-codebook.md
-│   └── runbooks/
+│   ├── qa/load-test.md       measured throughput, with its caveats
+│   └── runbooks/             eight procedures; alerts name the file to open
 │
 ├── tests/e2e/                Playwright — cross-app critical journeys
 ├── infrastructure/           render.yaml, migration entrypoint

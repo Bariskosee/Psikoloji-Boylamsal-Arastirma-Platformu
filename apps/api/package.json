@@ -11,7 +11,8 @@
     "dev": "nest start --watch",
     "start": "node dist/main.js",
     "researcher:create": "node dist/scripts/create-researcher.js",
-    "test:integration": "vitest run --config vitest.integration.config.ts"
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:load": "vitest run --config vitest.load.config.ts"
   },
   "dependencies": {
     "@lpr/contracts": "workspace:*",
@@ -24,7 +25,8 @@
     "@sentry/node": "^8.47.0",
     "cookie-parser": "^1.4.7",
     "dotenv": "^17.4.2",
-    "drizzle-orm": "^0.38.4",
+    "drizzle-orm": "^0.45.2",
+    "nodemailer": "^9.0.5",
     "qrcode": "^1.5.4",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
@@ -38,11 +40,12 @@
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.0",
     "@types/node": "^22.10.2",
+    "@types/nodemailer": "^8.0.1",
     "@types/qrcode": "^1.5.6",
     "@types/supertest": "^7.2.1",
     "supertest": "^7.2.2",
     "typescript": "^5.7.2",
     "unplugin-swc": "^1.5.11",
-    "vitest": "^2.1.8"
+    "vitest": "^3.2.6"
   }
 }

@@ -210,7 +210,7 @@ const previewInputStyle = {
   fontSize: 16,
   minHeight: tokens.touchTargetMinPx,
   borderRadius: tokens.radiusPx,
-  border: "1px solid #b6bcc4",
+  border: "1px solid #858c96",
   background: "#f4f5f7",
   boxSizing: "border-box",
 } as const;

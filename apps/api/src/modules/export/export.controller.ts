@@ -107,11 +107,23 @@ export class ExportController {
   /**
    * Write the generator to the response, then audit what was written.
    *
-   * ── Why the audit row comes last, with the real count ───────────────────────
+   * ── Why the audit row is written with the real count, before `end()` ───────
    * "An export happened" is worth less than "an export of 41 208 rows
-   * happened". The count is only known once the generator is exhausted, and
-   * writing the row before would record an intent rather than a fact — an
-   * export that failed halfway would look identical to one that succeeded.
+   * happened". The count is only known once the generator is exhausted, so the
+   * row cannot be written up front — writing it before would record an intent
+   * rather than a fact, and an export that failed halfway would look identical
+   * to one that succeeded.
+   *
+   * But it must land BEFORE `response.end()`, not after. Ending the response
+   * first tells the client the export is complete while the audit row is still
+   * an unresolved promise: a process that dies in that window has handed over
+   * the entire dataset with no record that it did. "Who took a copy of this
+   * study's data" is a question an ethics board will ask, and the honest answer
+   * cannot depend on the process surviving the last few milliseconds.
+   *
+   * The gap was found by an intermittently failing test that read the audit
+   * table immediately after the response and sometimes found nothing — which
+   * was not a flaky test but an accurate report of this race.
    *
    * ── Why headers are sent before the first row ──────────────────────────────
    * `Content-Length` is deliberately absent: the length is unknown until the
@@ -130,7 +142,7 @@ export class ExportController {
       format: string;
     },
   ): Promise<void> {
-    const { response, request, user, studyId, format } = context;
+    const { response, studyId, format } = context;
 
     response.setHeader("Content-Type", "text/csv; charset=utf-8");
     response.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
@@ -147,8 +159,32 @@ export class ExportController {
       }
     }
 
-    response.end();
+    /**
+     * Audited before the response is closed, and failure here does not fail the
+     * export: the bytes are already on the wire, so throwing would break a
+     * download that has in fact succeeded. It is logged loudly instead, because
+     * an unaudited export is a compliance problem that somebody must find out
+     * about — just not by having the researcher's download truncated.
+     */
+    try {
+      await this.recordExport(context, result.rowCount());
+    } catch (error) {
+      console.error("export.audit_failed", { studyId, format, error });
+    }
 
+    response.end();
+  }
+
+  private async recordExport(
+    context: {
+      studyId: string;
+      user: { id: string; email: string };
+      request: Request;
+      format: string;
+    },
+    rowCount: number,
+  ): Promise<void> {
+    const { studyId, user, request, format } = context;
     await this.audit.record({
       actorType: "RESEARCHER",
       actorId: user.id,
@@ -159,7 +195,7 @@ export class ExportController {
       entityId: null,
       // Scope and volume, never content. An audit trail must not become a
       // second copy of the data it exists to protect.
-      metadata: { format, rowCount: result.rowCount(), scope: "study" },
+      metadata: { format, rowCount, scope: "study" },
       context: { ip: request.ip, userAgent: request.headers["user-agent"] },
       occurredAt: this.clock.now(),
     });

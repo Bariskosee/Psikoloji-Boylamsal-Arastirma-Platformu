@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
-import { useRouter } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { ApiError, api } from "@/lib/api";
 import { ErrorBanner, styles } from "@/lib/ui";
 import type { LoginResponse } from "@lpr/contracts";
@@ -85,7 +85,11 @@ export default function LoginPage() {
         </button>
       </form>
 
-      <p style={{ marginTop: 24, fontSize: 14, color: "#5b6472" }}>
+      <p style={{ marginTop: 16 }}>
+        <Link href="/forgot-password">{t("forgotPassword")}</Link>
+      </p>
+
+      <p style={{ marginTop: 8, fontSize: 14, color: "#5b6472" }}>
         {t("noSelfService")}
         {params?.locale ? "" : ""}
       </p>

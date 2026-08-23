@@ -400,6 +400,50 @@ describe("the participant list", () => {
   });
 });
 
+/**
+ * Assert that PostgreSQL refused a statement for PRIVILEGE reasons.
+ *
+ * ── Why the SQLSTATE and not the message ────────────────────────────────────
+ * These three tests are the only proof NFR-03 holds, so what they match on
+ * matters. They used to match `/permission denied/i` on `error.message`, and
+ * upgrading Drizzle broke them — 0.45 wraps the driver error in its own
+ * "Failed query: …" and the original text moved into `cause`. The boundary was
+ * never affected; only the wrapping was.
+ *
+ * A test whose meaning depends on how an ORM formats a string is a test that
+ * will go quiet at some future upgrade — and a silently passing NFR-03 test is
+ * far worse than a failing one. SQLSTATE `42501` is `insufficient_privilege`:
+ * it is the database's own answer, it is specified by the standard, and no
+ * other failure produces it. Walking the `cause` chain makes it independent of
+ * how many layers wrap the error.
+ */
+const INSUFFICIENT_PRIVILEGE = "42501";
+
+async function expectPrivilegeDenied(run: () => Promise<unknown>): Promise<void> {
+  let thrown: unknown;
+  try {
+    await run();
+  } catch (error) {
+    thrown = error;
+  }
+
+  expect(thrown, "the query succeeded — the analytics boundary is broken").toBeDefined();
+
+  const codes: unknown[] = [];
+  const messages: string[] = [];
+  for (let error = thrown; error !== undefined && error !== null;) {
+    const shaped = error as { code?: unknown; message?: unknown; cause?: unknown };
+    codes.push(shaped.code);
+    if (typeof shaped.message === "string") messages.push(shaped.message);
+    error = shaped.cause;
+  }
+
+  expect(
+    codes.includes(INSUFFICIENT_PRIVILEGE) || messages.some((m) => /permission denied/i.test(m)),
+    `expected a privilege error, got: ${messages.join(" <- ")}`,
+  ).toBe(true);
+}
+
 describe("NFR-03 — the analytics role cannot reach identity", () => {
   let analyticsPool: Pool;
 
@@ -430,17 +474,17 @@ describe("NFR-03 — the analytics role cannot reach identity", () => {
      */
     const db = createDatabase(analyticsPool);
 
-    await expect(
+    await expectPrivilegeDenied(() =>
       db.execute(sql`SELECT endpoint FROM identity.push_subscriptions LIMIT 1`),
-    ).rejects.toThrow(/permission denied/i);
+    );
   });
 
   it("fails on a researcher password hash too", async () => {
     const db = createDatabase(analyticsPool);
 
-    await expect(
+    await expectPrivilegeDenied(() =>
       db.execute(sql`SELECT password_hash FROM identity.researcher_users LIMIT 1`),
-    ).rejects.toThrow(/permission denied/i);
+    );
   });
 
   it("cannot write to the research schema either", async () => {
@@ -448,9 +492,9 @@ describe("NFR-03 — the analytics role cannot reach identity", () => {
     // role makes an accidental UPDATE impossible rather than unlikely.
     const db = createDatabase(analyticsPool);
 
-    await expect(
+    await expectPrivilegeDenied(() =>
       db.execute(sql`UPDATE research.studies SET name = 'x' WHERE false`),
-    ).rejects.toThrow(/permission denied/i);
+    );
   });
 });
 

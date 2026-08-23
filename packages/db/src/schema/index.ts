@@ -16,6 +16,7 @@ export * from "./schemas";
 // identity — re-identifying data and authentication secrets.
 export * from "./identity/researcher-users";
 export * from "./identity/researcher-sessions";
+export * from "./identity/researcher-password-resets";
 export * from "./identity/participant-credentials";
 export * from "./identity/push-subscriptions";
 

@@ -2,10 +2,14 @@ import { Body, Controller, Get, HttpCode, HttpStatus, Post, Req, Res } from "@ne
 import type { Response } from "express";
 import {
   changePasswordRequestSchema,
+  confirmPasswordResetSchema,
   loginRequestSchema,
+  requestPasswordResetSchema,
   type ChangePasswordRequest,
+  type ConfirmPasswordResetRequest,
   type LoginRequest,
   type LoginResponse,
+  type RequestPasswordResetRequest,
   type ResearcherProfile,
 } from "@lpr/contracts";
 import { ClockService } from "../../common/core.module.js";
@@ -13,6 +17,7 @@ import { clearAuthCookies, setCsrfCookie, setSessionCookie } from "../../common/
 import { loadEnv, shouldUseSecureCookies } from "../../config/env.js";
 import { ZodBodyPipe } from "../../common/zod-body.pipe.js";
 import { AuthService } from "./auth.service.js";
+import { PasswordResetService } from "./password-reset.service.js";
 import { CurrentSession, CurrentUser } from "./decorators/current-user.decorator.js";
 import { Public } from "./decorators/public.decorator.js";
 import type { AuthenticatedRequest, RequestAuth } from "./auth.types.js";
@@ -23,6 +28,7 @@ export class AuthController {
 
   constructor(
     private readonly auth: AuthService,
+    private readonly passwordResets: PasswordResetService,
     private readonly clock: ClockService,
   ) {}
 
@@ -109,6 +115,66 @@ export class AuthController {
       body.newPassword,
       this.clock.now(),
       { ip: clientIp(request), userAgent: request.headers["user-agent"] },
+    );
+  }
+
+  /**
+   * `POST /api/auth/password-reset/request`
+   *
+   * Public, because a researcher who has forgotten their password has no
+   * session by definition. The CSRF origin check still applies, so a
+   * cross-site page cannot fire reset emails on a visitor's behalf.
+   *
+   * ── Why 202 and an empty body, always ─────────────────────────────────────
+   * The answer is identical whether or not the address belongs to an account.
+   * Anything else — a different status, a different message, a different
+   * latency, a different rate-limit budget — turns this into an oracle for
+   * which researchers exist at an institution. 202 is the honest code: the
+   * request has been accepted, and whether anything was sent is deliberately
+   * not disclosed.
+   */
+  @Public()
+  @Post("password-reset/request")
+  @HttpCode(HttpStatus.ACCEPTED)
+  async requestPasswordReset(
+    @Body(new ZodBodyPipe(requestPasswordResetSchema)) body: RequestPasswordResetRequest,
+    @Req() request: AuthenticatedRequest,
+  ): Promise<void> {
+    await this.passwordResets.request(
+      body.email,
+      {
+        ip: clientIp(request),
+        userAgent: request.headers["user-agent"],
+      },
+      this.clock.now(),
+    );
+  }
+
+  /**
+   * `POST /api/auth/password-reset/confirm`
+   *
+   * Spends the token and sets the new password. Public for the same reason,
+   * and deliberately does NOT log the researcher in afterwards: arriving from
+   * an emailed link is not the same as proving you are the account holder at a
+   * keyboard, and a reset that ends in a live session would make a stolen link
+   * strictly more valuable. They sign in with the new password, which is also
+   * the moment they find out whether it saved.
+   */
+  @Public()
+  @Post("password-reset/confirm")
+  @HttpCode(HttpStatus.OK)
+  async confirmPasswordReset(
+    @Body(new ZodBodyPipe(confirmPasswordResetSchema)) body: ConfirmPasswordResetRequest,
+    @Req() request: AuthenticatedRequest,
+  ): Promise<void> {
+    await this.passwordResets.confirm(
+      body.token,
+      body.newPassword,
+      {
+        ip: clientIp(request),
+        userAgent: request.headers["user-agent"],
+      },
+      this.clock.now(),
     );
   }
 }

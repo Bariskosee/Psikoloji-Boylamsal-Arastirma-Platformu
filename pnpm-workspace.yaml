@@ -20,3 +20,16 @@ allowBuilds:
 # Refuse to install on an unsupported Node version rather than only warning.
 # pnpm 11 reads these settings here, not from .npmrc.
 engineStrict: true
+
+# Patched versions forced onto transitive dependencies (Phase 12 security pass).
+#
+# All three reach us only through Next.js and the test tooling, and none is
+# reachable in this codebase — we render no CSS files for postcss to process,
+# never call next/image so sharp is never invoked, and expose no Vite dev
+# server. They are pinned anyway: "not reachable" is a property of today's code,
+# and a future page that imports a stylesheet should not silently re-open a
+# path-traversal advisory.
+overrides:
+  postcss: ">=8.5.23"
+  sharp: ">=0.35.0"
+  vite: ">=6.4.3"

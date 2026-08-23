@@ -2,6 +2,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import { sql } from "drizzle-orm";
 import type { Database } from "@lpr/db";
 import type { OperationsHealthResponse } from "@lpr/contracts";
+import { evaluateOperationalAlerts } from "@lpr/domain";
 import { DATABASE } from "../database/database.module.js";
 
 /**
@@ -131,33 +132,52 @@ export class OperationsService {
     `);
     const subs = subscriptions.rows[0];
 
+    const sweeperStates = sweepers.rows.map((row) => {
+      const ageSeconds = Number(row.age_seconds);
+      return {
+        workerId: row.worker_id,
+        sweptAt: new Date(row.swept_at).toISOString(),
+        ageSeconds,
+        sweepIntervalSeconds: row.sweep_interval_seconds,
+        consecutiveFailures: row.consecutive_failures,
+        lastError: row.last_error,
+        /**
+         * Stale at three missed cycles.
+         *
+         * One late cycle is ordinary jitter; three in a row is a loop that has
+         * stopped, and stopping is invisible by any other means — a halted
+         * sweeper looks exactly like a sweeper with nothing to do.
+         */
+        stale: ageSeconds > row.sweep_interval_seconds * 3,
+      };
+    });
+
+    const notificationTotals = { last24h, accepted, failed, suppressed, suppressionReasons };
+    const pushTotals = {
+      active: Number(subs?.active ?? 0),
+      inactive: Number(subs?.inactive ?? 0),
+      recentlyLost: Number(subs?.recently_lost ?? 0),
+    };
+
     return {
-      sweepers: sweepers.rows.map((row) => {
-        const ageSeconds = Number(row.age_seconds);
-        return {
-          workerId: row.worker_id,
-          sweptAt: new Date(row.swept_at).toISOString(),
-          ageSeconds,
-          sweepIntervalSeconds: row.sweep_interval_seconds,
-          consecutiveFailures: row.consecutive_failures,
-          lastError: row.last_error,
-          /**
-           * Stale at three missed cycles.
-           *
-           * One late cycle is ordinary jitter; three in a row is a loop that
-           * has stopped, and stopping is invisible by any other means — a
-           * halted sweeper looks exactly like a sweeper with nothing to do.
-           */
-          stale: ageSeconds > row.sweep_interval_seconds * 3,
-        };
-      }),
+      sweepers: sweeperStates,
       deadLetteredJobs,
-      notifications: { last24h, accepted, failed, suppressed, suppressionReasons },
-      pushSubscriptions: {
-        active: Number(subs?.active ?? 0),
-        inactive: Number(subs?.inactive ?? 0),
-        recentlyLost: Number(subs?.recently_lost ?? 0),
-      },
+      notifications: notificationTotals,
+      pushSubscriptions: pushTotals,
+      /**
+       * The judgement, from the domain rather than from this file.
+       *
+       * Deliberately not computed here: thresholds are the part of alerting
+       * most likely to be wrong, and in `@lpr/domain` they are unit-tested
+       * against the specific false alarms they were chosen to avoid, with no
+       * database in the way.
+       */
+      alerts: evaluateOperationalAlerts({
+        sweepers: sweeperStates,
+        deadLetteredJobs,
+        notifications: notificationTotals,
+        pushSubscriptions: pushTotals,
+      }),
     };
   }
 }

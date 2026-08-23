@@ -19,9 +19,16 @@ loadDotenv({ path: new URL("../../.env", import.meta.url).pathname });
  * genuinely confusing failure. SWC implements the metadata emit, so the same
  * code that `tsc` compiles for production is what these tests exercise.
  *
- * `singleThread` because these tests share one database: parallel files would
- * truncate each other's fixtures mid-assertion, producing failures that look
- * like authorization bugs and are not.
+ * ── Why the files are serialised, twice over ────────────────────────────────
+ * These tests share one database and every file truncates it in `beforeEach`.
+ * Two files running at once would delete each other's fixtures mid-assertion,
+ * and the resulting failures read as authorization bugs rather than as what
+ * they are.
+ *
+ * `singleThread` already puts every file in one worker. `fileParallelism:
+ * false` states the requirement directly rather than leaving it as a
+ * side-effect of a pool option — the two are belt and braces, and `apps/worker`
+ * uses the latter for the same reason.
  */
 export default defineConfig({
   plugins: [swc.vite({ module: { type: "es6" } })],
@@ -32,5 +39,6 @@ export default defineConfig({
     hookTimeout: 30_000,
     pool: "threads",
     poolOptions: { threads: { singleThread: true } },
+    fileParallelism: false,
   },
 });

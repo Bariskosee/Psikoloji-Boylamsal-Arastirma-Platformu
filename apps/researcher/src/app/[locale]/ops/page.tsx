@@ -56,6 +56,66 @@ export default function OperationsPage() {
     <div style={styles.page}>
       <h1>{t("operations")}</h1>
 
+      {/*
+        Alerts first, above every panel of raw counts (Phase 12).
+
+        The panels below are evidence and the alerts are the conclusion, and an
+        operator opening this page under pressure should not have to derive the
+        second from the first. Placing the verdict last would mean the person
+        who scrolls least is the person who sees least — and on this page, the
+        person in a hurry is exactly the person something is wrong for.
+
+        `alerts` is computed by `@lpr/domain`, so what is rendered here and what
+        an external monitor polls are the same judgement, not two thresholds
+        that drift apart.
+      */}
+      <section style={styles.card}>
+        <h2 style={{ marginTop: 0, fontSize: 18 }}>{t("opsAlerts")}</h2>
+        {health.alerts.length === 0 ? (
+          <p style={{ color: "#5b6472", margin: 0 }}>{t("opsNoAlerts")}</p>
+        ) : (
+          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+            {health.alerts.map((alert) => {
+              const critical = alert.severity === "CRITICAL";
+              return (
+                <li
+                  key={alert.code}
+                  style={{
+                    borderLeft: `4px solid ${critical ? "#b42318" : "#b54708"}`,
+                    background: critical ? "#fef3f2" : "#fffaeb",
+                    padding: "10px 12px",
+                    marginBottom: 8,
+                    borderRadius: 4,
+                  }}
+                >
+                  {/*
+                    Severity is a word, not only a colour. Roughly one man in
+                    twelve cannot reliably separate the red from the amber, and
+                    an alert nobody can grade is an alert nobody acts on.
+                  */}
+                  <strong>
+                    {alert.severity === "CRITICAL"
+                      ? t("opsSeverityCRITICAL")
+                      : t("opsSeverityWARNING")}
+                  </strong>{" "}
+                  <span style={{ color: "#5b6472", fontSize: 13 }}>{alert.code}</span>
+                  <p style={{ margin: "6px 0 4px", lineHeight: 1.6 }}>{alert.summary}</p>
+                  {/*
+                    The procedure travels with the alert. Going to look for the
+                    runbook is the last thing anyone should be doing at the
+                    moment they need it.
+                  */}
+                  <p style={{ margin: 0, fontSize: 13, color: "#5b6472" }}>
+                    {t("opsRunbook")}: <code>{alert.runbook}</code>
+                  </p>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        <p style={{ fontSize: 13, color: "#5b6472", marginBottom: 0 }}>{t("opsAlertsHint")}</p>
+      </section>
+
       <section style={styles.card}>
         <h2 style={{ marginTop: 0, fontSize: 18 }}>{t("opsSweepers")}</h2>
         {health.sweepers.length === 0 ? (

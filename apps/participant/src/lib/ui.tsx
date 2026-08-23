@@ -61,7 +61,7 @@ export const styles = {
     padding: `${String(tokens.spacing.sm)}px ${String(tokens.spacing.md)}px`,
     fontSize: 17,
     borderRadius: tokens.radiusPx,
-    border: "1px solid #b6bcc4",
+    border: "1px solid #858c96",
     background: "#fff",
     color: "#1f2a37",
     cursor: "pointer",
@@ -74,7 +74,7 @@ export const styles = {
     minHeight: tokens.touchTargetMinPx,
     padding: tokens.spacing.sm,
     borderRadius: tokens.radiusPx,
-    border: "1px solid #b6bcc4",
+    border: "1px solid #858c96",
     boxSizing: "border-box",
   } satisfies CSSProperties,
   /** The one place a monospace face earns itself: codes that get transcribed. */
