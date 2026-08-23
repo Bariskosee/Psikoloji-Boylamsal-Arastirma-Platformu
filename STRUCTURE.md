@@ -663,6 +663,8 @@ role app_analytics   → SELECT on research ONLY
 
 This makes NFR-03 enforceable rather than aspirational: an export query that accidentally joins a push endpoint fails at the database, in CI, before review.
 
+**How the role is actually assumed** (Phase 10). `app_analytics` is a NOLOGIN group role, so there is no second credential. Every dashboard and export connection runs `SET ROLE app_analytics` on checkout, which drops privileges for the session — including for a superuser. One credential, the same guarantee, and nothing to provision or rotate. In production the login user is made a member: `GRANT app_analytics TO <user>`. The operations page is the one screen that does NOT use it, because sweeper heartbeats, dead letters and push attrition live outside what analytics may see; it is admin-gated instead.
+
 ### 11.3 Participant continuity
 
 1. Enrollment mints a 256-bit CSPRNG token. `identity.participant_credentials` stores a SHA-256 hash and a lookup prefix — never the token.
@@ -743,10 +745,12 @@ RESEARCHER (session cookie + role guard; every query scoped by study_id)
   /api/studies/:id/protocols          EDITOR   + /versions /steps /publish /preview
   /api/studies/:id/participants       VIEWER+
   /api/studies/:id/sessions           VIEWER+
-  /api/studies/:id/analytics/*        VIEWER+  (aggregate monitoring only)
+  /api/studies/:id/analytics/overview VIEWER+  (aggregate monitoring only)
+  /api/studies/:id/analytics/daily    VIEWER+
+  /api/studies/:id/sessions/:id/responses  ANALYST+ — audited
   /api/studies/:id/exports/*          ANALYST+
   /api/studies/:id/audit              OWNER
-  /api/ops/*                          admin
+  /api/ops/health                     admin — sweepers, dead letters, attrition
 
 INTERNAL
   GET /health   GET /ready

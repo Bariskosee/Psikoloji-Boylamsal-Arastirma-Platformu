@@ -46,8 +46,8 @@ Phase 6    Questionnaire runtime: autosave, resume, completion            done
 Phase 7    Longitudinal protocol and scheduling engine                     done
 Phase 8    PWA and push subscription lifecycle                             done
 Phase 9    Notification and reminder engine                                 done
-Phase 10   Researcher monitoring and compliance dashboard               ← next
-Phase 11   Descriptive analytics and data export
+Phase 10   Researcher monitoring and compliance dashboard                  done
+Phase 11   Descriptive analytics and data export                        ← next
 Phase 12   Hardening: security, observability, i18n completion
 Phase 13   Pilot validation and MVP release gate
 ```

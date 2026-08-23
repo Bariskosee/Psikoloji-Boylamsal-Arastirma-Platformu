@@ -1,10 +1,13 @@
 import { Global, Inject, Logger, Module, type OnApplicationShutdown } from "@nestjs/common";
-import { createDatabase, createPool, type Database, type Pool } from "@lpr/db";
+import { createAnalyticsPool, createDatabase, createPool, type Database, type Pool } from "@lpr/db";
 import { loadEnv } from "../../config/env.js";
 
 /** Injection tokens. Symbols, so nothing can collide with a string provider. */
 export const DB_POOL = Symbol("DB_POOL");
 export const DATABASE = Symbol("DATABASE");
+/** The restricted pool. SELECT on `research` only; no access to `identity`. */
+export const ANALYTICS_POOL = Symbol("ANALYTICS_POOL");
+export const ANALYTICS_DATABASE = Symbol("ANALYTICS_DATABASE");
 
 /**
  * One connection pool for the process, shared by every module.
@@ -17,10 +20,15 @@ export const DATABASE = Symbol("DATABASE");
  * Global, because every domain module needs it and threading an import through
  * each one adds ceremony without adding a boundary.
  *
- * The ANALYTICS pool (`DATABASE_ANALYTICS_URL`, ADR-003) is deliberately absent
- * until Phase 11 needs it. Creating a second pool now would open connections
- * nothing uses, and would invite a query to be written against the wrong role
- * before any test proves which role each path uses.
+ * ── The second pool (Phase 10, ADR-003, NFR-03) ─────────────────────────────
+ * Every dashboard and analytics query runs on `ANALYTICS_DATABASE`, whose
+ * connections have dropped to the `app_analytics` role. That role has SELECT on
+ * `research` and NOTHING on `identity`, so a query that accidentally reaches
+ * for a push endpoint or a password hash fails at the database rather than
+ * quietly returning it.
+ *
+ * Small on purpose: dashboard traffic is a handful of researchers, and every
+ * connection here is one the participant-facing path cannot have.
  */
 @Global()
 @Module({
@@ -43,11 +51,46 @@ export const DATABASE = Symbol("DATABASE");
       inject: [DB_POOL],
       useFactory: (pool: Pool): Database => createDatabase(pool),
     },
+    {
+      provide: ANALYTICS_POOL,
+      useFactory: (): Pool => {
+        const logger = new Logger("AnalyticsPool");
+        /**
+         * The SAME connection string, dropped to `app_analytics` by `SET ROLE`.
+         *
+         * There is deliberately no second credential. `app_analytics` is a
+         * NOLOGIN group role — migration 0000 says so explicitly, "the
+         * deployment grants them to the actual login users, so credentials
+         * never appear in a migration" — and inventing a login user for it
+         * would mean a second password to provision, rotate and leak, for a
+         * guarantee `SET ROLE` already provides at the database.
+         *
+         * This is not hypothetical tidiness. An earlier version accepted an
+         * optional `DATABASE_ANALYTICS_URL`, and the placeholder left in a
+         * developer's `.env` pointed at a user that did not exist — which
+         * failed the entire dashboard with an authentication error rather than
+         * degrading. One credential cannot go stale against itself.
+         */
+        return createAnalyticsPool({
+          connectionString: loadEnv().DATABASE_URL,
+          max: 4,
+          onError: (error) => logger.error(error.message),
+        });
+      },
+    },
+    {
+      provide: ANALYTICS_DATABASE,
+      inject: [ANALYTICS_POOL],
+      useFactory: (pool: Pool): Database => createDatabase(pool),
+    },
   ],
-  exports: [DB_POOL, DATABASE],
+  exports: [DB_POOL, DATABASE, ANALYTICS_POOL, ANALYTICS_DATABASE],
 })
 export class DatabaseModule implements OnApplicationShutdown {
-  constructor(@Inject(DB_POOL) private readonly pool: Pool) {}
+  constructor(
+    @Inject(DB_POOL) private readonly pool: Pool,
+    @Inject(ANALYTICS_POOL) private readonly analyticsPool: Pool,
+  ) {}
 
   /**
    * Nest calls this on SIGTERM because `enableShutdownHooks()` is on.
@@ -58,6 +101,6 @@ export class DatabaseModule implements OnApplicationShutdown {
    * load, which is the worst kind to diagnose.
    */
   async onApplicationShutdown(): Promise<void> {
-    await this.pool.end();
+    await Promise.all([this.pool.end(), this.analyticsPool.end()]);
   }
 }

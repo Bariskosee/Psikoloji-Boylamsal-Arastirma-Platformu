@@ -43,7 +43,14 @@
  *               lives beside its only caller, in
  *               `apps/participant/src/lib/push-availability.ts`, with its own
  *               unit tests.
- * Later phases add: compliance/, missingness/, export/.
+ * Phase 10 adds: compliance/ — the single implementation of every metric in
+ *               `docs/compliance-formula.md`. Nothing outside this directory
+ *               may re-derive a denominator: a compliance figure that reaches a
+ *               methods section has to be reproducible, and a second copy of
+ *               the rule in a dashboard component is how two numbers that
+ *               should agree stop agreeing.
+ *
+ * Later phases add: missingness/, export/.
  */
 
 export * from "./clock.js";
@@ -68,3 +75,4 @@ export * from "./session/answer-validation.js";
 export * from "./session/materialisation.js";
 export * from "./push/index.js";
 export * from "./notification/index.js";
+export * from "./compliance/index.js";

@@ -56,6 +56,14 @@ export const AUDIT_ACTIONS = [
   "participant.withdrawn",
   "participant.erased",
   "export.run",
+  /**
+   * Reading an individual participant's answers (Phase 10, NFR-05).
+   *
+   * Audited because it is the one dashboard action that exposes psychological
+   * data about a named person. Aggregate monitoring is not audited — a trail
+   * that records every page view is a trail nobody reads.
+   */
+  "response.view",
 ] as const;
 
 export const auditActionSchema = z.enum(AUDIT_ACTIONS);
@@ -72,6 +80,7 @@ export const AUDIT_ENTITY_TYPES = [
   "protocol_version",
   "consent_version",
   "participant",
+  "participant_session",
   "export",
 ] as const;
 

@@ -18,6 +18,7 @@ import { ErrorBanner, StatusBadge, styles } from "@/lib/ui";
 export default function StudyPage() {
   const t = useTranslations("studies");
   const tProtocols = useTranslations("protocols");
+  const tAnalytics = useTranslations("analytics");
   const router = useRouter();
   const params = useParams<{ studyId: string }>();
   const studyId = params?.studyId ?? "";
@@ -206,6 +207,22 @@ export default function StudyPage() {
           <Link href={`/studies/${studyId}/protocols`}>{tProtocols("title")} →</Link>
         </p>
       ) : null}
+
+      {/*
+        Monitoring is `analytics:view` and the participant list is
+        `participant:view` — both VIEWER (REQUIREMENTS.md §5.2). Unconditional
+        here, deliberately: every member of a study may see aggregate
+        monitoring, and hiding it from a VIEWER would contradict the API, which
+        is the authority. The response inspector, which is ANALYST, is reached
+        from a participant's timeline and refuses on its own.
+      */}
+      <p>
+        <Link href={`/studies/${studyId}/monitoring`}>{tAnalytics("title")} →</Link>
+      </p>
+
+      <p>
+        <Link href={`/studies/${studyId}/participants`}>{tAnalytics("participants")} →</Link>
+      </p>
 
       {canAdminister ? (
         <p>
