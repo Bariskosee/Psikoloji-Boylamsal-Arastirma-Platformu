@@ -49,3 +49,4 @@ export * from "./participant.js";
 export * from "./session.js";
 export * from "./push.js";
 export * from "./notification.js";
+export * from "./analytics.js";

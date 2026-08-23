@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { APP_FILTER, APP_GUARD } from "@nestjs/core";
 import { ApiExceptionFilter } from "./common/api-exception.filter.js";
 import { CoreModule } from "./common/core.module.js";
+import { AnalyticsModule } from "./modules/analytics/analytics.module.js";
 import { AuditModule } from "./modules/audit/audit.module.js";
 import { AuthModule } from "./modules/auth/auth.module.js";
 import { CsrfGuard } from "./modules/auth/guards/csrf.guard.js";
@@ -38,8 +39,7 @@ import { StudyModule } from "./modules/study/study.module.js";
  *   CsrfGuard             needs request.auth for the double-submit comparison
  *   StudyPermissionGuard  needs request.auth for the membership lookup
  *
- * The remaining domain modules — analytics and export — arrive in Phase 10
- * onward.
+ * The remaining domain module — export — arrives in Phase 11.
  */
 @Module({
   imports: [
@@ -52,6 +52,7 @@ import { StudyModule } from "./modules/study/study.module.js";
     QuestionnaireModule,
     ProtocolModule,
     ConsentModule,
+    AnalyticsModule,
     NotificationModule,
     ParticipantModule,
     PushModule,
