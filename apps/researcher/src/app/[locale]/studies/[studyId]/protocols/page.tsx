@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ScrollAreaX } from "@/components/ui/scroll-area-x";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { EmptyState, ErrorBanner, ErrorState, LoadingTable } from "@/components/ui/states";
@@ -151,7 +152,7 @@ export default function ProtocolsPage() {
       {status === "ready" && protocols && protocols.length > 0 ? (
         <Card className="overflow-hidden py-0">
           <CardContent className="px-0">
-            <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={t("title")}>
+            <ScrollAreaX label={t("title")}>
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
@@ -194,7 +195,7 @@ export default function ProtocolsPage() {
                   ))}
                 </TableBody>
               </Table>
-            </div>
+            </ScrollAreaX>
           </CardContent>
         </Card>
       ) : null}

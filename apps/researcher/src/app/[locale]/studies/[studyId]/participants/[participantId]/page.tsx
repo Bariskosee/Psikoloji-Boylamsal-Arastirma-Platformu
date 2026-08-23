@@ -1,7 +1,7 @@
 "use client";
 
 import { use, useCallback, useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { ArrowLeft, Search } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import type { ParticipantDetailResponse, TimelineEntry } from "@lpr/contracts";
@@ -9,6 +9,7 @@ import { api } from "@/lib/api";
 import { ComplianceFigureView, StepFigureView } from "@/components/analytics/ComplianceFigure";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollAreaX } from "@/components/ui/scroll-area-x";
 import { PageHeader } from "@/components/ui/page-header";
 import { SessionStatusBadge, StatusBadge } from "@/components/ui/status-badge";
 import {
@@ -44,6 +45,8 @@ export default function ParticipantDetailPage({
 }) {
   const { studyId, participantId } = use(params);
   const t = useTranslations("analytics");
+  // The interface's locale, not the device's — see the participant home screen.
+  const locale = useLocale();
 
   const [detail, setDetail] = useState<ParticipantDetailResponse | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
@@ -92,7 +95,7 @@ export default function ParticipantDetailPage({
               {detail.status}
             </StatusBadge>
             <span>
-              {t("enrolled")} {new Date(detail.enrolledAt).toLocaleDateString()}
+              {t("enrolled")} {new Date(detail.enrolledAt).toLocaleDateString(locale)}
             </span>
             {detail.groupKey === null ? null : (
               <span>
@@ -161,7 +164,7 @@ export default function ParticipantDetailPage({
           <CardTitle>{t("timeline")}</CardTitle>
         </CardHeader>
         <CardContent className="px-0 pb-0">
-          <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={t("timeline")}>
+          <ScrollAreaX label={t("timeline")}>
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
@@ -179,7 +182,7 @@ export default function ParticipantDetailPage({
                 ))}
               </TableBody>
             </Table>
-          </div>
+          </ScrollAreaX>
         </CardContent>
       </Card>
     </div>
@@ -188,6 +191,7 @@ export default function ParticipantDetailPage({
 
 function TimelineRow({ entry, studyId }: { entry: TimelineEntry; studyId: string }) {
   const t = useTranslations("analytics");
+  const locale = useLocale();
 
   return (
     /*
@@ -215,7 +219,7 @@ function TimelineRow({ entry, studyId }: { entry: TimelineEntry; studyId: string
       <TableCell className="text-muted-foreground text-xs whitespace-nowrap">
         {entry.availableFrom === null
           ? "—"
-          : new Date(entry.availableFrom).toLocaleString(undefined, {
+          : new Date(entry.availableFrom).toLocaleString(locale, {
               dateStyle: "short",
               timeStyle: "short",
             })}

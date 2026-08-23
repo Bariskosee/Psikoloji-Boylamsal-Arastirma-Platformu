@@ -96,7 +96,13 @@ export default function StudiesPage() {
                 inside a 200px card is a target people miss, and every card
                 here has exactly one destination.
               */}
-              <Card className="hover:border-primary/40 focus-within:ring-ring relative h-full transition-colors focus-within:ring-2">
+              {/*
+                `flex-col` with the footer pushed down. In a grid the cards
+                stretch to the tallest, and a study with no description ended
+                with a band of empty white under its enrollment code while the
+                card beside it was full.
+              */}
+              <Card className="hover:border-primary/40 focus-within:ring-ring relative flex h-full flex-col transition-colors focus-within:ring-2">
                 <CardHeader className="gap-2">
                   <div className="flex items-start justify-between gap-3">
                     <CardTitle className="text-base leading-snug">
@@ -115,7 +121,7 @@ export default function StudiesPage() {
                     </p>
                   ) : null}
                 </CardHeader>
-                <CardContent className="text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+                <CardContent className="text-muted-foreground mt-auto flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
                   <span>
                     {t("code")}:{" "}
                     <code className="text-foreground font-mono text-[0.8rem]">

@@ -36,7 +36,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { StudyStatusBadge } from "@/components/ui/status-badge";
-import { activeSection, sectionsFor, type StudySectionId } from "./study-nav";
+import { STUDY_SECTIONS, activeSection, sectionsFor, type StudySectionId } from "./study-nav";
 
 const ICONS: Record<StudySectionId, typeof LayoutDashboard> = {
   overview: LayoutDashboard,
@@ -89,6 +89,30 @@ export function AppShell({
   const tAuth = useTranslations("auth");
   const pathname = usePathname();
   const current = study ? activeSection(pathname, study.id) : null;
+  const onOps = pathname.endsWith("/ops");
+  /**
+   * "All studies" is active on the LIST, not merely on anything that is not
+   * /ops.
+   *
+   * Keyed on the absence of a study it also lit up while a study was open, so
+   * the list entry and the open study's section were highlighted at the same
+   * time — the same "two active items" defect, one level down. Read from the
+   * path rather than from `study`, so it does not flicker during the fetch.
+   */
+  const onStudiesRoute = !onOps && !/\/studies\/[0-9a-fA-F-]{36}(\/|$)/.test(pathname);
+
+  /**
+   * The current section's label, for the header bar.
+   *
+   * The bar used to print the study's name — which the page's own `<h1>` also
+   * prints, and which the sidebar prints a third time. Three copies of one
+   * string on one screen is the clearest "generated" tell there is. A
+   * breadcrumb says something the heading does not: where this page sits.
+   */
+  const sectionLabel =
+    current === null
+      ? null
+      : t(STUDY_SECTIONS.find((section) => section.id === current)?.labelKey ?? "overview");
 
   return (
     <SidebarProvider>
@@ -122,7 +146,12 @@ export function AppShell({
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={study === null} tooltip={t("studies")}>
+                  {/*
+                    Active on the studies routes only. Keyed on `study === null`
+                    it also lit up on /ops, so two items in the same list were
+                    highlighted at once and neither told you where you were.
+                  */}
+                  <SidebarMenuButton asChild isActive={onStudiesRoute} tooltip={t("studies")}>
                     <Link href="/studies">
                       <FlaskConical />
                       <span>{t("allStudies")}</span>
@@ -136,11 +165,7 @@ export function AppShell({
                 */}
                 {user.isAdmin ? (
                   <SidebarMenuItem>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={pathname.endsWith("/ops")}
-                      tooltip={t("operations")}
-                    >
+                    <SidebarMenuButton asChild isActive={onOps} tooltip={t("operations")}>
                       <Link href="/ops">
                         <Wrench />
                         <span>{t("operations")}</span>
@@ -229,9 +254,55 @@ export function AppShell({
         <header className="bg-background/95 supports-[backdrop-filter]:bg-background/70 sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b px-4 backdrop-blur">
           <SidebarTrigger aria-label={t("openMenu")} />
           <Separator orientation="vertical" className="mr-1 !h-4" />
-          <span className="text-muted-foreground truncate text-sm">
-            {study ? study.name : t("studies")}
-          </span>
+          {/*
+            A trail, not a title. On a study page it reads
+            "Studies / Sleep, Mood and Daily Stress / Monitoring", which is the
+            one thing neither the heading nor the sidebar says.
+          */}
+          <nav aria-label="Breadcrumb" className="min-w-0">
+            <ol className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-sm">
+              <li className="shrink-0">
+                <Link href="/studies" className="hover:text-foreground transition-colors">
+                  {t("breadcrumbHome")}
+                </Link>
+              </li>
+              {onOps ? (
+                <>
+                  <li aria-hidden className="text-muted-foreground/50">
+                    /
+                  </li>
+                  <li className="text-foreground font-medium">{t("operations")}</li>
+                </>
+              ) : null}
+              {study ? (
+                <>
+                  <li aria-hidden className="text-muted-foreground/50">
+                    /
+                  </li>
+                  <li className="min-w-0 truncate">
+                    {sectionLabel === null ? (
+                      <span className="text-foreground font-medium">{study.name}</span>
+                    ) : (
+                      <Link
+                        href={`/studies/${study.id}`}
+                        className="hover:text-foreground transition-colors"
+                      >
+                        {study.name}
+                      </Link>
+                    )}
+                  </li>
+                  {sectionLabel === null || current === "overview" ? null : (
+                    <>
+                      <li aria-hidden className="text-muted-foreground/50">
+                        /
+                      </li>
+                      <li className="text-foreground shrink-0 font-medium">{sectionLabel}</li>
+                    </>
+                  )}
+                </>
+              ) : null}
+            </ol>
+          </nav>
         </header>
 
         <main id="main" className="min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8">

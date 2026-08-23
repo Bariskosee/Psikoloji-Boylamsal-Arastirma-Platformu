@@ -28,6 +28,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ScrollAreaX } from "@/components/ui/scroll-area-x";
 import { PageHeader } from "@/components/ui/page-header";
 import {
   Select,
@@ -195,7 +196,7 @@ export default function MembersPage() {
               <EmptyState icon={Users} title={t("noMembers")} />
             </div>
           ) : (
-            <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={t("current")}>
+            <ScrollAreaX label={t("current")}>
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
@@ -264,7 +265,7 @@ export default function MembersPage() {
                   ))}
                 </TableBody>
               </Table>
-            </div>
+            </ScrollAreaX>
           )}
         </CardContent>
       </Card>

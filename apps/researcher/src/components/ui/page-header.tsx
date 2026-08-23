@@ -63,6 +63,14 @@ export function StatCard({
   label: string;
   value: ReactNode;
   hint?: ReactNode;
+  /**
+   * The tone of the VALUE, not of the metric.
+   *
+   * This was applied per metric — "missed sessions" was always amber — so a
+   * study with zero missed sessions painted its best number as a warning. A
+   * caller passes the tone the current value deserves; `page.tsx` computes it
+   * from the number.
+   */
   tone?: "default" | "success" | "warning" | "danger";
 }) {
   const toneClass = {
@@ -73,10 +81,15 @@ export function StatCard({
   }[tone];
 
   return (
-    <div className="bg-card rounded-xl border p-4">
+    /*
+      `flex-col` with the hint pushed down: in a grid the cards stretch to the
+      tallest, and without this the ones with no hint ended with a block of
+      dead space under the number while their neighbours were full.
+    */
+    <div className="bg-card flex h-full flex-col rounded-xl border p-4">
       <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">{label}</p>
       <p className={cn("mt-1.5 text-2xl font-semibold tabular-nums", toneClass)}>{value}</p>
-      {hint ? <p className="text-muted-foreground mt-1 text-xs">{hint}</p> : null}
+      {hint ? <p className="text-muted-foreground mt-auto pt-1 text-xs">{hint}</p> : null}
     </div>
   );
 }

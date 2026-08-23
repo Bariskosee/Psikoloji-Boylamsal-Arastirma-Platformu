@@ -114,7 +114,20 @@ export default function OperationsPage() {
                               : "text-warning-muted-foreground"
                           }
                         >
-                          <p>{alert.summary}</p>
+                          {/*
+                            Translated from the CODE, with the server's own
+                            sentence as the fallback.
+
+                            `@lpr/domain` composes these summaries in English —
+                            correctly, since they are also what a monitoring
+                            system polls — and rendering that straight into a
+                            Turkish dashboard put an English paragraph in the
+                            middle of the operator's screen. The codes are
+                            stable, so the catalogue keys off them; an alert
+                            added without a translation still says something
+                            true rather than nothing.
+                          */}
+                          <p>{alertText(alert.code, alert.summary, t)}</p>
                           {/*
                             The procedure travels with the alert. Going to look
                             for the runbook is the last thing anyone should be
@@ -250,4 +263,20 @@ export default function OperationsPage() {
       ) : null}
     </div>
   );
+}
+
+/**
+ * The localised sentence for an alert code, or the server's English one.
+ *
+ * next-intl throws on a missing key rather than returning it, which on this
+ * page would replace an operational warning with a crash — the opposite of
+ * what an alert is for. Hence the guard.
+ */
+function alertText(
+  code: string,
+  fallback: string,
+  t: ReturnType<typeof useTranslations<"analytics">>,
+): string {
+  const key = `alert.${code}`;
+  return t.has(key) ? t(key) : fallback;
 }

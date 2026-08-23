@@ -251,13 +251,22 @@ export default function StudyPage() {
         )}
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_auto]">
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("enrollment")}</CardTitle>
-            <CardDescription>{t("enrollmentHint")}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+      {/*
+        One card, two columns — not two cards.
+
+        The QR used to live in a card of its own beside this one. In a grid
+        row it stretched to the taller of the two and floated in the middle of
+        its own white space, and on a phone it collapsed to a small square
+        orphaned against the left margin. It belongs to the enrollment
+        instructions, so it sits inside them.
+      */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("enrollment")}</CardTitle>
+          <CardDescription>{t("enrollmentHint")}</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap items-start justify-between gap-6">
+          <div className="min-w-56 flex-1 space-y-4">
             <div>
               <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
                 {t("code")}
@@ -306,22 +315,18 @@ export default function StudyPage() {
                 </Button>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
-        <Card className="justify-self-start">
-          <CardContent className="pt-6">
-            {/* Fetched by the browser with the session cookie attached. */}
-            <img
-              src={apiUrl(`/api/studies/${studyId}/qr`)}
-              alt={t("qrAlt")}
-              width={180}
-              height={180}
-              className="bg-white"
-            />
-          </CardContent>
-        </Card>
-      </div>
+          {/* Fetched by the browser with the session cookie attached. */}
+          <img
+            src={apiUrl(`/api/studies/${studyId}/qr`)}
+            alt={t("qrAlt")}
+            width={160}
+            height={160}
+            className="shrink-0 rounded-md border bg-white p-2"
+          />
+        </CardContent>
+      </Card>
 
       <Card className="mt-6">
         <CardHeader>
@@ -411,12 +416,16 @@ export default function StudyPage() {
                   */
                   <AlertDialog key={status}>
                     <AlertDialogTrigger asChild>
-                      <Button
-                        type="button"
-                        variant={
-                          status === "CLOSED" || status === "ARCHIVED" ? "outline" : "default"
-                        }
-                      >
+                      {/*
+                        All outline, deliberately.
+
+                        A filled button reads as "this is what you came here to
+                        do". Pausing a running study is not that, and it was
+                        drawn as the most prominent control on the screen.
+                        None of these is a default action; a researcher arrives
+                        already knowing which one they want.
+                      */}
+                      <Button type="button" variant="outline">
                         {t(`transitions.${status}`)}
                       </Button>
                     </AlertDialogTrigger>

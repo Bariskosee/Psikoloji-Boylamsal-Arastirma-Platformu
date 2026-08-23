@@ -413,7 +413,9 @@ export default function QuestionnaireBuilderPage() {
           {canEdit ? (
             <Card className="mt-6">
               <CardHeader>
-                <CardTitle className="text-base">{t("name")}</CardTitle>
+                {/* Was `t("name")`, which titled the card "Name" above a field
+                    labelled "Name". */}
+                <CardTitle className="text-base">{t("settingsHeading")}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-2">
