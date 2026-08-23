@@ -132,7 +132,7 @@ This document is the authority for technical design. Product behaviour is define
 │   └── runbooks/             eight procedures; alerts name the file to open
 │
 ├── tests/e2e/                Playwright — cross-app critical journeys
-├── infrastructure/           render.yaml, migration entrypoint
+├── infrastructure/           render.yaml (production) + render.staging.yaml
 └── *.md                      the six root documents
 ```
 

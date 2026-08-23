@@ -64,6 +64,13 @@
       "when": 1787494131003,
       "tag": "0008_brief_gladiator",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1787580000000,
+      "tag": "0009_grant_role_membership",
+      "breakpoints": true
     }
   ]
 }

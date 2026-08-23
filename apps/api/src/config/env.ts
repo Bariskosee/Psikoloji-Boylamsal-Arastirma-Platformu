@@ -10,6 +10,19 @@ import { z } from "zod";
  */
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+  /**
+   * The port a host tells us to bind.
+   *
+   * Render, and every other PaaS, assigns a port at run time and sets `PORT`.
+   * Nothing here read it: the service bound `API_PORT` (3001) while the
+   * platform health-checked the port it had assigned, so the first deploy
+   * would have failed its health check and rolled back with no clue why.
+   *
+   * `PORT` wins when present; `API_PORT` remains the local default so
+   * `pnpm dev` is unchanged.
+   */
+  PORT: z.coerce.number().int().positive().optional(),
+
   API_PORT: z.coerce.number().int().positive().default(3001),
 
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),

@@ -62,11 +62,13 @@ async function bootstrap(): Promise<void> {
 
   app.enableShutdownHooks();
 
-  await app.listen(env.API_PORT);
+  // `PORT` is what a host assigns; `API_PORT` is the local default.
+  const port = env.PORT ?? env.API_PORT;
+  await app.listen(port);
 
   const logger = new Logger("bootstrap");
   logger.log(
-    `api listening on ${env.API_PORT} (${env.NODE_ENV}); sentry ${env.SENTRY_DSN ? "on" : "off"}`,
+    `api listening on ${String(port)} (${env.NODE_ENV}); sentry ${env.SENTRY_DSN ? "on" : "off"}`,
   );
 
   /**

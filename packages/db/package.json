@@ -2,7 +2,7 @@
   "name": "@lpr/db",
   "version": "0.0.0",
   "private": true,
-  "description": "Drizzle schema, migrations, database connectivity, and the pg-boss job queue. Server-side only \u2014 never imported by a frontend.",
+  "description": "Drizzle schema, migrations, database connectivity, and the pg-boss job queue. Server-side only — never imported by a frontend.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
@@ -12,6 +12,7 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "migrate:generate": "drizzle-kit generate",
     "migrate:up": "drizzle-kit migrate",
+    "migrate:deploy": "node dist/migrate.js",
     "migrate:check": "drizzle-kit check"
   },
   "dependencies": {
@@ -27,6 +28,7 @@
     "dotenv": "^17.4.2",
     "drizzle-kit": "^0.31.6",
     "typescript": "^5.7.2",
-    "vitest": "^3.2.6"
+    "vitest": "^3.2.6",
+    "yaml": "^2.9.0"
   }
 }
