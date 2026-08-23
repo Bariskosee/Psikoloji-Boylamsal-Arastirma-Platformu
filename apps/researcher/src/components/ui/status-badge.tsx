@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { cva, type VariantProps } from "class-variance-authority";
-import type { SessionStatusValue, StudyStatus } from "@lpr/contracts";
+import type { ParticipantStatus, SessionStatusValue, StudyStatus } from "@lpr/contracts";
 import { cn } from "@/lib/utils";
 
 /**
@@ -100,4 +100,29 @@ export function StudyStatusBadge({ status }: { status: StudyStatus }) {
 export function SessionStatusBadge({ status }: { status: SessionStatusValue }) {
   const t = useTranslations("analytics");
   return <StatusBadge tone={SESSION_TONES[status]}>{t(`sessionStatus.${status}`)}</StatusBadge>;
+}
+
+/**
+ * A participant's standing in the study.
+ *
+ * It was rendered as the raw enum — a Turkish dashboard showing the word
+ * "ACTIVE" in a column of otherwise translated text. The platform already
+ * fixed this class of defect for study statuses; the participant list was
+ * missed.
+ *
+ * COMPLETED is the good outcome here, not ACTIVE: somebody who finished the
+ * protocol is the point of the study, and somebody still active is simply
+ * still going.
+ */
+const PARTICIPANT_TONES: Record<ParticipantStatus, StatusTone> = {
+  ACTIVE: "info",
+  COMPLETED: "success",
+  WITHDRAWN: "neutral",
+};
+
+export function ParticipantStatusBadge({ status }: { status: ParticipantStatus }) {
+  const t = useTranslations("analytics");
+  return (
+    <StatusBadge tone={PARTICIPANT_TONES[status]}>{t(`participantStatus.${status}`)}</StatusBadge>
+  );
 }

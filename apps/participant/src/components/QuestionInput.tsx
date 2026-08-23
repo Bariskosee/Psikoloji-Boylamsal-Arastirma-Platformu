@@ -146,13 +146,25 @@ export function QuestionInput({
 
       return (
         <div role="radiogroup" aria-labelledby={labelledBy}>
-          <div style={{ display: "flex", gap: tokens.spacing.xs, flexWrap: "wrap" }}>
+          {/*
+            One row, always.
+
+            The points used to wrap — a seven-point scale broke as 4 + 3, so
+            "5" sat directly beneath "1" and the scale read as two groups
+            rather than as one continuum. That is a measurement problem, not a
+            layout one: a participant who reads the second row as a fresh scale
+            answers a different question from the one that was asked.
+
+            Seven 40px targets plus gaps fit inside a 320px column, and the
+            44px height is what carries the touch target.
+          */}
+          <div style={{ display: "flex", gap: 4, flexWrap: "nowrap" }}>
             {points.map((point) => (
               <label
                 key={point}
                 style={{
-                  flex: "1 1 56px",
-                  minWidth: 56,
+                  flex: "1 1 0",
+                  minWidth: 0,
                   minHeight: tokens.touchTargetMinPx,
                   display: "flex",
                   flexDirection: "column",

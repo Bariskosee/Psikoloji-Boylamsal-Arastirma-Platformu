@@ -6,6 +6,7 @@ import { CalendarClock } from "lucide-react";
 import type { DailyComplianceResponse, StudyOverviewResponse } from "@lpr/contracts";
 import { api } from "@/lib/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollAreaX } from "@/components/ui/scroll-area-x";
 import { PageHeader, StatCard } from "@/components/ui/page-header";
 import {
   Table,
@@ -109,17 +110,21 @@ export default function MonitoringPage({ params }: { params: Promise<{ studyId: 
               <StatCard
                 label={t("sessionsCompleted")}
                 value={overview.sessions.completed}
-                tone="success"
+                tone={overview.sessions.completed > 0 ? "success" : "default"}
               />
               <StatCard
                 label={t("sessionsMissed")}
                 value={overview.sessions.missed}
                 /*
-                  Amber, not red. A missed session is ordinary in longitudinal
-                  research and is data; red would train a researcher to read
-                  normal attrition as a fault.
+                  Amber only when there is something to be amber about. Zero
+                  missed sessions is the best number on this page, and painting
+                  it as a warning taught the opposite of what it means.
+
+                  Amber rather than red when it IS non-zero: a missed session
+                  is ordinary in longitudinal research and is data, and red
+                  would train a researcher to read normal attrition as a fault.
                 */
-                tone="warning"
+                tone={overview.sessions.missed > 0 ? "warning" : "default"}
               />
             </div>
           </section>
@@ -153,12 +158,7 @@ export default function MonitoringPage({ params }: { params: Promise<{ studyId: 
                 {daily.days.length === 0 ? (
                   <EmptyState icon={CalendarClock} title={t("noDays")} />
                 ) : (
-                  <div
-                    className="overflow-x-auto"
-                    tabIndex={0}
-                    role="region"
-                    aria-label={t("daily")}
-                  >
+                  <ScrollAreaX label={t("daily")}>
                     <Table>
                       <TableHeader>
                         {/*
@@ -175,8 +175,15 @@ export default function MonitoringPage({ params }: { params: Promise<{ studyId: 
                             {t("dailyGroupOpen")}
                           </TableHead>
                         </TableRow>
-                        <TableRow className="hover:bg-transparent">
-                          <TableHead>{t("daily")}</TableHead>
+                        {/*
+                          Headers wrap. shadcn keeps them on one line, and
+                          seven Turkish column names on one line ran the table
+                          past 1280px — so the rightmost column was sliced
+                          mid-word on an ordinary laptop. Wrapping costs one
+                          row of height and makes the whole table fit.
+                        */}
+                        <TableRow className="hover:bg-transparent [&>th]:whitespace-normal">
+                          <TableHead>{t("date")}</TableHead>
                           <TableHead className="border-l text-right">{t("dayClosed")}</TableHead>
                           <TableHead className="text-right">{t("dayCompleted")}</TableHead>
                           <TableHead className="text-right">
@@ -218,7 +225,7 @@ export default function MonitoringPage({ params }: { params: Promise<{ studyId: 
                         ))}
                       </TableBody>
                     </Table>
-                  </div>
+                  </ScrollAreaX>
                 )}
               </CardContent>
             </Card>

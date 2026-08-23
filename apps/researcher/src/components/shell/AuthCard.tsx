@@ -1,4 +1,7 @@
+"use client";
+
 import type { ReactNode } from "react";
+import { useTranslations } from "next-intl";
 import { FlaskConical } from "lucide-react";
 
 /**
@@ -24,6 +27,8 @@ export function AuthCard({
   children: ReactNode;
   footer?: ReactNode;
 }) {
+  const t = useTranslations("nav");
+
   return (
     <div className="flex min-h-svh items-center justify-center px-4 py-10">
       <div className="w-full max-w-sm">
@@ -31,10 +36,12 @@ export function AuthCard({
           <div className="bg-primary text-primary-foreground flex size-9 items-center justify-center rounded-lg">
             <FlaskConical className="size-4.5" />
           </div>
-          <span className="text-base font-semibold">
-            {/* The product, not the page. */}
-            <ProductName />
-          </span>
+          {/*
+            The product, not the page — and from the catalogue, not hard-coded.
+            It read "Longitudinal Research Platform" in English above a Turkish
+            form, and disagreed with the name the signed-in sidebar uses.
+          */}
+          <span className="text-base font-semibold">{t("workspace")}</span>
         </div>
 
         <div className="bg-card rounded-xl border p-6 shadow-sm">
@@ -49,8 +56,4 @@ export function AuthCard({
       </div>
     </div>
   );
-}
-
-function ProductName() {
-  return <span>Longitudinal Research Platform</span>;
 }

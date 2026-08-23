@@ -62,7 +62,8 @@
     "workspace": "Araştırma platformu",
     "allStudies": "Tüm çalışmalar",
     "skipToContent": "İçeriğe geç",
-    "sectionsFor": "Bu çalışmanın bölümleri"
+    "sectionsFor": "Bu çalışmanın bölümleri",
+    "breadcrumbHome": "Çalışmalar"
   },
   "studies": {
     "title": "Çalışmalar",
@@ -275,7 +276,8 @@
     "emptyHint": "Bir tane oluşturun, soruları ekleyin, ardından protokolde kullanmak için bir sürüm yayımlayın.",
     "openBuilder": "Aç",
     "retry": "Yeniden dene",
-    "created": "{name} oluşturuldu"
+    "created": "{name} oluşturuldu",
+    "settingsHeading": "Anket ayarları"
   },
   "protocols": {
     "title": "Protokoller",
@@ -727,6 +729,20 @@
     "exportAudited": "Her indirme; biçimi ve satır sayısıyla birlikte kaydedilir.",
     "opsSubtitle": "Platformun arka plan mekanizmasının çalışıp çalışmadığı. Boş bir süpürücü listesi, zamanlamanın durduğu anlamına gelir.",
     "opsSweepersHint": "Durmuş bir süpürücü, işi olmayan bir süpürücüyle birebir aynı görünür; tek kanıt kalp atışıdır.",
-    "opsSubsLostHint": "Bir haftada büyük bir kayıp, genellikle VAPID anahtarlarının değiştiği anlamına gelir."
+    "opsSubsLostHint": "Bir haftada büyük bir kayıp, genellikle VAPID anahtarlarının değiştiği anlamına gelir.",
+    "participantStatus": {
+      "ACTIVE": "Etkin",
+      "COMPLETED": "Tamamladı",
+      "WITHDRAWN": "Ayrıldı"
+    },
+    "date": "Tarih",
+    "alert": {
+      "SWEEPER_ABSENT": "Hiçbir süpürücü şimdiye kadar bildirim yapmadı. Zamanlama çalışmıyor: bir worker başlayana dek hiçbir oturum açılmaz veya kapanmaz ve hiçbir hatırlatma gönderilmez.",
+      "SWEEPER_STALE": "Bir süpürücü en az üç döngüyü kaçırdı. Zamanlama durdu ve bunu bildiren başka hiçbir şey yok.",
+      "SWEEPER_FAILING": "Bir süpürücü çalışıyor ama her döngüde hata veriyor. Ayakta ve hiçbir şeyi uzlaştırmıyor — yeniden başlatmak yerine son hatasını okuyun.",
+      "DEAD_LETTERS": "Bazı işler yeniden deneme haklarını tüketti. Oturumlar yine de süpürücüler tarafından uzlaştırılır; aralarındaki bildirimler gönderilmedi ve yeniden denenmeyecek.",
+      "PUSH_FAILURE_RATE": "Son 24 saatte push denemelerinin büyük bölümü başarısız oldu. Süresi dolmuş abonelikler ayrıca kaydedilir; bu, taşıma katmanına veya kimlik bilgilerine işaret eder.",
+      "PUSH_ATTRITION": "Son 7 günde push aboneliklerinin büyük bölümü devre dışı kaldı. Değiştirilen bir VAPID anahtarı tüm aboneleri aynı anda düşürür ve tam olarak böyle görünür."
+    }
   }
 }

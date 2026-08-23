@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import type { InspectedAnswer, SessionInspectionResponse } from "@lpr/contracts";
 import { api } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
+import { ScrollAreaX } from "@/components/ui/scroll-area-x";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
 import {
@@ -97,12 +98,7 @@ export default function InspectorPage({
 
       <Card className="overflow-hidden py-0">
         <CardContent className="px-0">
-          <div
-            className="overflow-x-auto"
-            tabIndex={0}
-            role="region"
-            aria-label={t("inspectorTitle")}
-          >
+          <ScrollAreaX label={t("inspectorTitle")}>
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
@@ -117,7 +113,7 @@ export default function InspectorPage({
                 ))}
               </TableBody>
             </Table>
-          </div>
+          </ScrollAreaX>
         </CardContent>
       </Card>
     </div>

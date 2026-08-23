@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import type { ParticipantMeResponse, SessionListResponse, SessionSummary } from "@lpr/contracts";
 import { api } from "@/lib/api";
@@ -17,6 +17,16 @@ import { ErrorBanner, styles } from "@/lib/ui";
  */
 export default function HomePage() {
   const t = useTranslations("home");
+  /**
+   * The APPLICATION's locale, not the browser's.
+   *
+   * `toLocaleString(undefined, …)` follows the device, so a Turkish
+   * participant on a phone set to English read "8/25/26, 8:15 PM" on an
+   * otherwise Turkish screen — and a US-style date is genuinely ambiguous to
+   * somebody who expects day-first. The window a session closes in is the one
+   * value on this screen a participant acts on.
+   */
+  const locale = useLocale();
   const tSessions = useTranslations("sessions");
 
   const [me, setMe] = useState<ParticipantMeResponse | null>(null);
@@ -160,7 +170,7 @@ export default function HomePage() {
                   {session.availableUntil === null ? null : (
                     <span className="text-sm font-normal opacity-90">
                       {tSessions("closesAt", {
-                        at: new Date(session.availableUntil).toLocaleString(undefined, {
+                        at: new Date(session.availableUntil).toLocaleString(locale, {
                           dateStyle: "short",
                           timeStyle: "short",
                         }),

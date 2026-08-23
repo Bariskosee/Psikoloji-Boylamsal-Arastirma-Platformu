@@ -8,6 +8,7 @@ import type { DistributionsResponse, OptionDistribution } from "@lpr/contracts";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollAreaX } from "@/components/ui/scroll-area-x";
 import { PageHeader } from "@/components/ui/page-header";
 import {
   Table,
@@ -93,13 +94,29 @@ export default function AnalyticsPage({ params }: { params: Promise<{ studyId: s
             </CardHeader>
             <CardContent>
               {data.completionOverTime.length === 0 ? (
-                <EmptyState icon={BarChart3} title={t("noDistributions")} />
+                <EmptyState icon={BarChart3} title={t("noDistributions")} className="py-8" />
               ) : (
-                <div className="flex h-36 items-end gap-1">
+                /*
+                  Left-aligned with a per-bar width cap.
+
+                  Bars stretched to fill the card, so a study with one day of
+                  data drew a single teal slab a thousand pixels wide — which
+                  reads as a rendering fault rather than as one data point. A
+                  cap keeps a sparse chart looking like a chart and lets a
+                  dense one still use the full width.
+                */
+                <div className="flex h-36 items-end justify-start gap-1.5">
                   {data.completionOverTime.map((point) => (
                     <div
                       key={point.date}
-                      className="flex flex-1 flex-col items-center justify-end gap-1"
+                      /*
+                        `h-full` is load-bearing. The bar's height is a
+                        percentage, and a percentage resolves against the
+                        PARENT's height — which was auto, so every bar
+                        collapsed to nothing and the chart rendered as a row of
+                        floating numbers.
+                      */
+                      className="flex h-full max-w-14 min-w-2 flex-1 flex-col items-center justify-end gap-1"
                       /*
                         The date and the value are both in the title, because a
                         bar 6px wide cannot carry a readable label and a chart
@@ -111,8 +128,14 @@ export default function AnalyticsPage({ params }: { params: Promise<{ studyId: s
                         {point.completed}
                       </span>
                       <div
+                        // A bar for a real value is never invisible: a study
+                        // with one completion on a day and none on the next
+                        // must show the difference, not two empty columns.
                         className="bg-chart-1 w-full rounded-sm"
-                        style={{ height: `${String((point.completed / peak) * 100)}%` }}
+                        style={{
+                          height: `${String((point.completed / peak) * 100)}%`,
+                          minHeight: point.completed > 0 ? 3 : 0,
+                        }}
                       />
                     </div>
                   ))}
@@ -152,15 +175,10 @@ export default function AnalyticsPage({ params }: { params: Promise<{ studyId: s
             <CardContent className="px-0">
               {data.numerics.length === 0 ? (
                 <div className="px-6">
-                  <EmptyState icon={BarChart3} title={t("noNumeric")} />
+                  <EmptyState icon={BarChart3} title={t("noNumeric")} className="py-8" />
                 </div>
               ) : (
-                <div
-                  className="overflow-x-auto"
-                  tabIndex={0}
-                  role="region"
-                  aria-label={t("numericSummary")}
-                >
+                <ScrollAreaX label={t("numericSummary")}>
                   <Table>
                     <TableHeader>
                       <TableRow className="hover:bg-transparent">
@@ -207,7 +225,7 @@ export default function AnalyticsPage({ params }: { params: Promise<{ studyId: s
                       ))}
                     </TableBody>
                   </Table>
-                </div>
+                </ScrollAreaX>
               )}
             </CardContent>
           </Card>

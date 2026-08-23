@@ -62,7 +62,8 @@
     "workspace": "Research platform",
     "allStudies": "All studies",
     "skipToContent": "Skip to content",
-    "sectionsFor": "Sections of this study"
+    "sectionsFor": "Sections of this study",
+    "breadcrumbHome": "Studies"
   },
   "studies": {
     "title": "Studies",
@@ -275,7 +276,8 @@
     "emptyHint": "Create one, add questions, then publish a version to use it in a protocol.",
     "openBuilder": "Open",
     "retry": "Try again",
-    "created": "{name} created"
+    "created": "{name} created",
+    "settingsHeading": "Questionnaire settings"
   },
   "protocols": {
     "title": "Protocols",
@@ -727,6 +729,20 @@
     "exportAudited": "Every download is recorded with its format and row count.",
     "opsSubtitle": "Whether the platform's background machinery is running. An empty sweeper list means scheduling has stopped.",
     "opsSweepersHint": "A halted sweeper looks exactly like one with nothing to do; the heartbeat is the only evidence.",
-    "opsSubsLostHint": "A large loss in one week usually means the VAPID keys changed."
+    "opsSubsLostHint": "A large loss in one week usually means the VAPID keys changed.",
+    "participantStatus": {
+      "ACTIVE": "Active",
+      "COMPLETED": "Completed",
+      "WITHDRAWN": "Withdrawn"
+    },
+    "date": "Date",
+    "alert": {
+      "SWEEPER_ABSENT": "No sweeper has ever reported. Scheduling is not running: no session will open or expire, and no reminder will be sent, until a worker starts.",
+      "SWEEPER_STALE": "A sweeper has missed at least three cycles. Scheduling has stopped and nothing will report it.",
+      "SWEEPER_FAILING": "A sweeper is running but failing every cycle. It is alive and reconciling nothing — read its last error rather than restarting it.",
+      "DEAD_LETTERS": "Jobs exhausted their retries. Sessions will still be reconciled by the sweepers; any notification among them was not sent and will not be retried.",
+      "PUSH_FAILURE_RATE": "A large share of push attempts failed in the last 24 hours. Expired subscriptions are recorded separately, so this points at transport or credentials.",
+      "PUSH_ATTRITION": "A large share of push subscriptions was deactivated in the last 7 days. A rotated VAPID key deactivates every subscriber at once and looks exactly like this."
+    }
   }
 }

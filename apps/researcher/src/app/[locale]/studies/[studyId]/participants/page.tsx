@@ -9,8 +9,9 @@ import { api } from "@/lib/api";
 import { ComplianceFigureView, StepFigureView } from "@/components/analytics/ComplianceFigure";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { ScrollAreaX } from "@/components/ui/scroll-area-x";
 import { PageHeader } from "@/components/ui/page-header";
-import { StatusBadge } from "@/components/ui/status-badge";
+import { ParticipantStatusBadge } from "@/components/ui/status-badge";
 import {
   Table,
   TableBody,
@@ -73,6 +74,15 @@ export default function ParticipantsPage({ params }: { params: Promise<{ studyId
   // bake the reference design into the platform (AGENT.md §3.4).
   const stepKeys = rows[0]?.perStep.map((step) => step.stepKey) ?? [];
 
+  /**
+   * The group column appears only when the study allocates groups.
+   *
+   * Most studies do not, and an entire column of em-dashes is a column that
+   * costs horizontal room — the thing this table has least of — to say
+   * nothing.
+   */
+  const hasGroups = rows.some((row) => row.groupKey !== null);
+
   return (
     <div className="mx-auto max-w-6xl">
       <PageHeader
@@ -108,12 +118,7 @@ export default function ParticipantsPage({ params }: { params: Promise<{ studyId
         <>
           <Card className="overflow-hidden py-0">
             <CardContent className="px-0">
-              <div
-                className="overflow-x-auto"
-                tabIndex={0}
-                role="region"
-                aria-label={t("participants")}
-              >
+              <ScrollAreaX label={t("participants")}>
                 <Table>
                   <TableHeader>
                     <TableRow className="hover:bg-transparent">
@@ -121,11 +126,19 @@ export default function ParticipantsPage({ params }: { params: Promise<{ studyId
                       <TableHead>{t("status")}</TableHead>
                       <TableHead>{t("elapsed")}</TableHead>
                       {stepKeys.map((key) => (
-                        <TableHead key={key} className="whitespace-nowrap">
+                        /*
+                          A step key is the RESEARCHER's own identifier, not one
+                          of our labels — it is whatever they typed in the
+                          protocol builder, so it is never translated. Setting
+                          it in the mono face says that: a lowercase English
+                          word beside translated headers otherwise reads as a
+                          string somebody forgot to localise.
+                        */
+                        <TableHead key={key} className="font-mono text-xs whitespace-nowrap">
                           {key}
                         </TableHead>
                       ))}
-                      <TableHead>{t("group")}</TableHead>
+                      {hasGroups ? <TableHead>{t("group")}</TableHead> : null}
                       <TableHead className="w-10" />
                     </TableRow>
                   </TableHeader>
@@ -151,9 +164,7 @@ export default function ParticipantsPage({ params }: { params: Promise<{ studyId
                           </Link>
                         </TableCell>
                         <TableCell>
-                          <StatusBadge tone={row.status === "ACTIVE" ? "success" : "neutral"}>
-                            {row.status}
-                          </StatusBadge>
+                          <ParticipantStatusBadge status={row.status} />
                         </TableCell>
                         <TableCell>
                           <ComplianceFigureView figure={row.elapsed} showBar />
@@ -163,9 +174,11 @@ export default function ParticipantsPage({ params }: { params: Promise<{ studyId
                             <StepFigureView step={step} />
                           </TableCell>
                         ))}
-                        <TableCell className="text-muted-foreground">
-                          {row.groupKey ?? "—"}
-                        </TableCell>
+                        {hasGroups ? (
+                          <TableCell className="text-muted-foreground">
+                            {row.groupKey ?? "—"}
+                          </TableCell>
+                        ) : null}
                         <TableCell>
                           <ChevronRight className="text-muted-foreground size-4" aria-hidden />
                           <span className="sr-only">{t("openParticipant")}</span>
@@ -174,7 +187,7 @@ export default function ParticipantsPage({ params }: { params: Promise<{ studyId
                     ))}
                   </TableBody>
                 </Table>
-              </div>
+              </ScrollAreaX>
             </CardContent>
           </Card>
 
