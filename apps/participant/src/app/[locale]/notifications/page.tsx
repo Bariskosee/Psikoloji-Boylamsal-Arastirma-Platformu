@@ -164,7 +164,9 @@ export default function NotificationsPage() {
           answers (ADR-006) — and saying so is the difference between an
           informed yes and a hopeful one.
         */}
-        <p style={{ fontSize: 14, color: "#5b6472", marginBottom: 0 }}>{t("noContentNote")}</p>
+        <p style={{ fontSize: 14, color: "var(--muted-foreground)", marginBottom: 0 }}>
+          {t("noContentNote")}
+        </p>
       </section>
 
       <ErrorBanner>{error}</ErrorBanner>
@@ -173,7 +175,7 @@ export default function NotificationsPage() {
         <section style={styles.card}>
           <h2 style={{ marginTop: 0, fontSize: 18 }}>{t("enabledTitle")}</h2>
           <p style={styles.prose}>{t("enabledBody")}</p>
-          <p style={{ color: "#5b6472" }}>
+          <p style={{ color: "var(--muted-foreground)" }}>
             {subscriptions.length === 1
               ? t("deviceCount", { count: subscriptions.length })
               : t("deviceCountPlural", { count: subscriptions.length })}
@@ -240,7 +242,7 @@ export default function NotificationsPage() {
         that opening the study is the reliable check.
       */}
       {availability === "ENABLED" || availability === "READY" ? (
-        <p style={{ fontSize: 14, color: "#5b6472" }}>{t("noGuarantee")}</p>
+        <p style={{ fontSize: 14, color: "var(--muted-foreground)" }}>{t("noGuarantee")}</p>
       ) : null}
 
       {/*

@@ -2,10 +2,12 @@
 
 import { use } from "react";
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
-import { tokens } from "@lpr/ui";
+import { AlertTriangle, Download, FileSpreadsheet } from "lucide-react";
 import { apiUrl } from "@/lib/api";
-import { styles } from "@/lib/ui";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
 
 /**
  * Export (PLAN.md Phase 11, `docs/export-codebook.md`).
@@ -18,7 +20,9 @@ import { styles } from "@/lib/ui";
  * status columns exist may open `wide.csv`, see empty cells, and fill them in.
  *
  * The explanation therefore sits where the download button is, not in a
- * document they would have to go and find.
+ * document they would have to go and find, and it is styled as a warning
+ * rather than as body copy: this is the one thing on the screen that must be
+ * read before the button is pressed.
  *
  * ── Why these are plain links rather than fetch-and-save ────────────────────
  * The API streams the file, and a plain `<a download>` lets the browser handle
@@ -31,56 +35,73 @@ export default function ExportPage({ params }: { params: Promise<{ studyId: stri
   const t = useTranslations("analytics");
 
   const files = [
-    { name: "long.csv", title: t("exportLong"), hint: t("exportLongHint") },
-    { name: "wide.csv", title: t("exportWide"), hint: t("exportWideHint") },
-    { name: "codebook.csv", title: t("exportCodebook"), hint: t("exportCodebookHint") },
-    { name: "steps.csv", title: t("exportSteps"), hint: t("exportStepsHint") },
+    { name: "long.csv", title: t("exportLong"), hint: t("exportLongHint"), primary: true },
+    { name: "wide.csv", title: t("exportWide"), hint: t("exportWideHint"), primary: false },
+    {
+      name: "codebook.csv",
+      title: t("exportCodebook"),
+      hint: t("exportCodebookHint"),
+      primary: false,
+    },
+    { name: "steps.csv", title: t("exportSteps"), hint: t("exportStepsHint"), primary: false },
   ];
 
   return (
-    <div style={styles.page}>
-      <h1>{t("exportTitle")}</h1>
+    <div className="mx-auto max-w-3xl">
+      <PageHeader title={t("exportTitle")} description={t("exportSubtitle")} />
 
       {/*
         Before the download buttons, deliberately. A researcher who reads this
         first knows to look at the status columns; one who reads it afterwards
         has already opened the file.
       */}
-      <section style={{ ...styles.card, borderColor: "#b54708", background: "#fffaeb" }}>
-        <h2 style={{ marginTop: 0, fontSize: 18 }}>{t("missingnessTitle")}</h2>
-        <p style={{ lineHeight: 1.7, margin: 0 }}>{t("missingnessBody")}</p>
-        <p style={{ lineHeight: 1.7, marginBottom: 0, fontWeight: 600 }}>
-          {t("missingnessWarning")}
-        </p>
-      </section>
+      <Alert className="border-warning/40 bg-warning-muted text-warning-muted-foreground mb-6">
+        <AlertTriangle />
+        <AlertTitle>{t("missingnessTitle")}</AlertTitle>
+        <AlertDescription className="text-warning-muted-foreground">
+          <p>{t("missingnessBody")}</p>
+          <p className="font-semibold">{t("missingnessWarning")}</p>
+        </AlertDescription>
+      </Alert>
 
-      {files.map((file) => (
-        <section key={file.name} style={styles.card}>
-          <h2 style={{ marginTop: 0, fontSize: 17 }}>{file.title}</h2>
-          <p style={{ color: "#5b6472", fontSize: 14 }}>{file.hint}</p>
-          <a
-            href={apiUrl(`/api/studies/${studyId}/exports/${file.name}`)}
-            download={file.name}
-            style={{ ...styles.secondaryButton, display: "inline-block", textDecoration: "none" }}
-          >
-            {t("download")}
-          </a>
-        </section>
-      ))}
+      <ul className="space-y-4">
+        {files.map((file) => (
+          <li key={file.name}>
+            <Card>
+              <CardHeader>
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <FileSpreadsheet className="text-muted-foreground size-4 shrink-0" />
+                      {file.title}
+                      <code className="text-muted-foreground font-mono text-xs font-normal">
+                        {file.name}
+                      </code>
+                    </CardTitle>
+                    <CardDescription className="mt-1.5">{file.hint}</CardDescription>
+                  </div>
+                  <Button asChild variant={file.primary ? "default" : "outline"}>
+                    <a
+                      href={apiUrl(`/api/studies/${studyId}/exports/${file.name}`)}
+                      download={file.name}
+                    >
+                      <Download />
+                      {t("download")}
+                    </a>
+                  </Button>
+                </div>
+              </CardHeader>
+            </Card>
+          </li>
+        ))}
+      </ul>
 
-      <p style={{ fontSize: 13, color: "#5b6472", marginTop: tokens.spacing.md }}>
-        {/*
-          Every download is audited with its format and row count (§6.2). Said
-          out loud rather than buried in a policy: a researcher should know
-          their downloads are recorded, and knowing it is part of what makes the
-          record fair.
-        */}
-        {t("exportCodebookHint")}
-      </p>
-
-      <Link href={`/studies/${studyId}/analytics`} style={styles.secondaryButton}>
-        {t("analyticsTitle")}
-      </Link>
+      {/*
+        Said out loud rather than buried in a policy: a researcher should know
+        their downloads are recorded, and knowing it is part of what makes the
+        record fair.
+      */}
+      <p className="text-muted-foreground mt-6 text-sm">{t("exportAudited")}</p>
     </div>
   );
 }

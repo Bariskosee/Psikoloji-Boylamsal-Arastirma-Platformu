@@ -109,7 +109,7 @@ export default function JoinPage() {
 
       <section style={styles.card}>
         <h2 style={{ marginTop: 0, fontSize: 18 }}>{study.consent.title}</h2>
-        <p style={{ color: "#5b6472" }}>{t("readCarefully")}</p>
+        <p style={{ color: "var(--muted-foreground)" }}>{t("readCarefully")}</p>
         {/* Plain text, rendered as text. The document is stored without markup
             precisely so there is nothing here to interpret. */}
         <div style={styles.prose}>{study.consent.body}</div>

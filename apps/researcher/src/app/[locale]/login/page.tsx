@@ -2,10 +2,13 @@
 
 import { useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
-import { useParams } from "next/navigation";
 import { Link, useRouter } from "@/i18n/navigation";
 import { ApiError, api } from "@/lib/api";
-import { ErrorBanner, styles } from "@/lib/ui";
+import { AuthCard } from "@/components/shell/AuthCard";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ErrorBanner } from "@/components/ui/states";
 import type { LoginResponse } from "@lpr/contracts";
 
 /**
@@ -17,7 +20,6 @@ import type { LoginResponse } from "@lpr/contracts";
 export default function LoginPage() {
   const t = useTranslations("auth");
   const router = useRouter();
-  const params = useParams<{ locale: string }>();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -42,33 +44,45 @@ export default function LoginPage() {
   }
 
   return (
-    <div style={{ maxWidth: 420, margin: "0 auto" }}>
-      <h1>{t("signIn")}</h1>
-
-      <form onSubmit={onSubmit} noValidate>
+    <AuthCard
+      title={t("signIn")}
+      footer={<span className="text-muted-foreground">{t("noSelfService")}</span>}
+    >
+      <form onSubmit={onSubmit} noValidate className="space-y-4">
         <ErrorBanner>{error}</ErrorBanner>
 
-        <div style={styles.field}>
-          <label htmlFor="email" style={styles.label}>
-            {t("email")}
-          </label>
-          <input
+        <div className="grid gap-2">
+          <Label htmlFor="email">{t("email")}</Label>
+          <Input
             id="email"
             name="email"
             type="email"
             autoComplete="username"
+            // The first field is focused, so a returning researcher can type
+            // straight away rather than reaching for the mouse.
+            autoFocus
             required
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            style={styles.input}
           />
         </div>
 
-        <div style={styles.field}>
-          <label htmlFor="password" style={styles.label}>
-            {t("password")}
-          </label>
-          <input
+        <div className="grid gap-2">
+          <div className="flex items-baseline justify-between gap-2">
+            <Label htmlFor="password">{t("password")}</Label>
+            {/*
+              Beside the field rather than below the form. Somebody who has
+              forgotten their password realises it here, at the password box,
+              not after scrolling past the button.
+            */}
+            <Link
+              href="/forgot-password"
+              className="text-muted-foreground hover:text-foreground text-xs underline-offset-4 hover:underline"
+            >
+              {t("forgotPassword")}
+            </Link>
+          </div>
+          <Input
             id="password"
             name="password"
             type="password"
@@ -76,24 +90,14 @@ export default function LoginPage() {
             required
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            style={styles.input}
           />
         </div>
 
-        <button type="submit" disabled={pending} style={styles.button}>
+        <Button type="submit" disabled={pending} className="w-full">
           {pending ? t("signingIn") : t("signIn")}
-        </button>
+        </Button>
       </form>
-
-      <p style={{ marginTop: 16 }}>
-        <Link href="/forgot-password">{t("forgotPassword")}</Link>
-      </p>
-
-      <p style={{ marginTop: 8, fontSize: 14, color: "#5b6472" }}>
-        {t("noSelfService")}
-        {params?.locale ? "" : ""}
-      </p>
-    </div>
+    </AuthCard>
   );
 }
 

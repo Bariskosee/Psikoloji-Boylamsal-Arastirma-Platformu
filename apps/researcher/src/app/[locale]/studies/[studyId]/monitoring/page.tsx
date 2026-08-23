@@ -1,27 +1,37 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
-import { tokens } from "@lpr/ui";
+import { CalendarClock } from "lucide-react";
 import type { DailyComplianceResponse, StudyOverviewResponse } from "@lpr/contracts";
 import { api } from "@/lib/api";
-import { ErrorBanner, styles } from "@/lib/ui";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader, StatCard } from "@/components/ui/page-header";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { EmptyState, ErrorState, LoadingCards } from "@/components/ui/states";
 
 /**
  * The study overview and daily breakdown (PLAN.md Phase 10, FR-27, FR-28).
  *
- * Two things this page refuses to do:
+ * Two things this page refuses to do, and the redesign keeps both:
  *
  * **It never shows an average without the count behind it.**
  * `docs/compliance-formula.md` §7 requires it, because "68%" over three people
- * and over three hundred are different claims and only one belongs in a methods
- * section.
+ * and over three hundred are different claims and only one belongs in a
+ * methods section.
  *
- * **It never presents the daily categories as four independent numbers.** §8 is
- * explicit that they overlap by construction, so they are rendered as two
- * groups whose parts sum to their own totals — a reader adding them up gets the
- * number of sessions, not more.
+ * **It never presents the daily categories as four independent numbers.** §8
+ * is explicit that they overlap by construction. The table now says so
+ * structurally: two grouped column headers, each spanning its own parts, with
+ * the group total first. A reader adding a group up gets the group's sessions,
+ * and cannot accidentally add across the two.
  */
 export default function MonitoringPage({ params }: { params: Promise<{ studyId: string }> }) {
   const { studyId } = use(params);
@@ -31,132 +41,199 @@ export default function MonitoringPage({ params }: { params: Promise<{ studyId: 
   const [daily, setDaily] = useState<DailyComplianceResponse | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
 
-  useEffect(() => {
-    void (async () => {
-      try {
-        const [o, d] = await Promise.all([
-          api.get<StudyOverviewResponse>(`/api/studies/${studyId}/analytics/overview`),
-          api.get<DailyComplianceResponse>(`/api/studies/${studyId}/analytics/daily`),
-        ]);
-        setOverview(o);
-        setDaily(d);
-        setStatus("ready");
-      } catch {
-        // An explicit error state rather than one inferred from `null`, which
-        // renders a permanent spinner beside the error banner.
-        setStatus("error");
-      }
-    })();
+  const load = useCallback(async () => {
+    setStatus("loading");
+    try {
+      const [o, d] = await Promise.all([
+        api.get<StudyOverviewResponse>(`/api/studies/${studyId}/analytics/overview`),
+        api.get<DailyComplianceResponse>(`/api/studies/${studyId}/analytics/daily`),
+      ]);
+      setOverview(o);
+      setDaily(d);
+      setStatus("ready");
+    } catch {
+      // An explicit error state rather than one inferred from `null`, which
+      // renders a permanent spinner beside the error banner.
+      setStatus("error");
+    }
   }, [studyId]);
 
-  if (status === "loading") return <p style={styles.page}>…</p>;
-  if (status === "error" || overview === null || daily === null) {
-    return (
-      <div style={styles.page}>
-        <ErrorBanner>{t("loadFailed")}</ErrorBanner>
-      </div>
-    );
-  }
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   return (
-    <div style={styles.page}>
-      <h1>{t("title")}</h1>
+    <div className="mx-auto max-w-5xl">
+      <PageHeader title={t("title")} description={t("monitoringSubtitle")} />
 
-      <section style={styles.card}>
-        <h2 style={{ marginTop: 0, fontSize: 18 }}>{t("averageCompliance")}</h2>
-        <p style={{ fontSize: 32, margin: 0 }}>
-          {overview.averageCompliancePercent === null
-            ? t("notApplicable")
-            : `${String(overview.averageCompliancePercent)}%`}
-        </p>
-        {/*
-          §7: the participant count behind any average must be displayed, and
-          the people excluded from it must be accounted for — otherwise a study
-          with forty participants showing "mean over 12" is unexplainable.
-        */}
-        <p style={{ color: "#5b6472", margin: `${String(tokens.spacing.sm)}px 0 0` }}>
-          {t("averageOver", { count: overview.averageOverParticipants })} ·{" "}
-          {t("averageExcluded", {
-            count: overview.notYetApplicableParticipants,
-            withdrawn: overview.participants.withdrawn,
-          })}
-        </p>
-      </section>
+      {status === "loading" ? <LoadingCards count={4} /> : null}
+      {status === "error" ? (
+        <ErrorState title={t("loadFailed")} onRetry={() => void load()} retryLabel={t("retry")} />
+      ) : null}
 
-      <section style={styles.card}>
-        <h2 style={{ marginTop: 0, fontSize: 18 }}>{t("totalParticipants")}</h2>
-        <Row label={t("active")} value={overview.participants.active} />
-        <Row label={t("completedParticipants")} value={overview.participants.completed} />
-        <Row label={t("withdrawn")} value={overview.participants.withdrawn} />
-      </section>
+      {status === "ready" && overview && daily ? (
+        <div className="space-y-8">
+          <section aria-labelledby="headline">
+            <h2 id="headline" className="sr-only">
+              {t("averageCompliance")}
+            </h2>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <StatCard
+                label={t("averageCompliance")}
+                value={
+                  overview.averageCompliancePercent === null
+                    ? t("notApplicable")
+                    : `${String(overview.averageCompliancePercent)}%`
+                }
+                /*
+                  §7: the count behind the average, and the people excluded
+                  from it, travel WITH the number rather than in a footnote —
+                  a study of forty showing "mean over 12" is otherwise
+                  unexplainable.
+                */
+                hint={`${t("averageOver", { count: overview.averageOverParticipants })} · ${t(
+                  "averageExcluded",
+                  {
+                    count: overview.notYetApplicableParticipants,
+                    withdrawn: overview.participants.withdrawn,
+                  },
+                )}`}
+              />
+              <StatCard
+                label={t("totalParticipants")}
+                value={overview.participants.total}
+                hint={`${String(overview.participants.active)} ${t("active").toLowerCase()} · ${String(
+                  overview.participants.withdrawn,
+                )} ${t("withdrawn").toLowerCase()}`}
+              />
+              <StatCard
+                label={t("sessionsCompleted")}
+                value={overview.sessions.completed}
+                tone="success"
+              />
+              <StatCard
+                label={t("sessionsMissed")}
+                value={overview.sessions.missed}
+                /*
+                  Amber, not red. A missed session is ordinary in longitudinal
+                  research and is data; red would train a researcher to read
+                  normal attrition as a fault.
+                */
+                tone="warning"
+              />
+            </div>
+          </section>
 
-      <section style={styles.card}>
-        <h2 style={{ marginTop: 0, fontSize: 18 }}>{t("sessionsHeading")}</h2>
-        <Row label={t("sessionsCompleted")} value={overview.sessions.completed} />
-        <Row label={t("sessionsMissed")} value={overview.sessions.missed} />
-        <Row label={t("sessionsOpen")} value={overview.sessions.open} />
-        <Row label={t("sessionsNotYetDue")} value={overview.sessions.notYetDue} />
-        {/* Cancelled reads as "not applicable", never as missed: those
-            measurements were never offered (§5). */}
-        <Row label={t("sessionsCancelled")} value={overview.sessions.cancelled} />
-      </section>
+          <section aria-labelledby="sessions">
+            <Card>
+              <CardHeader>
+                <CardTitle id="sessions">{t("sessionsHeading")}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <dl className="grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
+                  <Figure label={t("sessionsCompleted")} value={overview.sessions.completed} />
+                  <Figure label={t("sessionsMissed")} value={overview.sessions.missed} />
+                  <Figure label={t("sessionsOpen")} value={overview.sessions.open} />
+                  <Figure label={t("sessionsNotYetDue")} value={overview.sessions.notYetDue} />
+                  {/* Cancelled reads as "not applicable", never as missed:
+                      those measurements were never offered (§5). */}
+                  <Figure label={t("sessionsCancelled")} value={overview.sessions.cancelled} />
+                </dl>
+              </CardContent>
+            </Card>
+          </section>
 
-      <section style={styles.card}>
-        <h2 style={{ marginTop: 0, fontSize: 18 }}>{t("daily")}</h2>
-        <p style={{ color: "#5b6472", fontSize: 13 }}>
-          {t("timezoneNote", { timezone: daily.timezone })}
-        </p>
-
-        {daily.days.length === 0 ? (
-          <p>{t("noDays")}</p>
-        ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={styles.table}>
-              <thead>
-                <tr>
-                  <th style={styles.cell}>{t("daily")}</th>
-                  <th style={styles.cell}>{t("dayClosed")}</th>
-                  <th style={styles.cell}>{t("dayCompleted")}</th>
-                  <th style={styles.cell}>{t("dayMissedUnstarted")}</th>
-                  <th style={styles.cell}>{t("dayMissedPartial")}</th>
-                  <th style={styles.cell}>{t("dayOpen")}</th>
-                  <th style={styles.cell}>{t("dayNotStarted")}</th>
-                  <th style={styles.cell}>{t("dayInProgress")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {daily.days.map((day) => (
-                  <tr key={day.date}>
-                    <td style={styles.cell}>{day.date}</td>
-                    {/* The group totals sit beside their parts, so the sum is
-                        checkable on the page rather than taken on trust. */}
-                    <td style={{ ...styles.cell, fontWeight: 600 }}>{day.closed}</td>
-                    <td style={styles.cell}>{day.completed}</td>
-                    <td style={styles.cell}>{day.missedUnstarted}</td>
-                    <td style={styles.cell}>{day.missedPartial}</td>
-                    <td style={{ ...styles.cell, fontWeight: 600 }}>{day.open}</td>
-                    <td style={styles.cell}>{day.notStarted}</td>
-                    <td style={styles.cell}>{day.inProgress}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-
-      <Link href={`/studies/${studyId}/participants`} style={styles.secondaryButton}>
-        {t("participants")}
-      </Link>
+          <section aria-labelledby="daily">
+            <Card>
+              <CardHeader>
+                <CardTitle id="daily">{t("daily")}</CardTitle>
+                <CardDescription>{t("timezoneNote", { timezone: daily.timezone })}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {daily.days.length === 0 ? (
+                  <EmptyState icon={CalendarClock} title={t("noDays")} />
+                ) : (
+                  <div
+                    className="overflow-x-auto"
+                    tabIndex={0}
+                    role="region"
+                    aria-label={t("daily")}
+                  >
+                    <Table>
+                      <TableHeader>
+                        {/*
+                          Two grouped headers, because §8's categories overlap
+                          by construction. Rendered flat, a reader sums seven
+                          columns and gets more sessions than exist.
+                        */}
+                        <TableRow className="hover:bg-transparent">
+                          <TableHead />
+                          <TableHead colSpan={3} className="border-l text-center">
+                            {t("dailyGroupClosed")}
+                          </TableHead>
+                          <TableHead colSpan={3} className="border-l text-center">
+                            {t("dailyGroupOpen")}
+                          </TableHead>
+                        </TableRow>
+                        <TableRow className="hover:bg-transparent">
+                          <TableHead>{t("daily")}</TableHead>
+                          <TableHead className="border-l text-right">{t("dayClosed")}</TableHead>
+                          <TableHead className="text-right">{t("dayCompleted")}</TableHead>
+                          <TableHead className="text-right">
+                            {t("dayMissedUnstarted")} / {t("dayMissedPartial")}
+                          </TableHead>
+                          <TableHead className="border-l text-right">{t("dayOpen")}</TableHead>
+                          <TableHead className="text-right">{t("dayNotStarted")}</TableHead>
+                          <TableHead className="text-right">{t("dayInProgress")}</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {daily.days.map((day) => (
+                          <TableRow key={day.date}>
+                            <TableCell className="font-medium whitespace-nowrap">
+                              {day.date}
+                            </TableCell>
+                            {/* The group total sits first in its group, so the
+                                sum is checkable on the page rather than taken
+                                on trust. */}
+                            <TableCell className="border-l text-right font-semibold tabular-nums">
+                              {day.closed}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">
+                              {day.completed}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">
+                              {day.missedUnstarted} / {day.missedPartial}
+                            </TableCell>
+                            <TableCell className="border-l text-right font-semibold tabular-nums">
+                              {day.open}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">
+                              {day.notStarted}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">
+                              {day.inProgress}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 }
 
-function Row({ label, value }: { label: string; value: number }) {
+function Figure({ label, value }: { label: string; value: number }) {
   return (
-    <p style={{ display: "flex", justifyContent: "space-between", margin: "4px 0" }}>
-      <span style={{ color: "#5b6472" }}>{label}</span>
-      <strong>{value}</strong>
-    </p>
+    <div>
+      <dt className="text-muted-foreground text-xs tracking-wide uppercase">{label}</dt>
+      <dd className="mt-0.5 text-xl font-semibold tabular-nums">{value}</dd>
+    </div>
   );
 }

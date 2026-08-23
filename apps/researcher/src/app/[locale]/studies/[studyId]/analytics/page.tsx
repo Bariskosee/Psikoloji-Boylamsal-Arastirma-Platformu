@@ -1,21 +1,38 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { BarChart3, Download } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import type { DistributionsResponse, OptionDistribution } from "@lpr/contracts";
 import { api } from "@/lib/api";
-import { ErrorBanner, styles } from "@/lib/ui";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { EmptyState, ErrorState, LoadingCards } from "@/components/ui/states";
 
 /**
  * Descriptive analytics (PLAN.md Phase 11).
  *
- * ── Why the bars are hand-drawn SVG ─────────────────────────────────────────
+ * ── Why the bars are hand-drawn ─────────────────────────────────────────────
  * No charting library. These are ordinary bar charts over a handful of
  * categories, and a library would add a dependency, a bundle, and a licence to
  * the participant-adjacent side of a privacy-sensitive platform to draw
- * rectangles. When Phase 12 or a real research need calls for something a
- * rectangle cannot express, that is the moment to reconsider.
+ * rectangles. When a real research need calls for something a rectangle cannot
+ * express, that is the moment to reconsider.
+ *
+ * They are now drawn with the shared chart tokens rather than hard-coded hex,
+ * so the ramp is the colour-blind-safe one defined once in `@lpr/ui` — red and
+ * green as the two ends of a compliance scale is unreadable for roughly one man
+ * in twelve, and research output still gets printed in greyscale.
  *
  * ── Why every chart states its denominator ──────────────────────────────────
  * A bar chart that silently omits non-responses shows a cleaner study than the
@@ -30,118 +47,172 @@ export default function AnalyticsPage({ params }: { params: Promise<{ studyId: s
   const [data, setData] = useState<DistributionsResponse | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
 
-  useEffect(() => {
-    void (async () => {
-      try {
-        setData(
-          await api.get<DistributionsResponse>(`/api/studies/${studyId}/analytics/distributions`),
-        );
-        setStatus("ready");
-      } catch {
-        setStatus("error");
-      }
-    })();
+  const load = useCallback(async () => {
+    setStatus("loading");
+    try {
+      setData(
+        await api.get<DistributionsResponse>(`/api/studies/${studyId}/analytics/distributions`),
+      );
+      setStatus("ready");
+    } catch {
+      setStatus("error");
+    }
   }, [studyId]);
 
-  if (status === "loading") return <p style={styles.page}>…</p>;
-  if (status === "error" || data === null) {
-    return (
-      <div style={styles.page}>
-        <ErrorBanner>{t("loadFailed")}</ErrorBanner>
-      </div>
-    );
-  }
+  useEffect(() => {
+    void load();
+  }, [load]);
 
-  const peak = Math.max(1, ...data.completionOverTime.map((point) => point.completed));
+  const peak = Math.max(1, ...(data?.completionOverTime.map((point) => point.completed) ?? [1]));
 
   return (
-    <div style={styles.page}>
-      <h1>{t("analyticsTitle")}</h1>
+    <div className="mx-auto max-w-5xl">
+      <PageHeader
+        title={t("analyticsTitle")}
+        description={t("analyticsSubtitle")}
+        actions={
+          <Button asChild variant="outline">
+            <Link href={`/studies/${studyId}/export`}>
+              <Download />
+              {t("exportTitle")}
+            </Link>
+          </Button>
+        }
+      />
 
-      <section style={styles.card}>
-        <h2 style={{ marginTop: 0, fontSize: 18 }}>{t("completionOverTime")}</h2>
-        {data.completionOverTime.length === 0 ? (
-          <p style={{ color: "#5b6472" }}>{t("noDistributions")}</p>
-        ) : (
-          <div style={{ display: "flex", gap: 4, alignItems: "flex-end", height: 140 }}>
-            {data.completionOverTime.map((point) => (
-              <div key={point.date} style={{ flex: 1, textAlign: "center" }} title={point.date}>
-                <div
-                  style={{
-                    height: `${String((point.completed / peak) * 110)}px`,
-                    background: "#1f2a37",
-                    borderRadius: 2,
-                  }}
+      {status === "loading" ? <LoadingCards count={3} /> : null}
+      {status === "error" ? (
+        <ErrorState title={t("loadFailed")} onRetry={() => void load()} retryLabel={t("retry")} />
+      ) : null}
+
+      {status === "ready" && data ? (
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("completionOverTime")}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {data.completionOverTime.length === 0 ? (
+                <EmptyState icon={BarChart3} title={t("noDistributions")} />
+              ) : (
+                <div className="flex h-36 items-end gap-1">
+                  {data.completionOverTime.map((point) => (
+                    <div
+                      key={point.date}
+                      className="flex flex-1 flex-col items-center justify-end gap-1"
+                      /*
+                        The date and the value are both in the title, because a
+                        bar 6px wide cannot carry a readable label and a chart
+                        whose x-axis is unreadable is decoration.
+                      */
+                      title={`${point.date}: ${String(point.completed)}`}
+                    >
+                      <span className="text-muted-foreground text-[10px] tabular-nums">
+                        {point.completed}
+                      </span>
+                      <div
+                        className="bg-chart-1 w-full rounded-sm"
+                        style={{ height: `${String((point.completed / peak) * 100)}%` }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("distributions")}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {data.options.length === 0 ? (
+                <EmptyState
+                  icon={BarChart3}
+                  title={t("noDistributions")}
+                  description={t("noDistributionsHint")}
                 />
-                <span style={{ fontSize: 10, color: "#5b6472" }}>{point.completed}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+              ) : (
+                <div className="space-y-8">
+                  {data.options.map((distribution) => (
+                    <OptionChart
+                      key={`${distribution.stepKey}:${distribution.questionKey}`}
+                      distribution={distribution}
+                    />
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-      <section style={styles.card}>
-        <h2 style={{ marginTop: 0, fontSize: 18 }}>{t("distributions")}</h2>
-        {data.options.length === 0 ? (
-          <p style={{ color: "#5b6472" }}>{t("noDistributions")}</p>
-        ) : (
-          data.options.map((distribution) => (
-            <OptionChart
-              key={`${distribution.stepKey}:${distribution.questionKey}`}
-              distribution={distribution}
-            />
-          ))
-        )}
-      </section>
-
-      <section style={styles.card}>
-        <h2 style={{ marginTop: 0, fontSize: 18 }}>{t("numericSummary")}</h2>
-        {data.numerics.length === 0 ? (
-          <p style={{ color: "#5b6472" }}>{t("noNumeric")}</p>
-        ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={styles.table}>
-              <thead>
-                <tr>
-                  <th style={styles.cell}>{t("question")}</th>
-                  <th style={styles.cell}>{t("min")}</th>
-                  <th style={styles.cell}>{t("max")}</th>
-                  <th style={styles.cell}>{t("mean")}</th>
-                  <th style={styles.cell}>{t("median")}</th>
-                  <th style={styles.cell} />
-                </tr>
-              </thead>
-              <tbody>
-                {data.numerics.map((numeric) => (
-                  <tr key={`${numeric.stepKey}:${numeric.questionKey}`}>
-                    <td style={styles.cell}>
-                      {numeric.stepKey} · {numeric.questionKey}
-                    </td>
-                    {/*
-                      An em-dash where there is nothing, never 0. A mean of zero
-                      over no data is a claim; an absence is not.
-                    */}
-                    <td style={styles.cell}>{numeric.min ?? "—"}</td>
-                    <td style={styles.cell}>{numeric.max ?? "—"}</td>
-                    <td style={styles.cell}>{numeric.mean ?? "—"}</td>
-                    <td style={styles.cell}>{numeric.median ?? "—"}</td>
-                    <td style={{ ...styles.cell, fontSize: 12, color: "#5b6472" }}>
-                      {t("answeredOf", {
-                        answered: numeric.answered,
-                        missing: numeric.missing,
-                      })}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-
-      <Link href={`/studies/${studyId}/export`} style={styles.secondaryButton}>
-        {t("exportTitle")}
-      </Link>
+          <Card className="overflow-hidden">
+            <CardHeader>
+              <CardTitle>{t("numericSummary")}</CardTitle>
+            </CardHeader>
+            <CardContent className="px-0">
+              {data.numerics.length === 0 ? (
+                <div className="px-6">
+                  <EmptyState icon={BarChart3} title={t("noNumeric")} />
+                </div>
+              ) : (
+                <div
+                  className="overflow-x-auto"
+                  tabIndex={0}
+                  role="region"
+                  aria-label={t("numericSummary")}
+                >
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="hover:bg-transparent">
+                        <TableHead>{t("question")}</TableHead>
+                        <TableHead className="text-right">{t("min")}</TableHead>
+                        <TableHead className="text-right">{t("max")}</TableHead>
+                        <TableHead className="text-right">{t("mean")}</TableHead>
+                        <TableHead className="text-right">{t("median")}</TableHead>
+                        <TableHead />
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {data.numerics.map((numeric) => (
+                        <TableRow key={`${numeric.stepKey}:${numeric.questionKey}`}>
+                          <TableCell>
+                            <span className="font-medium">{numeric.stepKey}</span>{" "}
+                            <span className="text-muted-foreground font-mono text-xs">
+                              {numeric.questionKey}
+                            </span>
+                          </TableCell>
+                          {/*
+                            An em-dash where there is nothing, never 0. A mean
+                            of zero over no data is a claim; an absence is not.
+                          */}
+                          <TableCell className="text-right tabular-nums">
+                            {numeric.min ?? "—"}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {numeric.max ?? "—"}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {numeric.mean ?? "—"}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {numeric.median ?? "—"}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-xs whitespace-nowrap">
+                            {t("answeredOf", {
+                              answered: numeric.answered,
+                              missing: numeric.missing,
+                            })}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -151,39 +222,35 @@ function OptionChart({ distribution }: { distribution: OptionDistribution }) {
   const peak = Math.max(1, ...distribution.categories.map((c) => c.count));
 
   return (
-    <div style={{ marginBottom: 20 }}>
-      <p style={{ margin: "0 0 2px", fontWeight: 600 }}>
-        {distribution.questionText || distribution.questionKey}
-      </p>
+    <div>
+      <p className="font-medium">{distribution.questionText || distribution.questionKey}</p>
       {/* The denominator, always visible beside the bars. */}
-      <p style={{ margin: "0 0 8px", fontSize: 12, color: "#5b6472" }}>
+      <p className="text-muted-foreground mb-3 text-xs">
         {distribution.stepKey} ·{" "}
         {t("answeredOf", { answered: distribution.answered, missing: distribution.missing })}
       </p>
 
-      {distribution.categories.map((category) => (
-        <div
-          key={category.optionKey}
-          style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}
-        >
-          <span style={{ width: 160, fontSize: 13 }}>{category.label}</span>
-          <div
-            style={{
-              width: `${String((category.count / peak) * 60)}%`,
-              minWidth: category.count > 0 ? 2 : 0,
-              height: 14,
-              background: "#175cd3",
-              borderRadius: 2,
-            }}
-          />
-          <span style={{ fontSize: 12, color: "#5b6472" }}>
-            {category.count}
-            {/* Null, not 0%, when nothing was answered — the same rule the
-                compliance figures follow. */}
-            {category.percent === null ? "" : ` (${String(category.percent)}%)`}
-          </span>
-        </div>
-      ))}
+      <div className="space-y-1.5">
+        {distribution.categories.map((category) => (
+          <div key={category.optionKey} className="flex items-center gap-3">
+            <span className="w-40 shrink-0 truncate text-sm" title={category.label}>
+              {category.label}
+            </span>
+            <div className="bg-muted h-4 min-w-0 flex-1 overflow-hidden rounded-sm">
+              <div
+                className="bg-chart-2 h-full rounded-sm"
+                style={{ width: `${String((category.count / peak) * 100)}%` }}
+              />
+            </div>
+            <span className="text-muted-foreground w-24 shrink-0 text-right text-xs tabular-nums">
+              {category.count}
+              {/* Null, not 0%, when nothing was answered — the same rule the
+                  compliance figures follow. */}
+              {category.percent === null ? "" : ` (${String(category.percent)}%)`}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

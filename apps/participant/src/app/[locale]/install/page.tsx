@@ -147,7 +147,13 @@ export default function InstallPage() {
       <ErrorBanner>{error}</ErrorBanner>
 
       {handoffUrl !== null && handoff !== null ? (
-        <section style={{ ...styles.card, borderColor: "#b54708", background: "#fffaeb" }}>
+        <section
+          style={{
+            ...styles.card,
+            borderColor: "var(--warning)",
+            background: "var(--warning-muted)",
+          }}
+        >
           <h2 style={{ marginTop: 0, fontSize: 18 }}>{t("handoffTitle")}</h2>
           <p style={{ fontSize: 15, lineHeight: 1.6 }}>{t("handoffBody")}</p>
 
@@ -168,7 +174,7 @@ export default function InstallPage() {
             {handoffUrl}
           </a>
 
-          <p style={{ fontSize: 14, color: "#5b6472" }}>
+          <p style={{ fontSize: 14, color: "var(--muted-foreground)" }}>
             {t("handoffExpires", {
               time: new Date(handoff.expiresAt).toLocaleString(locale),
             })}

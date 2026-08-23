@@ -178,11 +178,19 @@ export default function SessionPage() {
 
   return (
     <div style={styles.page}>
-      <header style={{ marginBottom: tokens.spacing.md }}>
-        <p style={{ margin: 0, color: "#5b6472" }}>
+      {/*
+        Sticky, because a questionnaire page is longer than a phone screen.
+
+        Scrolled off the top, the progress bar and the save state were invisible
+        for most of the time a participant spends answering — which is exactly
+        when "has this saved?" is the question they have. A participant who
+        cannot see that their answers are safe re-taps, or gives up.
+      */}
+      <header className="bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-10 -mx-4 mb-4 border-b px-4 pt-2 pb-3 backdrop-blur">
+        <p style={{ margin: 0, color: "var(--muted-foreground)", fontSize: 14 }}>
           {t("pageOf", { page: page + 1, total: Math.max(pages.length, 1) })}
         </p>
-        <p style={{ margin: "4px 0 8px", fontWeight: 600 }}>
+        <p style={{ margin: "2px 0 8px", fontWeight: 600 }}>
           {t("progress", { answered: answeredCount, total: questions.length })}
         </p>
         <div
@@ -190,18 +198,32 @@ export default function SessionPage() {
           aria-valuenow={answeredCount}
           aria-valuemin={0}
           aria-valuemax={questions.length}
-          style={{ height: 6, background: "#e6e8eb", borderRadius: 999 }}
+          style={{ height: 6, background: "var(--muted)", borderRadius: 999 }}
         >
           <div
             style={{
               height: "100%",
               width: `${String(questions.length === 0 ? 0 : (answeredCount / questions.length) * 100)}%`,
-              background: "#1f2a37",
+              background: "var(--primary)",
               borderRadius: 999,
+              transition: "width 200ms ease-out",
             }}
           />
         </div>
-        <p aria-live="polite" style={{ fontSize: 13, color: "#5b6472", marginBottom: 0 }}>
+        {/*
+          `aria-live="polite"`: the save state changes on its own as answers
+          are written, and a screen-reader user needs to hear it without
+          hunting for it — but not urgently enough to interrupt them mid-question.
+        */}
+        <p
+          aria-live="polite"
+          style={{ marginBottom: 0, marginTop: 6 }}
+          className={
+            autosave.failed
+              ? "text-danger-muted-foreground text-xs font-medium"
+              : "text-muted-foreground text-xs"
+          }
+        >
           {t(`saveState.${autosave.state}`)}
         </p>
       </header>
@@ -220,7 +242,13 @@ export default function SessionPage() {
             <p id={`${question.id}-label`} style={{ marginTop: 0, fontSize: 17, lineHeight: 1.5 }}>
               {question.text}
               {question.isRequired ? (
-                <span style={{ color: "#b42318" }} aria-label={t("required")}>
+                /*
+                  The leading space is load-bearing. Without it the computed
+                  accessible name of the group runs the two together —
+                  "…how rested do you feel?Required" — which a screen reader
+                  reads as one word.
+                */
+                <span style={{ color: "var(--danger)" }} aria-label={` ${t("required")}`}>
                   {" *"}
                 </span>
               ) : null}

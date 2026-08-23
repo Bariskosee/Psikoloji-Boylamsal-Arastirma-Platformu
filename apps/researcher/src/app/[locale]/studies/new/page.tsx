@@ -5,7 +5,21 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import { LOCALES, type Locale, type StudyResponse } from "@lpr/contracts";
 import { ApiError, api } from "@/lib/api";
-import { ErrorBanner, styles } from "@/lib/ui";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { PageHeader } from "@/components/ui/page-header";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ErrorBanner } from "@/components/ui/states";
+import { Textarea } from "@/components/ui/textarea";
 
 /**
  * Create a study.
@@ -67,113 +81,134 @@ export default function NewStudyPage() {
   }
 
   return (
-    <div style={styles.page}>
-      <h1>{t("create")}</h1>
+    <div className="mx-auto max-w-2xl">
+      <PageHeader title={t("create")} description={t("createSubtitle")} />
 
-      <form onSubmit={onSubmit} noValidate>
+      <form onSubmit={onSubmit} noValidate className="space-y-6">
         <ErrorBanner>{error}</ErrorBanner>
 
-        <div style={styles.field}>
-          <label htmlFor="name" style={styles.label}>
-            {t("name")}
-          </label>
-          <input
-            id="name"
-            required
-            maxLength={200}
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            style={styles.input}
-          />
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("settings")}</CardTitle>
+            <CardDescription>{t("createHint")}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="grid gap-2">
+              <Label htmlFor="name">{t("name")}</Label>
+              <Input
+                id="name"
+                required
+                autoFocus
+                maxLength={200}
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+              />
+            </div>
 
-        <div style={styles.field}>
-          <label htmlFor="description" style={styles.label}>
-            {t("description")}
-          </label>
-          <textarea
-            id="description"
-            rows={3}
-            maxLength={4000}
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-            style={{ ...styles.input, minHeight: 80 }}
-          />
-        </div>
+            <div className="grid gap-2">
+              <Label htmlFor="description">{t("description")}</Label>
+              <Textarea
+                id="description"
+                rows={3}
+                maxLength={4000}
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+              />
+            </div>
 
-        <div style={styles.field}>
-          <label htmlFor="timezone" style={styles.label}>
-            {t("timezone")}
-          </label>
-          <input
-            id="timezone"
-            required
-            list="timezones"
-            value={timezone}
-            onChange={(event) => setTimezone(event.target.value)}
-            style={styles.input}
-          />
-          <datalist id="timezones">
-            {commonTimezones().map((zone) => (
-              <option key={zone} value={zone} />
-            ))}
-          </datalist>
-          <small style={{ color: "#5b6472" }}>{t("timezoneHint")}</small>
-        </div>
+            <div className="grid gap-2">
+              <Label htmlFor="capacity">{t("capacity")}</Label>
+              <Input
+                id="capacity"
+                type="number"
+                min={1}
+                value={capacity}
+                onChange={(event) => setCapacity(event.target.value)}
+              />
+              <p className="text-muted-foreground text-xs">{t("capacityHint")}</p>
+            </div>
+          </CardContent>
+        </Card>
 
-        <fieldset style={{ ...styles.field, border: "1px solid #d8dbe0", borderRadius: 8 }}>
-          <legend style={styles.label}>{t("locales")}</legend>
-          {LOCALES.map((locale) => (
-            <label key={locale} style={{ marginRight: 16 }}>
-              <input
-                type="checkbox"
-                checked={supportedLocales.includes(locale)}
-                onChange={() => toggleLocale(locale)}
-              />{" "}
-              {locale}
-            </label>
-          ))}
-          <div style={{ marginTop: 12 }}>
-            <label htmlFor="defaultLocale" style={styles.label}>
-              {t("defaultLocale")}
-            </label>
-            <select
-              id="defaultLocale"
-              value={defaultLocale}
-              onChange={(event) => setDefaultLocale(event.target.value as Locale)}
-              style={styles.input}
-            >
-              {supportedLocales.map((locale) => (
-                <option key={locale} value={locale}>
-                  {locale}
-                </option>
-              ))}
-            </select>
-          </div>
-        </fieldset>
+        {/*
+          The permanent choices, separated and labelled as such.
+          Timezone and locales cannot be changed once the study exists, and
+          previously sat in the same undifferentiated column as the name — so
+          the one field with weeks of consequences looked exactly like the one
+          that does not.
+        */}
+        <Card className="border-warning/40">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              {t("timezone")}
+              <span className="bg-warning-muted text-warning-muted-foreground rounded-full px-2 py-0.5 text-xs font-medium">
+                {t("permanent")}
+              </span>
+            </CardTitle>
+            <CardDescription>{t("timezoneHint")}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="grid gap-2">
+              <Label htmlFor="timezone">{t("timezone")}</Label>
+              <Input
+                id="timezone"
+                required
+                list="timezones"
+                value={timezone}
+                onChange={(event) => setTimezone(event.target.value)}
+              />
+              <datalist id="timezones">
+                {commonTimezones().map((zone) => (
+                  <option key={zone} value={zone} />
+                ))}
+              </datalist>
+            </div>
 
-        <div style={styles.field}>
-          <label htmlFor="capacity" style={styles.label}>
-            {t("capacity")}
-          </label>
-          <input
-            id="capacity"
-            type="number"
-            min={1}
-            value={capacity}
-            onChange={(event) => setCapacity(event.target.value)}
-            style={styles.input}
-          />
-          <small style={{ color: "#5b6472" }}>{t("capacityHint")}</small>
-        </div>
+            <fieldset className="grid gap-3">
+              <legend className="mb-1 text-sm font-medium">{t("locales")}</legend>
+              <p className="text-muted-foreground -mt-1 text-xs">{t("localesHint")}</p>
+              <div className="flex flex-wrap gap-4">
+                {LOCALES.map((locale) => (
+                  <Label
+                    key={locale}
+                    htmlFor={`locale-${locale}`}
+                    className="flex items-center gap-2 font-normal"
+                  >
+                    <Checkbox
+                      id={`locale-${locale}`}
+                      checked={supportedLocales.includes(locale)}
+                      onCheckedChange={() => toggleLocale(locale)}
+                    />
+                    {locale}
+                  </Label>
+                ))}
+              </div>
 
-        <button
-          type="submit"
-          disabled={pending || supportedLocales.length === 0}
-          style={styles.button}
-        >
+              <div className="grid max-w-48 gap-2">
+                <Label htmlFor="defaultLocale">{t("defaultLocale")}</Label>
+                <Select
+                  value={defaultLocale}
+                  onValueChange={(value) => setDefaultLocale(value as Locale)}
+                >
+                  <SelectTrigger id="defaultLocale" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {supportedLocales.map((locale) => (
+                      <SelectItem key={locale} value={locale}>
+                        {locale}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </fieldset>
+          </CardContent>
+        </Card>
+
+        <Button type="submit" disabled={pending || supportedLocales.length === 0}>
           {pending ? t("creating") : t("create")}
-        </button>
+        </Button>
       </form>
     </div>
   );

@@ -71,11 +71,17 @@ export default function WelcomePage() {
       <h1>{t("title")}</h1>
 
       <section style={styles.card}>
-        <p style={{ marginTop: 0, color: "#5b6472" }}>{t("codeLabel")}</p>
+        <p style={{ marginTop: 0, color: "var(--muted-foreground)" }}>{t("codeLabel")}</p>
         <p style={styles.code}>{codes.publicCode}</p>
       </section>
 
-      <section style={{ ...styles.card, borderColor: "#b54708", background: "#fffaeb" }}>
+      <section
+        style={{
+          ...styles.card,
+          borderColor: "var(--warning)",
+          background: "var(--warning-muted)",
+        }}
+      >
         <h2 style={{ marginTop: 0, fontSize: 18 }}>{t("recoveryTitle")}</h2>
         <p style={styles.code}>{codes.recoveryCode}</p>
         <p style={{ fontSize: 15, lineHeight: 1.6 }}>{t("recoveryBody")}</p>

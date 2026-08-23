@@ -4,7 +4,11 @@ import { useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { ApiError, api } from "@/lib/api";
-import { ErrorBanner, styles } from "@/lib/ui";
+import { AuthCard } from "@/components/shell/AuthCard";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ErrorBanner } from "@/components/ui/states";
 
 /**
  * Request a password reset (PLAN.md Phase 12, FR-06).
@@ -49,44 +53,45 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div style={{ maxWidth: 420, margin: "0 auto" }}>
-      <h1>{t("resetRequestTitle")}</h1>
-
+    <AuthCard
+      title={t("resetRequestTitle")}
+      description={sent ? undefined : t("resetRequestIntro")}
+      footer={
+        <Link
+          href="/login"
+          className="text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
+        >
+          {t("backToSignIn")}
+        </Link>
+      }
+    >
       {sent ? (
-        <>
-          <p style={{ lineHeight: 1.7 }} role="status">
-            {t("resetRequestSent")}
-          </p>
-          <Link href="/login" style={styles.secondaryButton}>
-            {t("backToSignIn")}
-          </Link>
-        </>
+        <p className="text-sm leading-relaxed" role="status">
+          {t("resetRequestSent")}
+        </p>
       ) : (
-        <form onSubmit={onSubmit} noValidate>
+        <form onSubmit={onSubmit} noValidate className="space-y-4">
           <ErrorBanner>{error}</ErrorBanner>
-          <p style={{ lineHeight: 1.7 }}>{t("resetRequestIntro")}</p>
 
-          <div style={styles.field}>
-            <label htmlFor="email" style={styles.label}>
-              {t("email")}
-            </label>
-            <input
+          <div className="grid gap-2">
+            <Label htmlFor="email">{t("email")}</Label>
+            <Input
               id="email"
               name="email"
               type="email"
               autoComplete="username"
+              autoFocus
               required
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              style={styles.input}
             />
           </div>
 
-          <button type="submit" disabled={pending} style={styles.button}>
+          <Button type="submit" disabled={pending} className="w-full">
             {pending ? t("resetRequestSending") : t("resetRequestSubmit")}
-          </button>
+          </Button>
         </form>
       )}
-    </div>
+    </AuthCard>
   );
 }

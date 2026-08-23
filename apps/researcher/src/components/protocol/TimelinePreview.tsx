@@ -44,7 +44,9 @@ export function TimelinePreview({
   return (
     <section style={styles.card}>
       <h2 style={{ marginTop: 0 }}>{t("preview.title")}</h2>
-      <p style={{ fontSize: 14, color: "#5b6472", marginTop: 0 }}>{t("preview.hint")}</p>
+      <p style={{ fontSize: 14, color: "var(--muted-foreground)", marginTop: 0 }}>
+        {t("preview.hint")}
+      </p>
 
       <div style={{ display: "flex", gap: tokens.spacing.md, flexWrap: "wrap" }}>
         <div style={styles.field}>
@@ -109,7 +111,7 @@ function PreviewedStep({ step }: { step: PreviewStep }) {
   return (
     <li
       style={{
-        border: "1px solid #e6e8eb",
+        border: "1px solid var(--border)",
         borderRadius: tokens.radiusPx,
         padding: tokens.spacing.sm,
         marginBottom: tokens.spacing.sm,
@@ -123,9 +125,9 @@ function PreviewedStep({ step }: { step: PreviewStep }) {
             fontWeight: 600,
             padding: "2px 8px",
             borderRadius: 999,
-            border: `1px solid ${conditional ? "#b54708" : "#858c96"}`,
-            background: conditional ? "#fffaeb" : "#f4f5f7",
-            color: conditional ? "#b54708" : "#1f2a37",
+            border: `1px solid ${conditional ? "var(--warning-muted-foreground)" : "var(--input)"}`,
+            background: conditional ? "var(--warning-muted)" : "var(--muted)",
+            color: conditional ? "var(--warning-muted-foreground)" : "var(--foreground)",
           }}
         >
           {conditional
@@ -135,13 +137,13 @@ function PreviewedStep({ step }: { step: PreviewStep }) {
       </div>
 
       {conditional ? (
-        <p style={{ fontSize: 13, color: "#b54708", margin: "6px 0 0" }}>
+        <p style={{ fontSize: 13, color: "var(--warning-muted-foreground)", margin: "6px 0 0" }}>
           {t("preview.conditionalHint", { steps: dependsOn })}
         </p>
       ) : null}
 
       {step.occurrences === null ? (
-        <p style={{ fontSize: 14, color: "#5b6472", margin: "6px 0 0" }}>
+        <p style={{ fontSize: 14, color: "var(--muted-foreground)", margin: "6px 0 0" }}>
           {step.unresolvedReason === null ? null : t(`preview.unresolved.${step.unresolvedReason}`)}
         </p>
       ) : (
@@ -156,7 +158,7 @@ function PreviewedStep({ step }: { step: PreviewStep }) {
               {occurrence.adjustment === "NONE" ? null : (
                 // Surfaced rather than silently handled: a schedule that lands
                 // on a clock change is something the researcher should see.
-                <span style={{ color: "#b54708" }}>
+                <span style={{ color: "var(--warning-muted-foreground)" }}>
                   {" "}
                   {t(`preview.adjustment.${occurrence.adjustment}`)}
                 </span>
@@ -164,7 +166,7 @@ function PreviewedStep({ step }: { step: PreviewStep }) {
             </li>
           ))}
           {step.occurrences.length > OCCURRENCES_SHOWN ? (
-            <li style={{ color: "#5b6472" }}>
+            <li style={{ color: "var(--muted-foreground)" }}>
               {t("preview.andMore", { count: step.occurrences.length - OCCURRENCES_SHOWN })}
             </li>
           ) : null}

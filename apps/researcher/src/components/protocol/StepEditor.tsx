@@ -57,7 +57,7 @@ export function StepEditor({
   const targetRepeats = (target?.occurrenceCount ?? 1) > 1;
 
   return (
-    <div style={{ padding: tokens.spacing.md, background: "#fbfbfc" }}>
+    <div style={{ padding: tokens.spacing.md, background: "var(--muted)" }}>
       <Field label={t("stepKey")} hint={t("stepKeyHint")}>
         <TextCommit
           value={step.stepKey}
@@ -463,7 +463,7 @@ function Field({
       <span style={styles.label}>{label}</span>
       {children}
       {hint === undefined ? null : (
-        <p style={{ fontSize: 13, color: "#5b6472", margin: "4px 0 0" }}>{hint}</p>
+        <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: "4px 0 0" }}>{hint}</p>
       )}
     </div>
   );

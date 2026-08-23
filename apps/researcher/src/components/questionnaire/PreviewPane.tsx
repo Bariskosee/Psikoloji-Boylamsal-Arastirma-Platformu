@@ -50,23 +50,25 @@ export function PreviewPane({
           width: 390,
           maxWidth: "100%",
           margin: "0 auto",
-          border: "1px solid #858c96",
+          border: "1px solid var(--input)",
           borderRadius: 24,
           overflow: "hidden",
-          background: "#fff",
+          background: "var(--card)",
         }}
       >
         {!current ? (
-          <p style={{ padding: tokens.spacing.lg, color: "#5b6472" }}>{labels.empty}</p>
+          <p style={{ padding: tokens.spacing.lg, color: "var(--muted-foreground)" }}>
+            {labels.empty}
+          </p>
         ) : (
           <>
             <div
               style={{
                 padding: tokens.spacing.sm,
-                background: "#f4f5f7",
-                borderBottom: "1px solid #e6e8eb",
+                background: "var(--muted)",
+                borderBottom: "1px solid var(--border)",
                 fontSize: 13,
-                color: "#5b6472",
+                color: "var(--muted-foreground)",
                 textAlign: "center",
               }}
             >
@@ -130,9 +132,9 @@ const submitStyle = {
   width: "100%",
   minHeight: tokens.touchTargetMinPx,
   borderRadius: tokens.radiusPx,
-  border: "1px solid #858c96",
-  background: "#e6e8eb",
-  color: "#5b6472",
+  border: "1px solid var(--input)",
+  background: "var(--border)",
+  color: "var(--muted-foreground)",
   fontSize: 16,
 } as const;
 
@@ -140,7 +142,7 @@ const navStyle = {
   minHeight: 36,
   padding: `4px ${tokens.spacing.sm}px`,
   borderRadius: tokens.radiusPx,
-  border: "1px solid #858c96",
-  background: "#fff",
+  border: "1px solid var(--input)",
+  background: "var(--card)",
   cursor: "pointer",
 } as const;
