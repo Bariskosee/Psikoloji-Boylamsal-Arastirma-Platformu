@@ -50,7 +50,12 @@
  *               the rule in a dashboard component is how two numbers that
  *               should agree stop agreeing.
  *
- * Later phases add: missingness/, export/.
+ * Phase 11 adds: export/ — the missingness contract shared by the inspector
+ *               and both export formats, CSV encoding, wide-format column
+ *               naming, and per-type value encoding. `docs/export-codebook.md`
+ *               §1 names the worst thing this platform can do — exporting a
+ *               missing value as `0` — and this directory is where that is
+ *               made impossible rather than merely discouraged.
  */
 
 export * from "./clock.js";
@@ -76,3 +81,4 @@ export * from "./session/materialisation.js";
 export * from "./push/index.js";
 export * from "./notification/index.js";
 export * from "./compliance/index.js";
+export * from "./export/index.js";

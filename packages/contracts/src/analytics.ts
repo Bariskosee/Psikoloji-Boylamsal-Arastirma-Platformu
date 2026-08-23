@@ -290,3 +290,72 @@ export const operationsHealthSchema = z.object({
 });
 
 export type OperationsHealthResponse = z.infer<typeof operationsHealthSchema>;
+
+/**
+ * Descriptive distributions (PLAN.md Phase 11).
+ *
+ * ── Derived from the researcher's own configuration ─────────────────────────
+ * PLAN.md is explicit: **never assume a demographic variable exists**. There is
+ * no "age", no "gender", no "group" field anywhere in these shapes. What a
+ * study measures is whatever its questionnaires ask, so a distribution is
+ * always keyed by `question_key` and its categories are always the options the
+ * researcher defined (AGENT.md §3.4).
+ *
+ * ── Why `missing` is a first-class count ────────────────────────────────────
+ * A bar chart that silently omits non-responses shows a cleaner study than the
+ * one that was run. The count of cells that were NOT answered travels with
+ * every distribution so a reader can see the denominator the percentages are
+ * over, and so no chart can imply completeness it does not have.
+ */
+export const optionDistributionSchema = z.object({
+  questionKey: z.string(),
+  questionText: z.string(),
+  type: z.string(),
+  stepKey: z.string(),
+  /** Answered cells only; `missing` is reported separately, never as a bar. */
+  answered: z.number().int(),
+  missing: z.number().int(),
+  categories: z.array(
+    z.object({
+      optionKey: z.string(),
+      label: z.string(),
+      /** The numeric code, where the option carries one (Likert anchors). */
+      value: z.number().nullable(),
+      count: z.number().int(),
+      /** Of ANSWERED cells, not of all cells. Null when nothing was answered. */
+      percent: z.number().nullable(),
+    }),
+  ),
+});
+
+export type OptionDistribution = z.infer<typeof optionDistributionSchema>;
+
+export const numericDistributionSchema = z.object({
+  questionKey: z.string(),
+  questionText: z.string(),
+  stepKey: z.string(),
+  answered: z.number().int(),
+  missing: z.number().int(),
+  /** Null throughout when nothing was answered — never 0, which is a value. */
+  min: z.number().nullable(),
+  max: z.number().nullable(),
+  mean: z.number().nullable(),
+  median: z.number().nullable(),
+});
+
+export type NumericDistribution = z.infer<typeof numericDistributionSchema>;
+
+/** Completions per day, in the study's timezone. */
+export const completionPointSchema = z.object({
+  date: z.string(),
+  completed: z.number().int(),
+});
+
+export const distributionsSchema = z.object({
+  timezone: z.string(),
+  options: z.array(optionDistributionSchema),
+  numerics: z.array(numericDistributionSchema),
+  completionOverTime: z.array(completionPointSchema),
+});
+
+export type DistributionsResponse = z.infer<typeof distributionsSchema>;

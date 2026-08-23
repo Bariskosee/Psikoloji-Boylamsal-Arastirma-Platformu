@@ -13,6 +13,9 @@ import {
 import type {
   ComplianceFigure,
   DailyComplianceResponse,
+  DistributionsResponse,
+  NumericDistribution,
+  OptionDistribution,
   ParticipantDetailResponse,
   ParticipantListResponse,
   ParticipantRow,
@@ -324,6 +327,190 @@ export class AnalyticsService {
         hasMore && last !== undefined
           ? encodeCursor({ enrolledAt: iso(last.enrolled_at), id: last.id })
           : null,
+    };
+  }
+
+  /**
+   * Descriptive distributions (PLAN.md Phase 11).
+   *
+   * ── What is deliberately absent ─────────────────────────────────────────
+   * Any assumption about what the study measures. There is no demographic
+   * breakdown here and no field named `age` or `group`, because a protocol is
+   * researcher-defined and a platform that assumed otherwise would be
+   * hard-coding one study's design (AGENT.md §3.4). Every distribution is
+   * keyed by `question_key`, and its categories are the options the researcher
+   * configured.
+   *
+   * ── Why `missing` travels with every figure ─────────────────────────────
+   * A chart that silently omits non-responses shows a cleaner study than the
+   * one that was run. Percentages are over ANSWERED cells and the unanswered
+   * count is reported beside them, so a reader can always see the denominator.
+   */
+  async distributions(studyId: string): Promise<DistributionsResponse> {
+    const study = await this.db.execute<{ timezone: string }>(sql`
+      SELECT timezone FROM research.studies WHERE id = ${studyId}
+    `);
+    const timezone = study.rows[0]?.timezone;
+    if (timezone === undefined) throw ApiErrors.studyNotFound();
+
+    /**
+     * Option counts, over sessions the participant actually completed or
+     * partially completed.
+     *
+     * The denominator is "cells that were due", so a question nobody has
+     * reached yet does not appear as universally missing — that would read as
+     * a compliance disaster rather than as a protocol in progress.
+     */
+    const optionRows = await this.db.execute<{
+      question_key: string;
+      question_text: string | null;
+      type: string;
+      step_key: string;
+      option_key: string;
+      label: string | null;
+      value_number: number | null;
+      count: string;
+      due: string;
+    }>(sql`
+      WITH due AS (
+        SELECT qv.id AS question_version_id, qv.question_key, qv.type,
+               ps.step_key, count(*) AS due
+          FROM research.participant_sessions s
+          JOIN research.protocol_steps ps ON ps.id = s.protocol_step_id
+          JOIN research.question_versions qv
+               ON qv.questionnaire_version_id = s.questionnaire_version_id
+         WHERE s.study_id = ${studyId}
+           AND s.status IN ('COMPLETED', 'EXPIRED_PARTIAL')
+         GROUP BY qv.id, qv.question_key, qv.type, ps.step_key
+      )
+      SELECT d.question_key, d.type, d.step_key,
+             (SELECT text FROM research.question_version_translations
+               WHERE question_version_id = d.question_version_id AND locale = 'en') AS question_text,
+             qo.option_key,
+             (SELECT label FROM research.question_option_translations
+               WHERE question_option_id = qo.id AND locale = 'en') AS label,
+             qo.value_number,
+             count(sel.response_id)::text AS count,
+             d.due::text                  AS due
+        FROM due d
+        JOIN research.question_options qo ON qo.question_version_id = d.question_version_id
+        LEFT JOIN research.response_option_selections sel
+               ON sel.question_option_id = qo.id
+        LEFT JOIN research.responses r ON r.id = sel.response_id
+        LEFT JOIN research.participant_sessions rs ON rs.id = r.session_id
+       WHERE rs.id IS NULL OR rs.study_id = ${studyId}
+       GROUP BY d.question_key, d.type, d.step_key, d.question_version_id, d.due,
+                qo.id, qo.option_key, qo.value_number, qo.display_order
+       ORDER BY d.step_key, d.question_key, qo.display_order
+    `);
+
+    const options = new Map<string, OptionDistribution>();
+    for (const row of optionRows.rows) {
+      const key = `${row.step_key}:${row.question_key}`;
+      const existing = options.get(key) ?? {
+        questionKey: row.question_key,
+        questionText: row.question_text ?? "",
+        type: row.type,
+        stepKey: row.step_key,
+        answered: 0,
+        missing: 0,
+        categories: [],
+      };
+      const count = Number(row.count);
+      existing.categories.push({
+        optionKey: row.option_key,
+        label: row.label ?? row.option_key,
+        value: row.value_number,
+        count,
+        percent: null,
+      });
+      options.set(key, { ...existing, answered: existing.answered + count });
+    }
+
+    // Percentages are computed AFTER the totals are known, over answered cells
+    // only — and left null when nothing was answered rather than shown as 0%.
+    const optionList = [...options.values()].map((distribution) => {
+      const due = Number(
+        optionRows.rows.find(
+          (r) => r.step_key === distribution.stepKey && r.question_key === distribution.questionKey,
+        )?.due ?? 0,
+      );
+      return {
+        ...distribution,
+        missing: Math.max(0, due - distribution.answered),
+        categories: distribution.categories.map((category) => ({
+          ...category,
+          percent:
+            distribution.answered === 0
+              ? null
+              : Math.round((category.count / distribution.answered) * 1000) / 10,
+        })),
+      };
+    });
+
+    const numericRows = await this.db.execute<{
+      question_key: string;
+      question_text: string | null;
+      step_key: string;
+      answered: string;
+      due: string;
+      min: number | null;
+      max: number | null;
+      mean: number | null;
+      median: number | null;
+    }>(sql`
+      SELECT qv.question_key, ps.step_key,
+             (SELECT text FROM research.question_version_translations
+               WHERE question_version_id = qv.id AND locale = 'en') AS question_text,
+             count(r.value_number)::text AS answered,
+             count(*)::text              AS due,
+             min(r.value_number) AS min,
+             max(r.value_number) AS max,
+             avg(r.value_number) AS mean,
+             percentile_cont(0.5) WITHIN GROUP (ORDER BY r.value_number) AS median
+        FROM research.participant_sessions s
+        JOIN research.protocol_steps ps ON ps.id = s.protocol_step_id
+        JOIN research.question_versions qv
+             ON qv.questionnaire_version_id = s.questionnaire_version_id
+        LEFT JOIN research.responses r
+               ON r.session_id = s.id AND r.question_version_id = qv.id
+       WHERE s.study_id = ${studyId}
+         AND qv.type = 'NUMERIC'
+         AND s.status IN ('COMPLETED', 'EXPIRED_PARTIAL')
+       GROUP BY qv.question_key, qv.id, ps.step_key
+       ORDER BY ps.step_key, qv.question_key
+    `);
+
+    const numerics: NumericDistribution[] = numericRows.rows.map((row) => ({
+      questionKey: row.question_key,
+      questionText: row.question_text ?? "",
+      stepKey: row.step_key,
+      answered: Number(row.answered),
+      missing: Number(row.due) - Number(row.answered),
+      // Null throughout when nothing was answered. A mean of 0 over no data is
+      // a claim; null is the absence of one.
+      min: row.min,
+      max: row.max,
+      mean: row.mean === null ? null : Math.round(row.mean * 100) / 100,
+      median: row.median,
+    }));
+
+    const completion = await this.db.execute<{ date: string; completed: string }>(sql`
+      SELECT (s.completed_at AT TIME ZONE ${timezone})::date::text AS date,
+             count(*)::text AS completed
+        FROM research.participant_sessions s
+       WHERE s.study_id = ${studyId} AND s.completed_at IS NOT NULL
+       GROUP BY 1 ORDER BY 1
+    `);
+
+    return {
+      timezone,
+      options: optionList,
+      numerics,
+      completionOverTime: completion.rows.map((row) => ({
+        date: row.date,
+        completed: Number(row.completed),
+      })),
     };
   }
 
