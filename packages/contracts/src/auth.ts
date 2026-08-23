@@ -79,6 +79,35 @@ export const changePasswordRequestSchema = z.object({
 export type ChangePasswordRequest = z.infer<typeof changePasswordRequestSchema>;
 
 /** Header carrying the double-submit token on state-changing requests. */
+/**
+ * Password reset (PLAN.md Phase 12, FR-06).
+ *
+ * ── Why the request carries only an email, and the response carries nothing ─
+ * The response to a reset request is IDENTICAL whether or not the address
+ * belongs to an account. Anything else turns this endpoint into an oracle that
+ * confirms which researchers exist at an institution — a list worth having, and
+ * one this platform has no reason to publish. The controller therefore always
+ * answers 202, and the difference is only visible in whether an email arrives.
+ */
+export const requestPasswordResetSchema = z.object({
+  email: researcherEmailSchema,
+});
+
+export type RequestPasswordResetRequest = z.infer<typeof requestPasswordResetSchema>;
+
+/**
+ * 64 lowercase hex characters — 32 bytes of CSPRNG output. Validated by shape
+ * before any lookup, so a malformed token costs a regex rather than a query.
+ */
+export const resetTokenSchema = z.string().regex(/^[0-9a-f]{64}$/);
+
+export const confirmPasswordResetSchema = z.object({
+  token: resetTokenSchema,
+  newPassword: passwordSchema,
+});
+
+export type ConfirmPasswordResetRequest = z.infer<typeof confirmPasswordResetSchema>;
+
 export const CSRF_HEADER = "x-csrf-token";
 
 /** Cookie names. Both are set by the API for its own origin. */

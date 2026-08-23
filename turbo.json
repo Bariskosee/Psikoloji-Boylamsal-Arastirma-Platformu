@@ -55,7 +55,14 @@
         // set them and Turborepo removed them before the task ever ran.
         "VAPID_PUBLIC_KEY",
         "VAPID_PRIVATE_KEY",
-        "VAPID_SUBJECT"
+        "VAPID_SUBJECT",
+        "SMTP_HOST",
+        "SMTP_PORT",
+        "SMTP_USER",
+        "SMTP_PASSWORD",
+        "SMTP_SECURE",
+        "MAIL_FROM",
+        "PASSWORD_RESET_RATE_LIMIT_MAX"
       ]
     },
     "dev": {
@@ -86,7 +93,14 @@
         // missing local configuration.
         "VAPID_PUBLIC_KEY",
         "VAPID_PRIVATE_KEY",
-        "VAPID_SUBJECT"
+        "VAPID_SUBJECT",
+        "SMTP_HOST",
+        "SMTP_PORT",
+        "SMTP_USER",
+        "SMTP_PASSWORD",
+        "SMTP_SECURE",
+        "MAIL_FROM",
+        "PASSWORD_RESET_RATE_LIMIT_MAX"
       ]
     }
   }

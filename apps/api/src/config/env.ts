@@ -71,6 +71,36 @@ const envSchema = z.object({
   LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(5),
   LOGIN_RATE_LIMIT_WINDOW_MINUTES: z.coerce.number().int().positive().default(15),
 
+  /**
+   * Outbound email, used only for researcher password resets (Phase 12).
+   *
+   * ── Why an empty SMTP host is a supported configuration ─────────────────
+   * A research team may run a pilot before they have institutional mail
+   * relaying arranged. With no host configured the API still accepts reset
+   * requests and still mints tokens, and the message is written to the log
+   * instead of sent — so the flow is testable end to end and an administrator
+   * can read the link out of the log if they must.
+   *
+   * It is NOT a silent fallback in production: `main.ts` logs a warning at
+   * startup when the host is empty, in the same way the VAPID keys do, because
+   * a deployment that believes it is sending reset emails and is not would
+   * only discover it from a researcher who never received one.
+   */
+  SMTP_HOST: z.string().optional().default(""),
+  SMTP_PORT: z.coerce.number().int().positive().default(587),
+  SMTP_USER: z.string().optional().default(""),
+  SMTP_PASSWORD: z.string().optional().default(""),
+  /** STARTTLS on 587 is the default; set true for implicit TLS on 465. */
+  SMTP_SECURE: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
+  /** The From address. Required in substance whenever SMTP_HOST is set. */
+  MAIL_FROM: z.string().optional().default(""),
+
+  /** Password reset requests per hour, per account and per IP. */
+  PASSWORD_RESET_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(5),
+
   // Empty disables Sentry, which is the correct default for local development.
   SENTRY_DSN: z.string().optional().default(""),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),

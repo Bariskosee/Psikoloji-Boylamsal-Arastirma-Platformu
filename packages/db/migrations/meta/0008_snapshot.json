@@ -1,0 +1,4354 @@
+{
+  "id": "de0838ee-d38b-4cf0-9d4b-7677edf5457e",
+  "prevId": "204f0a10-58bd-40bf-8c2a-6809cdf52f61",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "identity.researcher_users": {
+      "name": "researcher_users",
+      "schema": "identity",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "password_hash": {
+          "name": "password_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "display_name": {
+          "name": "display_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "locale": {
+          "name": "locale",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'en'"
+        },
+        "is_admin": {
+          "name": "is_admin",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "password_changed_at": {
+          "name": "password_changed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "last_login_at": {
+          "name": "last_login_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "researcher_users_email_key": {
+          "name": "researcher_users_email_key",
+          "columns": [
+            {
+              "expression": "email",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "researcher_users_active_idx": {
+          "name": "researcher_users_active_idx",
+          "columns": [
+            {
+              "expression": "is_active",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "researcher_users_email_lowercase": {
+          "name": "researcher_users_email_lowercase",
+          "value": "\"identity\".\"researcher_users\".\"email\" = lower(\"identity\".\"researcher_users\".\"email\")"
+        },
+        "researcher_users_email_shape": {
+          "name": "researcher_users_email_shape",
+          "value": "\"identity\".\"researcher_users\".\"email\" LIKE '%_@_%'"
+        },
+        "researcher_users_locale_valid": {
+          "name": "researcher_users_locale_valid",
+          "value": "\"identity\".\"researcher_users\".\"locale\" IN ('en', 'tr')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "identity.researcher_sessions": {
+      "name": "researcher_sessions",
+      "schema": "identity",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "token_hash": {
+          "name": "token_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "csrf_token_hash": {
+          "name": "csrf_token_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_seen_at": {
+          "name": "last_seen_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "revoked_at": {
+          "name": "revoked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ip_hash": {
+          "name": "ip_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_agent": {
+          "name": "user_agent",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "researcher_sessions_token_hash_key": {
+          "name": "researcher_sessions_token_hash_key",
+          "columns": [
+            {
+              "expression": "token_hash",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "researcher_sessions_user_idx": {
+          "name": "researcher_sessions_user_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "researcher_sessions_expires_idx": {
+          "name": "researcher_sessions_expires_idx",
+          "columns": [
+            {
+              "expression": "expires_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "researcher_sessions_user_id_researcher_users_id_fk": {
+          "name": "researcher_sessions_user_id_researcher_users_id_fk",
+          "tableFrom": "researcher_sessions",
+          "tableTo": "researcher_users",
+          "schemaTo": "identity",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "identity.researcher_password_resets": {
+      "name": "researcher_password_resets",
+      "schema": "identity",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "token_hash": {
+          "name": "token_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "used_at": {
+          "name": "used_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "requested_ip_hash": {
+          "name": "requested_ip_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "researcher_password_resets_token_hash_key": {
+          "name": "researcher_password_resets_token_hash_key",
+          "columns": [
+            {
+              "expression": "token_hash",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "researcher_password_resets_user_idx": {
+          "name": "researcher_password_resets_user_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "researcher_password_resets_expires_idx": {
+          "name": "researcher_password_resets_expires_idx",
+          "columns": [
+            {
+              "expression": "expires_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "researcher_password_resets_user_id_researcher_users_id_fk": {
+          "name": "researcher_password_resets_user_id_researcher_users_id_fk",
+          "tableFrom": "researcher_password_resets",
+          "tableTo": "researcher_users",
+          "schemaTo": "identity",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "identity.participant_credentials": {
+      "name": "participant_credentials",
+      "schema": "identity",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "participant_id": {
+          "name": "participant_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token_hash": {
+          "name": "token_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lookup_prefix": {
+          "name": "lookup_prefix",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "credential_context": {
+          "name": "credential_context",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'BROWSER'"
+        },
+        "issued_at": {
+          "name": "issued_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "last_used_at": {
+          "name": "last_used_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rotated_at": {
+          "name": "rotated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "revoked_at": {
+          "name": "revoked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "participant_credentials_lookup_idx": {
+          "name": "participant_credentials_lookup_idx",
+          "columns": [
+            {
+              "expression": "lookup_prefix",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "participant_credentials_participant_idx": {
+          "name": "participant_credentials_participant_idx",
+          "columns": [
+            {
+              "expression": "participant_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "participant_credentials_hash_idx": {
+          "name": "participant_credentials_hash_idx",
+          "columns": [
+            {
+              "expression": "token_hash",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "participant_credentials_context_valid": {
+          "name": "participant_credentials_context_valid",
+          "value": "\"identity\".\"participant_credentials\".\"credential_context\" IN ('BROWSER', 'INSTALLED')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "identity.participant_handoff_codes": {
+      "name": "participant_handoff_codes",
+      "schema": "identity",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "participant_id": {
+          "name": "participant_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code_hash": {
+          "name": "code_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "issued_at": {
+          "name": "issued_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "redeemed_at": {
+          "name": "redeemed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "participant_handoff_codes_hash_idx": {
+          "name": "participant_handoff_codes_hash_idx",
+          "columns": [
+            {
+              "expression": "code_hash",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "participant_handoff_codes_participant_idx": {
+          "name": "participant_handoff_codes_participant_idx",
+          "columns": [
+            {
+              "expression": "participant_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "participant_handoff_codes_expiry_after_issue": {
+          "name": "participant_handoff_codes_expiry_after_issue",
+          "value": "\"identity\".\"participant_handoff_codes\".\"expires_at\" > \"identity\".\"participant_handoff_codes\".\"issued_at\""
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "identity.participant_recovery_codes": {
+      "name": "participant_recovery_codes",
+      "schema": "identity",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "participant_id": {
+          "name": "participant_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code_hash": {
+          "name": "code_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "issued_at": {
+          "name": "issued_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "redeemed_at": {
+          "name": "redeemed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "participant_recovery_codes_hash_idx": {
+          "name": "participant_recovery_codes_hash_idx",
+          "columns": [
+            {
+              "expression": "code_hash",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "participant_recovery_codes_participant_idx": {
+          "name": "participant_recovery_codes_participant_idx",
+          "columns": [
+            {
+              "expression": "participant_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "identity.push_subscriptions": {
+      "name": "push_subscriptions",
+      "schema": "identity",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "participant_id": {
+          "name": "participant_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "endpoint": {
+          "name": "endpoint",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "p256dh_key": {
+          "name": "p256dh_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "auth_key": {
+          "name": "auth_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expiration_time": {
+          "name": "expiration_time",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "credential_context": {
+          "name": "credential_context",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'BROWSER'"
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "deactivated_at": {
+          "name": "deactivated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "deactivation_reason": {
+          "name": "deactivation_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_seen_at": {
+          "name": "last_seen_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "push_subscriptions_endpoint_idx": {
+          "name": "push_subscriptions_endpoint_idx",
+          "columns": [
+            {
+              "expression": "endpoint",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "push_subscriptions_participant_idx": {
+          "name": "push_subscriptions_participant_idx",
+          "columns": [
+            {
+              "expression": "participant_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "push_subscriptions_prune_idx": {
+          "name": "push_subscriptions_prune_idx",
+          "columns": [
+            {
+              "expression": "deactivated_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"identity\".\"push_subscriptions\".\"is_active\" = false",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "push_subscriptions_credential_context_valid": {
+          "name": "push_subscriptions_credential_context_valid",
+          "value": "\"identity\".\"push_subscriptions\".\"credential_context\" IN ('BROWSER', 'INSTALLED')"
+        },
+        "push_subscriptions_deactivation_complete": {
+          "name": "push_subscriptions_deactivation_complete",
+          "value": "(\"identity\".\"push_subscriptions\".\"is_active\" = true AND \"identity\".\"push_subscriptions\".\"deactivated_at\" IS NULL)\n          OR (\"identity\".\"push_subscriptions\".\"is_active\" = false AND \"identity\".\"push_subscriptions\".\"deactivated_at\" IS NOT NULL)"
+        },
+        "push_subscriptions_deactivation_reason_valid": {
+          "name": "push_subscriptions_deactivation_reason_valid",
+          "value": "\"identity\".\"push_subscriptions\".\"deactivation_reason\" IS NULL\n          OR \"identity\".\"push_subscriptions\".\"deactivation_reason\" IN ('UNSUBSCRIBED', 'WITHDRAWN', 'EXPIRED', 'REJECTED_BY_SERVICE')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "research.studies": {
+      "name": "studies",
+      "schema": "research",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'DRAFT'"
+        },
+        "enrollment_code": {
+          "name": "enrollment_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "timezone": {
+          "name": "timezone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "default_locale": {
+          "name": "default_locale",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'en'"
+        },
+        "supported_locales": {
+          "name": "supported_locales",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "enrollment_capacity": {
+          "name": "enrollment_capacity",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "studies_enrollment_code_key": {
+          "name": "studies_enrollment_code_key",
+          "columns": [
+            {
+              "expression": "enrollment_code",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "studies_status_idx": {
+          "name": "studies_status_idx",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "studies_created_by_researcher_users_id_fk": {
+          "name": "studies_created_by_researcher_users_id_fk",
+          "tableFrom": "studies",
+          "tableTo": "researcher_users",
+          "schemaTo": "identity",
+          "columnsFrom": ["created_by"],
+          "columnsTo": ["id"],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "studies_status_valid": {
+          "name": "studies_status_valid",
+          "value": "\"research\".\"studies\".\"status\" IN ('DRAFT', 'ACTIVE', 'PAUSED', 'CLOSED', 'ARCHIVED')"
+        },
+        "studies_enrollment_code_shape": {
+          "name": "studies_enrollment_code_shape",
+          "value": "\"research\".\"studies\".\"enrollment_code\" ~ '^[0-9A-HJKMNP-TV-Z]{6}$'"
+        },
+        "studies_supported_locales_nonempty": {
+          "name": "studies_supported_locales_nonempty",
+          "value": "array_length(\"research\".\"studies\".\"supported_locales\", 1) >= 1"
+        },
+        "studies_default_locale_supported": {
+          "name": "studies_default_locale_supported",
+          "value": "\"research\".\"studies\".\"default_locale\" = ANY(\"research\".\"studies\".\"supported_locales\")"
+        },
+        "studies_capacity_positive": {
+          "name": "studies_capacity_positive",
+          "value": "\"research\".\"studies\".\"enrollment_capacity\" IS NULL OR \"research\".\"studies\".\"enrollment_capacity\" > 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "research.study_members": {
+      "name": "study_members",
+      "schema": "research",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "study_id": {
+          "name": "study_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "added_by": {
+          "name": "added_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "study_members_study_user_key": {
+          "name": "study_members_study_user_key",
+          "columns": [
+            {
+              "expression": "study_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "study_members_user_idx": {
+          "name": "study_members_user_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "study_members_study_id_studies_id_fk": {
+          "name": "study_members_study_id_studies_id_fk",
+          "tableFrom": "study_members",
+          "tableTo": "studies",
+          "schemaTo": "research",
+          "columnsFrom": ["study_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "study_members_user_id_researcher_users_id_fk": {
+          "name": "study_members_user_id_researcher_users_id_fk",
+          "tableFrom": "study_members",
+          "tableTo": "researcher_users",
+          "schemaTo": "identity",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "study_members_added_by_researcher_users_id_fk": {
+          "name": "study_members_added_by_researcher_users_id_fk",
+          "tableFrom": "study_members",
+          "tableTo": "researcher_users",
+          "schemaTo": "identity",
+          "columnsFrom": ["added_by"],
+          "columnsTo": ["id"],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "study_members_role_valid": {
+          "name": "study_members_role_valid",
+          "value": "\"research\".\"study_members\".\"role\" IN ('OWNER', 'EDITOR', 'ANALYST', 'VIEWER')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "research.audit_events": {
+      "name": "audit_events",
+      "schema": "research",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "actor_type": {
+          "name": "actor_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actor_id": {
+          "name": "actor_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "actor_label": {
+          "name": "actor_label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "study_id": {
+          "name": "study_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "action": {
+          "name": "action",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entity_type": {
+          "name": "entity_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entity_id": {
+          "name": "entity_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "ip_hash": {
+          "name": "ip_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "occurred_at": {
+          "name": "occurred_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "audit_events_study_occurred_idx": {
+          "name": "audit_events_study_occurred_idx",
+          "columns": [
+            {
+              "expression": "study_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "occurred_at",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            },
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "audit_events_actor_idx": {
+          "name": "audit_events_actor_idx",
+          "columns": [
+            {
+              "expression": "actor_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "occurred_at",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "audit_events_action_idx": {
+          "name": "audit_events_action_idx",
+          "columns": [
+            {
+              "expression": "action",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "occurred_at",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "audit_events_study_id_studies_id_fk": {
+          "name": "audit_events_study_id_studies_id_fk",
+          "tableFrom": "audit_events",
+          "tableTo": "studies",
+          "schemaTo": "research",
+          "columnsFrom": ["study_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "audit_events_actor_type_valid": {
+          "name": "audit_events_actor_type_valid",
+          "value": "\"research\".\"audit_events\".\"actor_type\" IN ('RESEARCHER', 'PARTICIPANT', 'SYSTEM')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "research.system_heartbeats": {
+      "name": "system_heartbeats",
+      "schema": "research",
+      "columns": {
+        "worker_id": {
+          "name": "worker_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "swept_at": {
+          "name": "swept_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sweep_interval_seconds": {
+          "name": "sweep_interval_seconds",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "consecutive_failures": {
+          "name": "consecutive_failures",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "last_error": {
+          "name": "last_error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "system_heartbeats_sweep_interval_positive": {
+          "name": "system_heartbeats_sweep_interval_positive",
+          "value": "\"research\".\"system_heartbeats\".\"sweep_interval_seconds\" > 0"
+        },
+        "system_heartbeats_consecutive_failures_nonnegative": {
+          "name": "system_heartbeats_consecutive_failures_nonnegative",
+          "value": "\"research\".\"system_heartbeats\".\"consecutive_failures\" >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "research.questionnaires": {
+      "name": "questionnaires",
+      "schema": "research",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "study_id": {
+          "name": "study_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "questionnaires_study_idx": {
+          "name": "questionnaires_study_idx",
+          "columns": [
+            {
+              "expression": "study_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "questionnaires_study_id_studies_id_fk": {
+          "name": "questionnaires_study_id_studies_id_fk",
+          "tableFrom": "questionnaires",
+          "tableTo": "studies",
+          "schemaTo": "research",
+          "columnsFrom": ["study_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "questionnaires_created_by_researcher_users_id_fk": {
+          "name": "questionnaires_created_by_researcher_users_id_fk",
+          "tableFrom": "questionnaires",
+          "tableTo": "researcher_users",
+          "schemaTo": "identity",
+          "columnsFrom": ["created_by"],
+          "columnsTo": ["id"],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "research.questionnaire_versions": {
+      "name": "questionnaire_versions",
+      "schema": "research",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "questionnaire_id": {
+          "name": "questionnaire_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'DRAFT'"
+        },
+        "version_number": {
+          "name": "version_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "published_at": {
+          "name": "published_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "published_by": {
+          "name": "published_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "questionnaire_versions_one_draft_idx": {
+          "name": "questionnaire_versions_one_draft_idx",
+          "columns": [
+            {
+              "expression": "questionnaire_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"research\".\"questionnaire_versions\".\"status\" = 'DRAFT'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "questionnaire_versions_number_key": {
+          "name": "questionnaire_versions_number_key",
+          "columns": [
+            {
+              "expression": "questionnaire_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "version_number",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "questionnaire_versions_questionnaire_idx": {
+          "name": "questionnaire_versions_questionnaire_idx",
+          "columns": [
+            {
+              "expression": "questionnaire_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "questionnaire_versions_questionnaire_id_questionnaires_id_fk": {
+          "name": "questionnaire_versions_questionnaire_id_questionnaires_id_fk",
+          "tableFrom": "questionnaire_versions",
+          "tableTo": "questionnaires",
+          "schemaTo": "research",
+          "columnsFrom": ["questionnaire_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "questionnaire_versions_published_by_researcher_users_id_fk": {
+          "name": "questionnaire_versions_published_by_researcher_users_id_fk",
+          "tableFrom": "questionnaire_versions",
+          "tableTo": "researcher_users",
+          "schemaTo": "identity",
+          "columnsFrom": ["published_by"],
+          "columnsTo": ["id"],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "questionnaire_versions_status_valid": {
+          "name": "questionnaire_versions_status_valid",
+          "value": "\"research\".\"questionnaire_versions\".\"status\" IN ('DRAFT', 'PUBLISHED', 'RETIRED')"
+        },
+        "questionnaire_versions_number_shape": {
+          "name": "questionnaire_versions_number_shape",
+          "value": "(\"research\".\"questionnaire_versions\".\"status\" = 'DRAFT') = (\"research\".\"questionnaire_versions\".\"version_number\" IS NULL)"
+        },
+        "questionnaire_versions_published_at_shape": {
+          "name": "questionnaire_versions_published_at_shape",
+          "value": "(\"research\".\"questionnaire_versions\".\"status\" = 'DRAFT') = (\"research\".\"questionnaire_versions\".\"published_at\" IS NULL)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "research.question_versions": {
+      "name": "question_versions",
+      "schema": "research",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "questionnaire_version_id": {
+          "name": "questionnaire_version_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "question_key": {
+          "name": "question_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_required": {
+          "name": "is_required",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "page_index": {
+          "name": "page_index",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "display_order": {
+          "name": "display_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "config": {
+          "name": "config",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "question_versions_key_key": {
+          "name": "question_versions_key_key",
+          "columns": [
+            {
+              "expression": "questionnaire_version_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "question_key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "question_versions_order_idx": {
+          "name": "question_versions_order_idx",
+          "columns": [
+            {
+              "expression": "questionnaire_version_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "display_order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "question_versions_questionnaire_version_id_questionnaire_versions_id_fk": {
+          "name": "question_versions_questionnaire_version_id_questionnaire_versions_id_fk",
+          "tableFrom": "question_versions",
+          "tableTo": "questionnaire_versions",
+          "schemaTo": "research",
+          "columnsFrom": ["questionnaire_version_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "question_versions_type_valid": {
+          "name": "question_versions_type_valid",
+          "value": "\"research\".\"question_versions\".\"type\" IN ('SINGLE_CHOICE', 'MULTI_CHOICE', 'LIKERT', 'NUMERIC', 'FREE_TEXT')"
+        },
+        "question_versions_page_index_nonnegative": {
+          "name": "question_versions_page_index_nonnegative",
+          "value": "\"research\".\"question_versions\".\"page_index\" >= 0"
+        },
+        "question_versions_display_order_nonnegative": {
+          "name": "question_versions_display_order_nonnegative",
+          "value": "\"research\".\"question_versions\".\"display_order\" >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "research.question_version_translations": {
+      "name": "question_version_translations",
+      "schema": "research",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "question_version_id": {
+          "name": "question_version_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "locale": {
+          "name": "locale",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "text": {
+          "name": "text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "question_version_translations_locale_key": {
+          "name": "question_version_translations_locale_key",
+          "columns": [
+            {
+              "expression": "question_version_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "locale",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "question_version_translations_question_version_id_question_versions_id_fk": {
+          "name": "question_version_translations_question_version_id_question_versions_id_fk",
+          "tableFrom": "question_version_translations",
+          "tableTo": "question_versions",
+          "schemaTo": "research",
+          "columnsFrom": ["question_version_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "question_version_translations_locale_valid": {
+          "name": "question_version_translations_locale_valid",
+          "value": "\"research\".\"question_version_translations\".\"locale\" IN ('en', 'tr')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "research.question_options": {
+      "name": "question_options",
+      "schema": "research",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "question_version_id": {
+          "name": "question_version_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "option_key": {
+          "name": "option_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "display_order": {
+          "name": "display_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value_number": {
+          "name": "value_number",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_exclusive": {
+          "name": "is_exclusive",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "question_options_key_key": {
+          "name": "question_options_key_key",
+          "columns": [
+            {
+              "expression": "question_version_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "option_key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "question_options_order_idx": {
+          "name": "question_options_order_idx",
+          "columns": [
+            {
+              "expression": "question_version_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "display_order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "question_options_question_version_id_question_versions_id_fk": {
+          "name": "question_options_question_version_id_question_versions_id_fk",
+          "tableFrom": "question_options",
+          "tableTo": "question_versions",
+          "schemaTo": "research",
+          "columnsFrom": ["question_version_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "question_options_display_order_nonnegative": {
+          "name": "question_options_display_order_nonnegative",
+          "value": "\"research\".\"question_options\".\"display_order\" >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "research.question_option_translations": {
+      "name": "question_option_translations",
+      "schema": "research",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "question_option_id": {
+          "name": "question_option_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "locale": {
+          "name": "locale",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "label": {
+          "name": "label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "question_option_translations_locale_key": {
+          "name": "question_option_translations_locale_key",
+          "columns": [
+            {
+              "expression": "question_option_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "locale",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "question_option_translations_question_option_id_question_options_id_fk": {
+          "name": "question_option_translations_question_option_id_question_options_id_fk",
+          "tableFrom": "question_option_translations",
+          "tableTo": "question_options",
+          "schemaTo": "research",
+          "columnsFrom": ["question_option_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "question_option_translations_locale_valid": {
+          "name": "question_option_translations_locale_valid",
+          "value": "\"research\".\"question_option_translations\".\"locale\" IN ('en', 'tr')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "research.protocols": {
+      "name": "protocols",
+      "schema": "research",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "study_id": {
+          "name": "study_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "protocols_study_idx": {
+          "name": "protocols_study_idx",
+          "columns": [
+            {
+              "expression": "study_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "protocols_study_id_studies_id_fk": {
+          "name": "protocols_study_id_studies_id_fk",
+          "tableFrom": "protocols",
+          "tableTo": "studies",
+          "schemaTo": "research",
+          "columnsFrom": ["study_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "protocols_created_by_researcher_users_id_fk": {
+          "name": "protocols_created_by_researcher_users_id_fk",
+          "tableFrom": "protocols",
+          "tableTo": "researcher_users",
+          "schemaTo": "identity",
+          "columnsFrom": ["created_by"],
+          "columnsTo": ["id"],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "research.protocol_versions": {
+      "name": "protocol_versions",
+      "schema": "research",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "protocol_id": {
+          "name": "protocol_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'DRAFT'"
+        },
+        "version_number": {
+          "name": "version_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "published_at": {
+          "name": "published_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "published_by": {
+          "name": "published_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "protocol_versions_one_draft_idx": {
+          "name": "protocol_versions_one_draft_idx",
+          "columns": [
+            {
+              "expression": "protocol_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"research\".\"protocol_versions\".\"status\" = 'DRAFT'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "protocol_versions_number_idx": {
+          "name": "protocol_versions_number_idx",
+          "columns": [
+            {
+              "expression": "protocol_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "version_number",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "protocol_versions_protocol_id_protocols_id_fk": {
+          "name": "protocol_versions_protocol_id_protocols_id_fk",
+          "tableFrom": "protocol_versions",
+          "tableTo": "protocols",
+          "schemaTo": "research",
+          "columnsFrom": ["protocol_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "protocol_versions_published_by_researcher_users_id_fk": {
+          "name": "protocol_versions_published_by_researcher_users_id_fk",
+          "tableFrom": "protocol_versions",
+          "tableTo": "researcher_users",
+          "schemaTo": "identity",
+          "columnsFrom": ["published_by"],
+          "columnsTo": ["id"],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "protocol_versions_status_valid": {
+          "name": "protocol_versions_status_valid",
+          "value": "\"research\".\"protocol_versions\".\"status\" IN ('DRAFT', 'PUBLISHED', 'RETIRED')"
+        },
+        "protocol_versions_publication_complete": {
+          "name": "protocol_versions_publication_complete",
+          "value": "(\"research\".\"protocol_versions\".\"status\" = 'DRAFT' AND \"research\".\"protocol_versions\".\"version_number\" IS NULL AND \"research\".\"protocol_versions\".\"published_at\" IS NULL)\n          OR (\"research\".\"protocol_versions\".\"status\" <> 'DRAFT' AND \"research\".\"protocol_versions\".\"version_number\" IS NOT NULL AND \"research\".\"protocol_versions\".\"published_at\" IS NOT NULL)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "research.reminder_policies": {
+      "name": "reminder_policies",
+      "schema": "research",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "initial_delay_iso": {
+          "name": "initial_delay_iso",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "interval_iso": {
+          "name": "interval_iso",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "max_reminders": {
+          "name": "max_reminders",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "quiet_hours_start": {
+          "name": "quiet_hours_start",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "quiet_hours_end": {
+          "name": "quiet_hours_end",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "quiet_hours_behavior": {
+          "name": "quiet_hours_behavior",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'DEFER'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "reminder_policies_max_nonnegative": {
+          "name": "reminder_policies_max_nonnegative",
+          "value": "\"research\".\"reminder_policies\".\"max_reminders\" >= 0"
+        },
+        "reminder_policies_quiet_hours_behavior_valid": {
+          "name": "reminder_policies_quiet_hours_behavior_valid",
+          "value": "\"research\".\"reminder_policies\".\"quiet_hours_behavior\" IN ('SKIP', 'DEFER')"
+        },
+        "reminder_policies_quiet_hours_paired": {
+          "name": "reminder_policies_quiet_hours_paired",
+          "value": "(\"research\".\"reminder_policies\".\"quiet_hours_start\" IS NULL) = (\"research\".\"reminder_policies\".\"quiet_hours_end\" IS NULL)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "research.protocol_steps": {
+      "name": "protocol_steps",
+      "schema": "research",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "protocol_version_id": {
+          "name": "protocol_version_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "step_index": {
+          "name": "step_index",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "step_key": {
+          "name": "step_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "questionnaire_version_id": {
+          "name": "questionnaire_version_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "step_kind": {
+          "name": "step_kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'SCHEDULED'"
+        },
+        "trigger_type": {
+          "name": "trigger_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "trigger_step_id": {
+          "name": "trigger_step_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "trigger_occurrence_index": {
+          "name": "trigger_occurrence_index",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "trigger_fixed_date": {
+          "name": "trigger_fixed_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "offset_iso": {
+          "name": "offset_iso",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PT0S'"
+        },
+        "anchor_local_time": {
+          "name": "anchor_local_time",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "anchor_timezone_source": {
+          "name": "anchor_timezone_source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "window_duration_iso": {
+          "name": "window_duration_iso",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "occurrence_count": {
+          "name": "occurrence_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "recurrence_interval_iso": {
+          "name": "recurrence_interval_iso",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reminder_policy_id": {
+          "name": "reminder_policy_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "counts_toward_compliance": {
+          "name": "counts_toward_compliance",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "min_interval_iso": {
+          "name": "min_interval_iso",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "max_per_day": {
+          "name": "max_per_day",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "max_total": {
+          "name": "max_total",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "allowed_group_ids": {
+          "name": "allowed_group_ids",
+          "type": "uuid[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::uuid[]"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "protocol_steps_version_idx": {
+          "name": "protocol_steps_version_idx",
+          "columns": [
+            {
+              "expression": "protocol_version_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "protocol_steps_questionnaire_version_idx": {
+          "name": "protocol_steps_questionnaire_version_idx",
+          "columns": [
+            {
+              "expression": "questionnaire_version_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "protocol_steps_key_idx": {
+          "name": "protocol_steps_key_idx",
+          "columns": [
+            {
+              "expression": "protocol_version_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "step_key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "protocol_steps_order_idx": {
+          "name": "protocol_steps_order_idx",
+          "columns": [
+            {
+              "expression": "protocol_version_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "step_index",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "protocol_steps_protocol_version_id_protocol_versions_id_fk": {
+          "name": "protocol_steps_protocol_version_id_protocol_versions_id_fk",
+          "tableFrom": "protocol_steps",
+          "tableTo": "protocol_versions",
+          "schemaTo": "research",
+          "columnsFrom": ["protocol_version_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "protocol_steps_questionnaire_version_id_questionnaire_versions_id_fk": {
+          "name": "protocol_steps_questionnaire_version_id_questionnaire_versions_id_fk",
+          "tableFrom": "protocol_steps",
+          "tableTo": "questionnaire_versions",
+          "schemaTo": "research",
+          "columnsFrom": ["questionnaire_version_id"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "protocol_steps_reminder_policy_id_reminder_policies_id_fk": {
+          "name": "protocol_steps_reminder_policy_id_reminder_policies_id_fk",
+          "tableFrom": "protocol_steps",
+          "tableTo": "reminder_policies",
+          "schemaTo": "research",
+          "columnsFrom": ["reminder_policy_id"],
+          "columnsTo": ["id"],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "protocol_steps_trigger_type_valid": {
+          "name": "protocol_steps_trigger_type_valid",
+          "value": "\"research\".\"protocol_steps\".\"trigger_type\" IN ('ENROLLMENT', 'CONSENT', 'STEP_COMPLETED', 'STEP_AVAILABLE', 'FIXED_DATETIME')"
+        },
+        "protocol_steps_kind_valid": {
+          "name": "protocol_steps_kind_valid",
+          "value": "\"research\".\"protocol_steps\".\"step_kind\" IN ('SCHEDULED', 'PARTICIPANT_INITIATED')"
+        },
+        "protocol_steps_anchor_source_valid": {
+          "name": "protocol_steps_anchor_source_valid",
+          "value": "\"research\".\"protocol_steps\".\"anchor_timezone_source\" IS NULL OR \"research\".\"protocol_steps\".\"anchor_timezone_source\" IN ('STUDY', 'PARTICIPANT')"
+        },
+        "protocol_steps_trigger_reference_matches_type": {
+          "name": "protocol_steps_trigger_reference_matches_type",
+          "value": "(\"research\".\"protocol_steps\".\"trigger_type\" IN ('STEP_COMPLETED', 'STEP_AVAILABLE')) = (\"research\".\"protocol_steps\".\"trigger_step_id\" IS NOT NULL)"
+        },
+        "protocol_steps_fixed_date_matches_type": {
+          "name": "protocol_steps_fixed_date_matches_type",
+          "value": "(\"research\".\"protocol_steps\".\"trigger_type\" = 'FIXED_DATETIME') = (\"research\".\"protocol_steps\".\"trigger_fixed_date\" IS NOT NULL)"
+        },
+        "protocol_steps_occurrence_index_needs_reference": {
+          "name": "protocol_steps_occurrence_index_needs_reference",
+          "value": "\"research\".\"protocol_steps\".\"trigger_occurrence_index\" IS NULL OR \"research\".\"protocol_steps\".\"trigger_step_id\" IS NOT NULL"
+        },
+        "protocol_steps_occurrence_index_nonnegative": {
+          "name": "protocol_steps_occurrence_index_nonnegative",
+          "value": "\"research\".\"protocol_steps\".\"trigger_occurrence_index\" IS NULL OR \"research\".\"protocol_steps\".\"trigger_occurrence_index\" >= 0"
+        },
+        "protocol_steps_wall_clock_paired": {
+          "name": "protocol_steps_wall_clock_paired",
+          "value": "(\"research\".\"protocol_steps\".\"anchor_local_time\" IS NULL) = (\"research\".\"protocol_steps\".\"anchor_timezone_source\" IS NULL)"
+        },
+        "protocol_steps_occurrence_count_positive": {
+          "name": "protocol_steps_occurrence_count_positive",
+          "value": "\"research\".\"protocol_steps\".\"occurrence_count\" >= 1"
+        },
+        "protocol_steps_recurrence_matches_count": {
+          "name": "protocol_steps_recurrence_matches_count",
+          "value": "(\"research\".\"protocol_steps\".\"occurrence_count\" > 1) = (\"research\".\"protocol_steps\".\"recurrence_interval_iso\" IS NOT NULL)"
+        },
+        "protocol_steps_rate_limits_scoped": {
+          "name": "protocol_steps_rate_limits_scoped",
+          "value": "\"research\".\"protocol_steps\".\"step_kind\" = 'PARTICIPANT_INITIATED'\n          OR (\"research\".\"protocol_steps\".\"min_interval_iso\" IS NULL AND \"research\".\"protocol_steps\".\"max_per_day\" IS NULL AND \"research\".\"protocol_steps\".\"max_total\" IS NULL)"
+        },
+        "protocol_steps_step_index_nonnegative": {
+          "name": "protocol_steps_step_index_nonnegative",
+          "value": "\"research\".\"protocol_steps\".\"step_index\" >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "research.consent_version_translations": {
+      "name": "consent_version_translations",
+      "schema": "research",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "consent_version_id": {
+          "name": "consent_version_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "locale": {
+          "name": "locale",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "body": {
+          "name": "body",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "consent_version_translations_locale_idx": {
+          "name": "consent_version_translations_locale_idx",
+          "columns": [
+            {
+              "expression": "consent_version_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "locale",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "consent_version_translations_consent_version_id_consent_versions_id_fk": {
+          "name": "consent_version_translations_consent_version_id_consent_versions_id_fk",
+          "tableFrom": "consent_version_translations",
+          "tableTo": "consent_versions",
+          "schemaTo": "research",
+          "columnsFrom": ["consent_version_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "research.consent_versions": {
+      "name": "consent_versions",
+      "schema": "research",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "study_id": {
+          "name": "study_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'DRAFT'"
+        },
+        "version_number": {
+          "name": "version_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "published_at": {
+          "name": "published_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "published_by": {
+          "name": "published_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "consent_versions_one_draft_idx": {
+          "name": "consent_versions_one_draft_idx",
+          "columns": [
+            {
+              "expression": "study_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"research\".\"consent_versions\".\"status\" = 'DRAFT'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "consent_versions_number_idx": {
+          "name": "consent_versions_number_idx",
+          "columns": [
+            {
+              "expression": "study_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "version_number",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "consent_versions_study_id_studies_id_fk": {
+          "name": "consent_versions_study_id_studies_id_fk",
+          "tableFrom": "consent_versions",
+          "tableTo": "studies",
+          "schemaTo": "research",
+          "columnsFrom": ["study_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "consent_versions_published_by_researcher_users_id_fk": {
+          "name": "consent_versions_published_by_researcher_users_id_fk",
+          "tableFrom": "consent_versions",
+          "tableTo": "researcher_users",
+          "schemaTo": "identity",
+          "columnsFrom": ["published_by"],
+          "columnsTo": ["id"],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "consent_versions_status_valid": {
+          "name": "consent_versions_status_valid",
+          "value": "\"research\".\"consent_versions\".\"status\" IN ('DRAFT', 'PUBLISHED', 'RETIRED')"
+        },
+        "consent_versions_publication_complete": {
+          "name": "consent_versions_publication_complete",
+          "value": "(\"research\".\"consent_versions\".\"status\" = 'DRAFT' AND \"research\".\"consent_versions\".\"version_number\" IS NULL AND \"research\".\"consent_versions\".\"published_at\" IS NULL)\n          OR (\"research\".\"consent_versions\".\"status\" <> 'DRAFT' AND \"research\".\"consent_versions\".\"version_number\" IS NOT NULL AND \"research\".\"consent_versions\".\"published_at\" IS NOT NULL)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "research.study_groups": {
+      "name": "study_groups",
+      "schema": "research",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "study_id": {
+          "name": "study_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "label": {
+          "name": "label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "allocation_weight": {
+          "name": "allocation_weight",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "study_groups_key_idx": {
+          "name": "study_groups_key_idx",
+          "columns": [
+            {
+              "expression": "study_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "study_groups_study_id_studies_id_fk": {
+          "name": "study_groups_study_id_studies_id_fk",
+          "tableFrom": "study_groups",
+          "tableTo": "studies",
+          "schemaTo": "research",
+          "columnsFrom": ["study_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "study_groups_weight_nonnegative": {
+          "name": "study_groups_weight_nonnegative",
+          "value": "\"research\".\"study_groups\".\"allocation_weight\" >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "research.participants": {
+      "name": "participants",
+      "schema": "research",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "study_id": {
+          "name": "study_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "public_code": {
+          "name": "public_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "enrolled_at": {
+          "name": "enrolled_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "timezone": {
+          "name": "timezone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "locale": {
+          "name": "locale",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'ACTIVE'"
+        },
+        "withdrawn_at": {
+          "name": "withdrawn_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "withdrawal_reason": {
+          "name": "withdrawal_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "participants_public_code_idx": {
+          "name": "participants_public_code_idx",
+          "columns": [
+            {
+              "expression": "study_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "public_code",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "participants_study_idx": {
+          "name": "participants_study_idx",
+          "columns": [
+            {
+              "expression": "study_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "participants_study_id_studies_id_fk": {
+          "name": "participants_study_id_studies_id_fk",
+          "tableFrom": "participants",
+          "tableTo": "studies",
+          "schemaTo": "research",
+          "columnsFrom": ["study_id"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "participants_status_valid": {
+          "name": "participants_status_valid",
+          "value": "\"research\".\"participants\".\"status\" IN ('ACTIVE', 'COMPLETED', 'WITHDRAWN')"
+        },
+        "participants_withdrawal_complete": {
+          "name": "participants_withdrawal_complete",
+          "value": "(\"research\".\"participants\".\"status\" = 'WITHDRAWN') = (\"research\".\"participants\".\"withdrawn_at\" IS NOT NULL)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "research.enrollments": {
+      "name": "enrollments",
+      "schema": "research",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "participant_id": {
+          "name": "participant_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "study_id": {
+          "name": "study_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "protocol_version_id": {
+          "name": "protocol_version_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "consent_version_id": {
+          "name": "consent_version_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "consented_at": {
+          "name": "consented_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "consent_locale": {
+          "name": "consent_locale",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "group_id": {
+          "name": "group_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "enrollments_participant_idx": {
+          "name": "enrollments_participant_idx",
+          "columns": [
+            {
+              "expression": "participant_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "enrollments_study_idx": {
+          "name": "enrollments_study_idx",
+          "columns": [
+            {
+              "expression": "study_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "enrollments_protocol_version_idx": {
+          "name": "enrollments_protocol_version_idx",
+          "columns": [
+            {
+              "expression": "protocol_version_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "enrollments_participant_id_participants_id_fk": {
+          "name": "enrollments_participant_id_participants_id_fk",
+          "tableFrom": "enrollments",
+          "tableTo": "participants",
+          "schemaTo": "research",
+          "columnsFrom": ["participant_id"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "enrollments_study_id_studies_id_fk": {
+          "name": "enrollments_study_id_studies_id_fk",
+          "tableFrom": "enrollments",
+          "tableTo": "studies",
+          "schemaTo": "research",
+          "columnsFrom": ["study_id"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "enrollments_protocol_version_id_protocol_versions_id_fk": {
+          "name": "enrollments_protocol_version_id_protocol_versions_id_fk",
+          "tableFrom": "enrollments",
+          "tableTo": "protocol_versions",
+          "schemaTo": "research",
+          "columnsFrom": ["protocol_version_id"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "enrollments_consent_version_id_consent_versions_id_fk": {
+          "name": "enrollments_consent_version_id_consent_versions_id_fk",
+          "tableFrom": "enrollments",
+          "tableTo": "consent_versions",
+          "schemaTo": "research",
+          "columnsFrom": ["consent_version_id"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "enrollments_group_id_study_groups_id_fk": {
+          "name": "enrollments_group_id_study_groups_id_fk",
+          "tableFrom": "enrollments",
+          "tableTo": "study_groups",
+          "schemaTo": "research",
+          "columnsFrom": ["group_id"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "research.participant_sessions": {
+      "name": "participant_sessions",
+      "schema": "research",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "participant_id": {
+          "name": "participant_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "study_id": {
+          "name": "study_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "protocol_version_id": {
+          "name": "protocol_version_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "protocol_step_id": {
+          "name": "protocol_step_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "occurrence_index": {
+          "name": "occurrence_index",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "questionnaire_version_id": {
+          "name": "questionnaire_version_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'SCHEDULED'"
+        },
+        "trigger_fired_at": {
+          "name": "trigger_fired_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "scheduled_at": {
+          "name": "scheduled_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "available_from": {
+          "name": "available_from",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "available_until": {
+          "name": "available_until",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "completed_at": {
+          "name": "completed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expired_at": {
+          "name": "expired_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cancelled_at": {
+          "name": "cancelled_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cancellation_reason": {
+          "name": "cancellation_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "participant_sessions_occurrence_idx": {
+          "name": "participant_sessions_occurrence_idx",
+          "columns": [
+            {
+              "expression": "participant_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "protocol_step_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "occurrence_index",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "participant_sessions_participant_idx": {
+          "name": "participant_sessions_participant_idx",
+          "columns": [
+            {
+              "expression": "participant_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "participant_sessions_study_idx": {
+          "name": "participant_sessions_study_idx",
+          "columns": [
+            {
+              "expression": "study_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "participant_sessions_activation_idx": {
+          "name": "participant_sessions_activation_idx",
+          "columns": [
+            {
+              "expression": "available_from",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"research\".\"participant_sessions\".\"status\" = 'SCHEDULED'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "participant_sessions_expiry_idx": {
+          "name": "participant_sessions_expiry_idx",
+          "columns": [
+            {
+              "expression": "available_until",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"research\".\"participant_sessions\".\"status\" IN ('AVAILABLE', 'STARTED')",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "participant_sessions_participant_id_participants_id_fk": {
+          "name": "participant_sessions_participant_id_participants_id_fk",
+          "tableFrom": "participant_sessions",
+          "tableTo": "participants",
+          "schemaTo": "research",
+          "columnsFrom": ["participant_id"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "participant_sessions_study_id_studies_id_fk": {
+          "name": "participant_sessions_study_id_studies_id_fk",
+          "tableFrom": "participant_sessions",
+          "tableTo": "studies",
+          "schemaTo": "research",
+          "columnsFrom": ["study_id"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "participant_sessions_protocol_version_id_protocol_versions_id_fk": {
+          "name": "participant_sessions_protocol_version_id_protocol_versions_id_fk",
+          "tableFrom": "participant_sessions",
+          "tableTo": "protocol_versions",
+          "schemaTo": "research",
+          "columnsFrom": ["protocol_version_id"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "participant_sessions_protocol_step_id_protocol_steps_id_fk": {
+          "name": "participant_sessions_protocol_step_id_protocol_steps_id_fk",
+          "tableFrom": "participant_sessions",
+          "tableTo": "protocol_steps",
+          "schemaTo": "research",
+          "columnsFrom": ["protocol_step_id"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "participant_sessions_questionnaire_version_id_questionnaire_versions_id_fk": {
+          "name": "participant_sessions_questionnaire_version_id_questionnaire_versions_id_fk",
+          "tableFrom": "participant_sessions",
+          "tableTo": "questionnaire_versions",
+          "schemaTo": "research",
+          "columnsFrom": ["questionnaire_version_id"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "participant_sessions_status_valid": {
+          "name": "participant_sessions_status_valid",
+          "value": "\"research\".\"participant_sessions\".\"status\" IN ('PENDING_TRIGGER', 'SCHEDULED', 'AVAILABLE', 'STARTED',\n                              'COMPLETED', 'EXPIRED_UNSTARTED', 'EXPIRED_PARTIAL', 'CANCELLED')"
+        },
+        "participant_sessions_cancellation_reason_valid": {
+          "name": "participant_sessions_cancellation_reason_valid",
+          "value": "\"research\".\"participant_sessions\".\"cancellation_reason\" IS NULL\n          OR \"research\".\"participant_sessions\".\"cancellation_reason\" IN ('WITHDRAWAL', 'STUDY_CLOSED', 'TRIGGER_UNREACHABLE', 'ENROLLED_AFTER_WINDOW')"
+        },
+        "participant_sessions_cancellation_complete": {
+          "name": "participant_sessions_cancellation_complete",
+          "value": "(\"research\".\"participant_sessions\".\"status\" = 'CANCELLED') = (\"research\".\"participant_sessions\".\"cancelled_at\" IS NOT NULL AND \"research\".\"participant_sessions\".\"cancellation_reason\" IS NOT NULL)"
+        },
+        "participant_sessions_completion_complete": {
+          "name": "participant_sessions_completion_complete",
+          "value": "(\"research\".\"participant_sessions\".\"status\" = 'COMPLETED') = (\"research\".\"participant_sessions\".\"completed_at\" IS NOT NULL)"
+        },
+        "participant_sessions_occurrence_nonnegative": {
+          "name": "participant_sessions_occurrence_nonnegative",
+          "value": "\"research\".\"participant_sessions\".\"occurrence_index\" >= 0"
+        },
+        "participant_sessions_window_ordered": {
+          "name": "participant_sessions_window_ordered",
+          "value": "\"research\".\"participant_sessions\".\"available_from\" IS NULL OR \"research\".\"participant_sessions\".\"available_until\" IS NULL\n          OR \"research\".\"participant_sessions\".\"available_until\" > \"research\".\"participant_sessions\".\"available_from\""
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "research.response_history": {
+      "name": "response_history",
+      "schema": "research",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "session_id": {
+          "name": "session_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "question_version_id": {
+          "name": "question_version_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "client_revision": {
+          "name": "client_revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "outcome": {
+          "name": "outcome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "submitted": {
+          "name": "submitted",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "received_at": {
+          "name": "received_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "response_history_session_idx": {
+          "name": "response_history_session_idx",
+          "columns": [
+            {
+              "expression": "session_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "received_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "response_history_session_id_participant_sessions_id_fk": {
+          "name": "response_history_session_id_participant_sessions_id_fk",
+          "tableFrom": "response_history",
+          "tableTo": "participant_sessions",
+          "schemaTo": "research",
+          "columnsFrom": ["session_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "response_history_question_version_id_question_versions_id_fk": {
+          "name": "response_history_question_version_id_question_versions_id_fk",
+          "tableFrom": "response_history",
+          "tableTo": "question_versions",
+          "schemaTo": "research",
+          "columnsFrom": ["question_version_id"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "response_history_outcome_valid": {
+          "name": "response_history_outcome_valid",
+          "value": "\"research\".\"response_history\".\"outcome\" IN ('APPLY', 'IGNORE_STALE', 'IGNORE_DUPLICATE', 'REJECTED')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "research.response_option_selections": {
+      "name": "response_option_selections",
+      "schema": "research",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "response_id": {
+          "name": "response_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "question_option_id": {
+          "name": "question_option_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "response_option_selections_idx": {
+          "name": "response_option_selections_idx",
+          "columns": [
+            {
+              "expression": "response_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "question_option_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "response_option_selections_option_idx": {
+          "name": "response_option_selections_option_idx",
+          "columns": [
+            {
+              "expression": "question_option_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "response_option_selections_response_id_responses_id_fk": {
+          "name": "response_option_selections_response_id_responses_id_fk",
+          "tableFrom": "response_option_selections",
+          "tableTo": "responses",
+          "schemaTo": "research",
+          "columnsFrom": ["response_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "response_option_selections_question_option_id_question_options_id_fk": {
+          "name": "response_option_selections_question_option_id_question_options_id_fk",
+          "tableFrom": "response_option_selections",
+          "tableTo": "question_options",
+          "schemaTo": "research",
+          "columnsFrom": ["question_option_id"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "research.responses": {
+      "name": "responses",
+      "schema": "research",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "session_id": {
+          "name": "session_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "participant_id": {
+          "name": "participant_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "question_version_id": {
+          "name": "question_version_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value_kind": {
+          "name": "value_kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value_number": {
+          "name": "value_number",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "value_text": {
+          "name": "value_text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "value_boolean": {
+          "name": "value_boolean",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "answered_at": {
+          "name": "answered_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "client_revision": {
+          "name": "client_revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "responses_session_question_idx": {
+          "name": "responses_session_question_idx",
+          "columns": [
+            {
+              "expression": "session_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "question_version_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "responses_participant_idx": {
+          "name": "responses_participant_idx",
+          "columns": [
+            {
+              "expression": "participant_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "responses_session_idx": {
+          "name": "responses_session_idx",
+          "columns": [
+            {
+              "expression": "session_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "responses_session_id_participant_sessions_id_fk": {
+          "name": "responses_session_id_participant_sessions_id_fk",
+          "tableFrom": "responses",
+          "tableTo": "participant_sessions",
+          "schemaTo": "research",
+          "columnsFrom": ["session_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "responses_participant_id_participants_id_fk": {
+          "name": "responses_participant_id_participants_id_fk",
+          "tableFrom": "responses",
+          "tableTo": "participants",
+          "schemaTo": "research",
+          "columnsFrom": ["participant_id"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "responses_question_version_id_question_versions_id_fk": {
+          "name": "responses_question_version_id_question_versions_id_fk",
+          "tableFrom": "responses",
+          "tableTo": "question_versions",
+          "schemaTo": "research",
+          "columnsFrom": ["question_version_id"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "responses_value_kind_valid": {
+          "name": "responses_value_kind_valid",
+          "value": "\"research\".\"responses\".\"value_kind\" IN ('NUMBER', 'TEXT', 'OPTION', 'BOOLEAN')"
+        },
+        "responses_client_revision_nonnegative": {
+          "name": "responses_client_revision_nonnegative",
+          "value": "\"research\".\"responses\".\"client_revision\" >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "research.session_submissions": {
+      "name": "session_submissions",
+      "schema": "research",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "session_id": {
+          "name": "session_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "completed_at": {
+          "name": "completed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "answered_count": {
+          "name": "answered_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "required_count": {
+          "name": "required_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "content_hash": {
+          "name": "content_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "session_submissions_session_idx": {
+          "name": "session_submissions_session_idx",
+          "columns": [
+            {
+              "expression": "session_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "session_submissions_session_id_participant_sessions_id_fk": {
+          "name": "session_submissions_session_id_participant_sessions_id_fk",
+          "tableFrom": "session_submissions",
+          "tableTo": "participant_sessions",
+          "schemaTo": "research",
+          "columnsFrom": ["session_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "session_submissions_counts_nonnegative": {
+          "name": "session_submissions_counts_nonnegative",
+          "value": "\"research\".\"session_submissions\".\"answered_count\" >= 0 AND \"research\".\"session_submissions\".\"required_count\" >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "research.notification_attempts": {
+      "name": "notification_attempts",
+      "schema": "research",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "session_id": {
+          "name": "session_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "participant_id": {
+          "name": "participant_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "occurrence_index": {
+          "name": "occurrence_index",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "push_subscription_id": {
+          "name": "push_subscription_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "scheduled_for": {
+          "name": "scheduled_for",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "attempted_at": {
+          "name": "attempted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "outcome": {
+          "name": "outcome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "suppression_reason": {
+          "name": "suppression_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "push_status_code": {
+          "name": "push_status_code",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "error_detail": {
+          "name": "error_detail",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "displayed_at": {
+          "name": "displayed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "clicked_at": {
+          "name": "clicked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "notification_attempts_unique_idx": {
+          "name": "notification_attempts_unique_idx",
+          "columns": [
+            {
+              "expression": "session_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "kind",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "occurrence_index",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "notification_attempts_participant_idx": {
+          "name": "notification_attempts_participant_idx",
+          "columns": [
+            {
+              "expression": "participant_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "scheduled_for",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "notification_attempts_session_idx": {
+          "name": "notification_attempts_session_idx",
+          "columns": [
+            {
+              "expression": "session_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "notification_attempts_session_id_participant_sessions_id_fk": {
+          "name": "notification_attempts_session_id_participant_sessions_id_fk",
+          "tableFrom": "notification_attempts",
+          "tableTo": "participant_sessions",
+          "schemaTo": "research",
+          "columnsFrom": ["session_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "notification_attempts_participant_id_participants_id_fk": {
+          "name": "notification_attempts_participant_id_participants_id_fk",
+          "tableFrom": "notification_attempts",
+          "tableTo": "participants",
+          "schemaTo": "research",
+          "columnsFrom": ["participant_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "notification_attempts_kind_valid": {
+          "name": "notification_attempts_kind_valid",
+          "value": "\"research\".\"notification_attempts\".\"kind\" IN ('INITIAL', 'REMINDER')"
+        },
+        "notification_attempts_outcome_valid": {
+          "name": "notification_attempts_outcome_valid",
+          "value": "\"research\".\"notification_attempts\".\"outcome\" IN ('ATTEMPTED', 'SENT_ACCEPTED', 'FAILED', 'SUPPRESSED')"
+        },
+        "notification_attempts_occurrence_nonnegative": {
+          "name": "notification_attempts_occurrence_nonnegative",
+          "value": "\"research\".\"notification_attempts\".\"occurrence_index\" >= 0"
+        },
+        "notification_attempts_suppression_complete": {
+          "name": "notification_attempts_suppression_complete",
+          "value": "(\"research\".\"notification_attempts\".\"outcome\" = 'SUPPRESSED' AND \"research\".\"notification_attempts\".\"suppression_reason\" IS NOT NULL)\n          OR (\"research\".\"notification_attempts\".\"outcome\" <> 'SUPPRESSED' AND \"research\".\"notification_attempts\".\"suppression_reason\" IS NULL)"
+        },
+        "notification_attempts_suppression_reason_valid": {
+          "name": "notification_attempts_suppression_reason_valid",
+          "value": "\"research\".\"notification_attempts\".\"suppression_reason\" IS NULL OR \"research\".\"notification_attempts\".\"suppression_reason\" IN (\n            'SUPPRESSED_STATE', 'SUPPRESSED_EXPIRED', 'SUPPRESSED_WITHDRAWN',\n            'SUPPRESSED_CAP', 'SUPPRESSED_NO_SUBSCRIPTION', 'SUPPRESSED_QUIET_HOURS',\n            'SUPPRESSED_STALE')"
+        },
+        "notification_attempts_attempted_at_consistent": {
+          "name": "notification_attempts_attempted_at_consistent",
+          "value": "(\"research\".\"notification_attempts\".\"outcome\" = 'SUPPRESSED' AND \"research\".\"notification_attempts\".\"attempted_at\" IS NULL)\n          OR (\"research\".\"notification_attempts\".\"outcome\" <> 'SUPPRESSED' AND \"research\".\"notification_attempts\".\"attempted_at\" IS NOT NULL)"
+        }
+      },
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {
+    "identity": "identity",
+    "research": "research"
+  },
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

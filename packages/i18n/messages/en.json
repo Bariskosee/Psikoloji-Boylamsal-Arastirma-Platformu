@@ -18,13 +18,31 @@
     "email": "Email",
     "password": "Password",
     "signOut": "Sign out",
+    "forgotPassword": "Forgot your password?",
+    "resetRequestTitle": "Reset your password",
+    "resetRequestIntro": "Enter the address you sign in with. If it belongs to an account, a link will be sent to it.",
+    "resetRequestSubmit": "Send the reset link",
+    "resetRequestSending": "Sending…",
+    "resetRequestSent": "If that address belongs to an account, a reset link is on its way. It works once and expires in an hour.",
+    "resetConfirmTitle": "Choose a new password",
+    "resetConfirmIntro": "This link works once. Setting a new password will also sign you out on every device.",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm new password",
+    "resetConfirmSubmit": "Set the new password",
+    "resetConfirmSaving": "Saving…",
+    "resetConfirmDone": "Your password has been changed. Sign in with it below.",
+    "backToSignIn": "Back to sign in",
+    "resetMissingToken": "This link is incomplete. Open the link from your email again, or request a new one.",
     "noSelfService": "Accounts are created by your platform administrator. There is no self-service sign-up.",
     "errors": {
       "invalidCredentials": "Email or password is incorrect.",
       "rateLimited": "Too many attempts. Please wait a few minutes and try again.",
       "network": "Could not reach the server. Check your connection.",
       "validation": "Please check the form and try again.",
-      "unknown": "Something went wrong. Please try again."
+      "unknown": "Something went wrong. Please try again.",
+      "invalidResetToken": "That reset link is not valid. It may have expired or already been used — request a new one.",
+      "passwordsDoNotMatch": "The two passwords do not match.",
+      "passwordTooWeak": "That password does not meet the policy."
     }
   },
   "studies": {

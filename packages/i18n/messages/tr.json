@@ -18,13 +18,31 @@
     "email": "E-posta",
     "password": "Parola",
     "signOut": "Çıkış yap",
+    "forgotPassword": "Parolanızı mı unuttunuz?",
+    "resetRequestTitle": "Parolanızı sıfırlayın",
+    "resetRequestIntro": "Giriş yaptığınız adresi yazın. Bir hesaba aitse, o adrese bir bağlantı gönderilecek.",
+    "resetRequestSubmit": "Sıfırlama bağlantısını gönder",
+    "resetRequestSending": "Gönderiliyor…",
+    "resetRequestSent": "Bu adres bir hesaba aitse, sıfırlama bağlantısı yola çıktı. Bağlantı tek kullanımlıktır ve bir saat içinde geçerliliğini yitirir.",
+    "resetConfirmTitle": "Yeni bir parola seçin",
+    "resetConfirmIntro": "Bu bağlantı yalnızca bir kez çalışır. Yeni parola belirlemek sizi tüm cihazlarda oturumdan çıkarır.",
+    "newPassword": "Yeni parola",
+    "confirmPassword": "Yeni parolayı doğrulayın",
+    "resetConfirmSubmit": "Yeni parolayı kaydet",
+    "resetConfirmSaving": "Kaydediliyor…",
+    "resetConfirmDone": "Parolanız değiştirildi. Aşağıdan bu parolayla giriş yapın.",
+    "backToSignIn": "Girişe dön",
+    "resetMissingToken": "Bu bağlantı eksik. E-postanızdaki bağlantıyı yeniden açın veya yeni bir tane isteyin.",
     "noSelfService": "Hesaplar platform yöneticiniz tarafından oluşturulur. Kendi kendine kayıt yoktur.",
     "errors": {
       "invalidCredentials": "E-posta veya parola hatalı.",
       "rateLimited": "Çok fazla deneme yapıldı. Lütfen birkaç dakika sonra tekrar deneyin.",
       "network": "Sunucuya ulaşılamadı. Bağlantınızı kontrol edin.",
       "validation": "Lütfen formu kontrol edip tekrar deneyin.",
-      "unknown": "Bir şeyler ters gitti. Lütfen tekrar deneyin."
+      "unknown": "Bir şeyler ters gitti. Lütfen tekrar deneyin.",
+      "invalidResetToken": "Bu sıfırlama bağlantısı geçerli değil. Süresi dolmuş veya daha önce kullanılmış olabilir — yenisini isteyin.",
+      "passwordsDoNotMatch": "İki parola birbiriyle eşleşmiyor.",
+      "passwordTooWeak": "Bu parola politikayı karşılamıyor."
     }
   },
   "studies": {
