@@ -24,6 +24,33 @@ describe("translation catalogs", () => {
     expect({ missingInTr, missingInEn }).toEqual({ missingInTr: [], missingInEn: [] });
   });
 
+  /**
+   * Catch a string that was added in English and pasted, untranslated, into
+   * Turkish (Phase 12).
+   *
+   * Key parity above catches a MISSING key, which ships as a raw key and is
+   * obvious. This catches the quieter failure: a present key whose Turkish is
+   * still the English text. A Turkish participant then reads English in the
+   * middle of an otherwise translated screen and has no way to tell whether
+   * the study meant it.
+   *
+   * The allowlist is for entries that are legitimately identical because they
+   * contain no words — a format string of placeholders and punctuation, an
+   * em-dash. Anything else identical in both catalogs is untranslated.
+   */
+  it("has no Turkish string left identical to its English source", () => {
+    const WORDLESS = new Set(["protocols.preview.occurrenceLine", "analytics.noValue"]);
+
+    const identical = keyPaths(en).filter(
+      (key) =>
+        !WORDLESS.has(key) &&
+        typeof resolvePath(en, key) === "string" &&
+        resolvePath(en, key) === resolvePath(tr, key),
+    );
+
+    expect(identical).toEqual([]);
+  });
+
   it("has no empty translation values", () => {
     const empties = [
       ...keyPaths(en).filter((k) => resolvePath(en, k) === ""),

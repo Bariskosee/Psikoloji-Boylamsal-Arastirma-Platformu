@@ -309,9 +309,36 @@ export class StudyService {
   }
 }
 
+/**
+ * Is this a unique-constraint violation, and of the constraint we expected?
+ *
+ * ── Why it walks the cause chain ────────────────────────────────────────────
+ * The driver raises an error carrying SQLSTATE `23505` and the constraint name.
+ * An ORM may wrap it: Drizzle 0.45 does, adding its own "Failed query: …" and
+ * moving the driver error to `cause`. A version of this function that only read
+ * the top level therefore stopped recognising collisions on upgrade — and the
+ * consequence was not a failing test, it was a 500 for a real participant.
+ *
+ * Two retry loops depend on this answer: the enrollment code and the
+ * participant public code. Both exist because a random code CAN collide, and
+ * both degrade from "draw another one" to "the request fails" the moment this
+ * returns a false negative. So it reads through however many layers wrap the
+ * error rather than assuming a shape.
+ *
+ * The constraint name is still required where the caller passes one: retrying
+ * on the wrong unique violation would loop against a collision no new random
+ * code can resolve.
+ */
 export function isUniqueViolation(error: unknown, constraint?: string): boolean {
-  if (!error || typeof error !== "object") return false;
-  const candidate = error as { code?: string; constraint?: string };
-  if (candidate.code !== "23505") return false;
-  return constraint ? candidate.constraint === constraint : true;
+  for (let current = error; current !== null && current !== undefined;) {
+    if (typeof current !== "object") return false;
+    const candidate = current as { code?: string; constraint?: string; cause?: unknown };
+
+    if (candidate.code === "23505") {
+      return constraint === undefined ? true : candidate.constraint === constraint;
+    }
+
+    current = candidate.cause;
+  }
+  return false;
 }

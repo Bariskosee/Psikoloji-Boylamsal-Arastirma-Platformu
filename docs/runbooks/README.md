@@ -2,19 +2,22 @@
 
 Operational procedures for running the platform during a live study.
 
-**Status:** Placeholders. These are written and walked through in **Phase 12** of `PLAN.md`, and each must be executed at least once before the pilot begins (Phase 13). A runbook that has never been followed is a guess.
+**Status:** Written and reviewed in **Phase 12**. `restore-drill.md` has been executed once (2026-08-23) and carries its measured timings and two findings; the rest are written but have not all been followed under real pressure. A runbook that has never been followed is still partly a guess — walk each one during the pilot (Phase 13) and correct it from what actually happened.
 
-## Planned runbooks
+## The runbooks
 
-| File | Purpose | Written in |
+| File | Purpose | Alert codes |
 |---|---|---|
-| `outage-recovery.md` | What to check and in what order after an API or worker outage. Confirms sweepers resumed and no session was silently skipped. | Phase 12 |
-| `restore-drill.md` | Restoring the database from point-in-time backup into a clean environment, with measured timings. Repeated on a schedule. | Phase 12 |
-| `dead-letter-triage.md` | Diagnosing and reprocessing jobs that exhausted their retries. | Phase 12 |
-| `push-failure-triage.md` | Interpreting push failure rates by status code; distinguishing expired subscriptions from a transport problem. | Phase 12 |
-| `participant-relink.md` | Manually reconnecting a participant who lost their device and recovery code, without creating a duplicate enrollment. | Phase 12 |
-| `data-erasure.md` | Executing an erasure request while preserving study integrity and audit obligations. | Phase 12 |
-| `study-launch-checklist.md` | Pre-launch verification for a new study: protocol preview reviewed, reminder cadence sane, consent published, timezone correct. | Phase 12 |
+| `sweeper-stall.md` | Scheduling has stopped. The highest-severity state in the platform, and the quietest. | `SWEEPER_ABSENT`, `SWEEPER_STALE`, `SWEEPER_FAILING` |
+| `dead-letter-triage.md` | Jobs that exhausted their retries: which were notifications, and what that cost. | `DEAD_LETTERS` |
+| `push-failure-triage.md` | Telling a transport or credential failure apart from ordinary subscriber attrition. | `PUSH_FAILURE_RATE`, `PUSH_ATTRITION` |
+| `outage-recovery.md` | What to check, in what order, after anything was down. | — |
+| `restore-drill.md` | Restoring into a clean environment and proving all four properties survived. Executed on a schedule. | — |
+| `participant-relink.md` | Reconnecting a participant who lost their device and recovery code, without a duplicate and without a wrong match. | — |
+| `data-erasure.md` | Retention and erasure, and the distinction from withdrawal. | — |
+| `study-launch-checklist.md` | Pre-launch verification, run with the researcher before the first enrollment. | — |
+
+Alerts are computed in `packages/domain/src/operations/alerts.ts`, surfaced on the researcher operations page, and each one names the file above that says what to do. If you add an alert, add its procedure in the same change.
 
 ## Operational facts that belong in every runbook
 

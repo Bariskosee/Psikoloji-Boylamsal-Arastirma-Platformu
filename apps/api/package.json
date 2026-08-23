@@ -2,7 +2,7 @@
   "name": "@lpr/api",
   "version": "0.0.0",
   "private": true,
-  "description": "NestJS API — HTTP boundary, authn/authz, validation, transaction boundaries",
+  "description": "NestJS API \u2014 HTTP boundary, authn/authz, validation, transaction boundaries",
   "main": "dist/main.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -24,7 +24,7 @@
     "@sentry/node": "^8.47.0",
     "cookie-parser": "^1.4.7",
     "dotenv": "^17.4.2",
-    "drizzle-orm": "^0.38.4",
+    "drizzle-orm": "^0.45.2",
     "qrcode": "^1.5.4",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
@@ -43,6 +43,6 @@
     "supertest": "^7.2.2",
     "typescript": "^5.7.2",
     "unplugin-swc": "^1.5.11",
-    "vitest": "^2.1.8"
+    "vitest": "^3.2.6"
   }
 }

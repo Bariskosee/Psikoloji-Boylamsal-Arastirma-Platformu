@@ -35,6 +35,11 @@ export interface CreatePoolOptions {
   idleTimeoutMillis?: number;
   /** Notified when an idle client dies. Wire this to your logger and Sentry. */
   onError?: (error: Error) => void;
+  /**
+   * Raw PostgreSQL startup options (the `options` connection parameter), e.g.
+   * `-c role=app_analytics`. Applied by the server during connection setup.
+   */
+  startupOptions?: string;
 }
 
 export function createPool(options: CreatePoolOptions): Pool {
@@ -43,6 +48,10 @@ export function createPool(options: CreatePoolOptions): Pool {
     max: options.max ?? 10,
     connectionTimeoutMillis: options.connectionTimeoutMillis ?? 5_000,
     idleTimeoutMillis: options.idleTimeoutMillis ?? 30_000,
+    // PostgreSQL startup options, applied by the server as part of establishing
+    // the connection and therefore before any query can run on it. Used by
+    // `createAnalyticsPool` to pin the role; see the reasoning there.
+    ...(options.startupOptions === undefined ? {} : { options: options.startupOptions }),
   };
 
   const pool = new Pool(config);
@@ -84,10 +93,31 @@ export function createPool(options: CreatePoolOptions): Pool {
  * enforcement NFR-03 asks for and exactly what an integration test can assert.
  *
  * ── Why it is set on every connection, not per query ────────────────────────
- * `SET ROLE` is session state, and a pooled connection outlives a request. Set
+ * The role is session state, and a pooled connection outlives a request. Set
  * per query it would be forgotten on any path that failed to remember; set on
- * connect it is impossible to forget, and impossible to escape without an
- * explicit `RESET ROLE` that would stand out in review.
+ * the connection it is impossible to forget, and impossible to escape without
+ * an explicit `RESET ROLE` that would stand out in review.
+ *
+ * ── Why a STARTUP PARAMETER and not a `SET ROLE` statement (Phase 12) ───────
+ * This used to issue `SET ROLE` from a `pool.on("connect")` handler. That
+ * handler is fire-and-forget: pg-pool emits the event and hands the client to
+ * the waiting caller without awaiting anything the listener started. The
+ * caller's first query and the `SET ROLE` were therefore in flight on the same
+ * connection at the same time — pg says so out loud, with "Calling
+ * client.query() when the client is already executing a query is deprecated",
+ * which is how this was found.
+ *
+ * In practice `SET ROLE` won, because pg queues statements on a client in the
+ * order they were issued and the listener issued first. That is ordering by
+ * luck, not by construction: the queueing it relies on is the very behaviour pg
+ * has deprecated and will remove. When it goes, an analytics query could run on
+ * a connection whose role had not been switched yet — with full read-write
+ * privileges, on the code path NFR-03 exists to constrain, and silently.
+ *
+ * `options=-c role=…` is applied by the SERVER while establishing the
+ * connection. There is no window: the first query a caller can possibly send
+ * already arrives as `app_analytics`. It costs no round trip, and it cannot be
+ * skipped by any ordering of events in the client.
  *
  * `DATABASE_ANALYTICS_URL` still overrides where a deployment genuinely has a
  * separate login user — a read replica, say. The role is set either way, so the
@@ -107,31 +137,16 @@ export function createAnalyticsPool(options: CreateAnalyticsPoolOptions): Pool {
     throw new Error(`"${role}" is not a valid PostgreSQL role name.`);
   }
 
-  const pool = createPool(options);
-
   /**
-   * Fired for every NEW connection, before it is handed to a caller.
+   * The role travels in the connection's startup packet.
    *
-   * A failure here must not be swallowed. If `SET ROLE` cannot be applied — the
-   * login user is not a member of the group — then this pool would silently
-   * hand out full-privilege connections to the analytics code path, which is
-   * the one outcome NFR-03 exists to prevent. Destroying the client makes the
-   * checkout fail loudly instead.
+   * If the login user is not a member of the group, the CONNECTION fails rather
+   * than succeeding with full privileges — which is the right way round. A pool
+   * that could hand out an unrestricted connection to the analytics code path
+   * is the one outcome NFR-03 exists to prevent, and here that state is not
+   * reachable at all rather than merely guarded against.
    */
-  pool.on("connect", (client) => {
-    void client.query(`SET ROLE ${role}`).catch((error: unknown) => {
-      options.onError?.(
-        new Error(
-          `could not SET ROLE ${role} on an analytics connection: ` +
-            `${error instanceof Error ? error.message : String(error)}. ` +
-            "Refusing the connection rather than serving analytics with full privileges.",
-        ),
-      );
-      client.release(true);
-    });
-  });
-
-  return pool;
+  return createPool({ ...options, startupOptions: `-c role=${role}` });
 }
 
 export interface PingResult {
