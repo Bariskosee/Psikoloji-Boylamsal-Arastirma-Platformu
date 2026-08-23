@@ -8,12 +8,13 @@
   "scripts": {
     "build": "echo 'consumed as source via transpilePackages'",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "echo 'no tests yet'"
+    "test": "vitest run"
   },
   "devDependencies": {
     "@lpr/config": "workspace:*",
     "@types/react": "^19.0.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^3.2.7"
   },
   "peerDependencies": {
     "react": "^19.0.0"

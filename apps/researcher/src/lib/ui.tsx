@@ -33,7 +33,7 @@ export const styles = {
     fontSize: 16,
     minHeight: tokens.touchTargetMinPx,
     borderRadius: tokens.radiusPx,
-    border: "1px solid #b6bcc4",
+    border: "1px solid #858c96",
     boxSizing: "border-box",
   } satisfies CSSProperties,
   field: { marginBottom: tokens.spacing.md } satisfies CSSProperties,
@@ -52,7 +52,7 @@ export const styles = {
     padding: `${tokens.spacing.sm}px ${tokens.spacing.md}px`,
     fontSize: 16,
     borderRadius: tokens.radiusPx,
-    border: "1px solid #b6bcc4",
+    border: "1px solid #858c96",
     background: "#fff",
     color: "#1f2a37",
     cursor: "pointer",
@@ -122,7 +122,7 @@ export function StatusBadge({ status }: { status: string }) {
         borderRadius: 999,
         fontSize: 12,
         fontWeight: 600,
-        border: "1px solid #b6bcc4",
+        border: "1px solid #858c96",
         background: "#f4f5f7",
       }}
     >

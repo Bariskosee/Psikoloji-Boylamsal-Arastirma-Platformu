@@ -212,7 +212,12 @@ export default function SessionPage() {
       <ol style={{ listStyle: "none", padding: 0, margin: 0 }}>
         {current.map((question) => (
           <li key={question.id} style={styles.card}>
-            <p style={{ marginTop: 0, fontSize: 17, lineHeight: 1.5 }}>
+            {/*
+              The id is what names the controls below (NFR-15). Without it a
+              free-text box announces as "edit text, blank" and a radio option
+              announces without its question.
+            */}
+            <p id={`${question.id}-label`} style={{ marginTop: 0, fontSize: 17, lineHeight: 1.5 }}>
               {question.text}
               {question.isRequired ? (
                 <span style={{ color: "#b42318" }} aria-label={t("required")}>
@@ -222,6 +227,7 @@ export default function SessionPage() {
             </p>
             <QuestionInput
               question={question}
+              labelledBy={`${question.id}-label`}
               value={values[question.id] ?? EMPTY_ANSWER}
               disabled={submitting}
               onChange={(value) => change(question, value)}

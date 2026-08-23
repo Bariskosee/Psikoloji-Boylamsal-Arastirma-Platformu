@@ -2,7 +2,7 @@
   "name": "@lpr/participant",
   "version": "0.0.0",
   "private": true,
-  "description": "Participant PWA \u2014 public origin, credential auth, service worker, mobile-first",
+  "description": "Participant PWA — public origin, credential auth, service worker, mobile-first",
   "scripts": {
     "build": "next build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -26,8 +26,10 @@
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
     "@vitejs/plugin-react": "^4.7.0",
+    "axe-core": "^4.13.0",
     "jsdom": "^25.0.1",
     "typescript": "^5.7.2",
-    "vitest": "^3.2.6"
+    "vitest": "^3.2.6",
+    "vitest-axe": "^0.1.0"
   }
 }

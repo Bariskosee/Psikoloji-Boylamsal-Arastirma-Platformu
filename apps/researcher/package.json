@@ -2,7 +2,7 @@
   "name": "@lpr/researcher",
   "version": "0.0.0",
   "private": true,
-  "description": "Researcher dashboard \u2014 authenticated origin, session auth, builders and monitoring",
+  "description": "Researcher dashboard — authenticated origin, session auth, builders and monitoring",
   "scripts": {
     "build": "next build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -27,8 +27,10 @@
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
     "@vitejs/plugin-react": "^4.7.0",
+    "axe-core": "^4.13.0",
     "jsdom": "^25.0.1",
     "typescript": "^5.7.2",
-    "vitest": "^3.2.6"
+    "vitest": "^3.2.6",
+    "vitest-axe": "^0.1.0"
   }
 }

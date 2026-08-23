@@ -590,7 +590,7 @@ const legendStyle = { fontSize: 13, fontWeight: 600, color: "#5b6472" } as const
 const iconButtonStyle = {
   width: 28,
   height: 24,
-  border: "1px solid #b6bcc4",
+  border: "1px solid #858c96",
   borderRadius: 4,
   background: "#fff",
   cursor: "pointer",

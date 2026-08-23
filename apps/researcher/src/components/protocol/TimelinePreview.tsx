@@ -123,7 +123,7 @@ function PreviewedStep({ step }: { step: PreviewStep }) {
             fontWeight: 600,
             padding: "2px 8px",
             borderRadius: 999,
-            border: `1px solid ${conditional ? "#b54708" : "#b6bcc4"}`,
+            border: `1px solid ${conditional ? "#b54708" : "#858c96"}`,
             background: conditional ? "#fffaeb" : "#f4f5f7",
             color: conditional ? "#b54708" : "#1f2a37",
           }}
