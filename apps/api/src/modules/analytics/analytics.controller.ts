@@ -2,6 +2,7 @@ import { Controller, Get, Param, Query, Req } from "@nestjs/common";
 import type { Request } from "express";
 import type {
   DailyComplianceResponse,
+  DistributionsResponse,
   OperationsHealthResponse,
   ParticipantDetailResponse,
   ParticipantListResponse,
@@ -46,6 +47,12 @@ export class AnalyticsController {
   @RequireStudyPermission("analytics:view")
   async overview(@Param("studyId") studyId: string): Promise<StudyOverviewResponse> {
     return this.analytics.overview(studyId);
+  }
+
+  @Get("analytics/distributions")
+  @RequireStudyPermission("analytics:view")
+  async distributions(@Param("studyId") studyId: string): Promise<DistributionsResponse> {
+    return this.analytics.distributions(studyId);
   }
 
   @Get("analytics/daily")

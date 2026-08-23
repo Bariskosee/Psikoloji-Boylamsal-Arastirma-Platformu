@@ -9,6 +9,7 @@ import { CsrfGuard } from "./modules/auth/guards/csrf.guard.js";
 import { SessionAuthGuard } from "./modules/auth/guards/session-auth.guard.js";
 import { StudyPermissionGuard } from "./modules/auth/guards/study-permission.guard.js";
 import { DatabaseModule } from "./modules/database/database.module.js";
+import { ExportModule } from "./modules/export/export.module.js";
 import { HealthModule } from "./modules/health/health.module.js";
 import { ConsentModule } from "./modules/consent/consent.module.js";
 import { NotificationModule } from "./modules/notification/notification.module.js";
@@ -39,7 +40,7 @@ import { StudyModule } from "./modules/study/study.module.js";
  *   CsrfGuard             needs request.auth for the double-submit comparison
  *   StudyPermissionGuard  needs request.auth for the membership lookup
  *
- * The remaining domain module — export — arrives in Phase 11.
+ * Every domain module STRUCTURE.md §5 names is now present.
  */
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { StudyModule } from "./modules/study/study.module.js";
     ProtocolModule,
     ConsentModule,
     AnalyticsModule,
+    ExportModule,
     NotificationModule,
     ParticipantModule,
     PushModule,

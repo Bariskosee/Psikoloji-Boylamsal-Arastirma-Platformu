@@ -1,8 +1,8 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { sql } from "drizzle-orm";
 import type { Database } from "@lpr/db";
-import type { SessionStatus } from "@lpr/domain";
-import type { InspectedAnswer, ResponseStatus, SessionInspectionResponse } from "@lpr/contracts";
+import { classifyResponse, type SessionStatus } from "@lpr/domain";
+import type { InspectedAnswer, SessionInspectionResponse } from "@lpr/contracts";
 import { ApiErrors } from "../../common/api-error.js";
 import { ANALYTICS_DATABASE } from "../database/database.module.js";
 
@@ -111,7 +111,16 @@ export class InspectorService {
 
     const answers: InspectedAnswer[] = rows.rows.map((row) => {
       const value = readValue(row);
-      const status = classifyAnswer(session.status as SessionStatus, row.has_response, value);
+      /**
+       * The SHARED classification (`@lpr/domain`, `export/missingness.ts`).
+       *
+       * This screen and both export formats must never disagree: a researcher
+       * who reads a cell as SKIPPED_OPTIONAL here and MISSED_ITEM_PARTIAL in
+       * the CSV has been told two incompatible things about one participant.
+       * Phase 11 moved the rule into the domain for exactly that reason; this
+       * file used to carry its own copy.
+       */
+      const status = classifyResponse(session.status as SessionStatus, value !== null);
 
       return {
         questionKey: row.question_key,
@@ -156,49 +165,4 @@ function readValue(row: {
   if (row.value_number !== null) return row.value_number;
   if (row.value_boolean !== null) return row.value_boolean ? "true" : "false";
   return null;
-}
-
-/**
- * Which of the seven statuses applies (`docs/export-codebook.md` §2).
- *
- * The session's state decides first, because it is the stronger fact: a
- * question with no answer in a session nobody ever opened is `MISSED_SESSION`,
- * and calling it `SKIPPED_OPTIONAL` would claim the participant made a choice
- * they never had the chance to make.
- */
-function classifyAnswer(
-  sessionStatus: SessionStatus,
-  hasResponse: boolean,
-  value: string | null,
-): ResponseStatus {
-  switch (sessionStatus) {
-    case "COMPLETED":
-      // Inside a completed session, an absent answer IS a decision: the
-      // participant submitted, and the completion transaction verified every
-      // required question. What is missing here was optional.
-      return hasResponse && value !== null ? "ANSWERED" : "SKIPPED_OPTIONAL";
-
-    case "EXPIRED_PARTIAL":
-      // They engaged with the session and never reached, or never answered,
-      // this item. Different from never opening it at all, and the difference
-      // matters to a missing-data analysis.
-      return hasResponse && value !== null ? "ANSWERED" : "MISSED_ITEM_PARTIAL";
-
-    case "EXPIRED_UNSTARTED":
-      return "MISSED_SESSION";
-
-    case "AVAILABLE":
-    case "STARTED":
-      // Not missing yet — the window is open and they still have time. Anything
-      // already written is real data and is reported as such.
-      return hasResponse && value !== null ? "ANSWERED" : "IN_PROGRESS";
-
-    case "PENDING_TRIGGER":
-    case "SCHEDULED":
-      return "NOT_YET_DUE";
-
-    case "CANCELLED":
-      // Never offered. Most often a late enrollment into a fixed-date block.
-      return "NOT_APPLICABLE";
-  }
 }

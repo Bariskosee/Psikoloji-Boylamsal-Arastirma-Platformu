@@ -320,6 +320,52 @@ describe("the daily view sums correctly", () => {
   });
 });
 
+describe("descriptive distributions", () => {
+  it("reports the unanswered count beside every figure", async () => {
+    /**
+     * A chart that silently omits non-responses shows a cleaner study than the
+     * one that was run. `missing` travels with each distribution so a reader
+     * can always see the denominator the percentages are over.
+     */
+    const { studyId, owner } = await workedExampleE();
+
+    const response = await owner.get(`/api/studies/${studyId}/analytics/distributions`).expect(200);
+
+    expect(response.body).toHaveProperty("options");
+    expect(response.body).toHaveProperty("numerics");
+    expect(response.body).toHaveProperty("completionOverTime");
+    expect(response.body.timezone).toBe("Europe/Istanbul");
+
+    for (const distribution of [...response.body.options, ...response.body.numerics]) {
+      expect(distribution).toHaveProperty("missing");
+      expect(distribution).toHaveProperty("answered");
+    }
+  });
+
+  it("assumes no demographic variable exists", async () => {
+    // PLAN.md Phase 11 is explicit about this. A platform that shipped an "age"
+    // or "gender" breakdown would be hard-coding one study's design
+    // (AGENT.md §3.4); what a study measures is whatever its questions ask.
+    const { studyId, owner } = await workedExampleE();
+
+    const response = await owner.get(`/api/studies/${studyId}/analytics/distributions`).expect(200);
+
+    const body = JSON.stringify(response.body);
+    for (const assumed of ["age", "gender", "sex", "education", "demographic"]) {
+      expect(body.toLowerCase()).not.toContain(`"${assumed}"`);
+    }
+  });
+
+  it("is VIEWER-visible, like the rest of aggregate monitoring", async () => {
+    const { studyId } = await workedExampleE();
+    const viewer = await createUser(harness.db);
+    await addMember(harness.db, studyId, viewer.id, "VIEWER");
+    const client = await Client.login(harness.app, viewer);
+
+    await client.get(`/api/studies/${studyId}/analytics/distributions`).expect(200);
+  });
+});
+
 describe("the participant list", () => {
   it("paginates by cursor, not offset", async () => {
     const { studyId, owner } = await workedExampleE();

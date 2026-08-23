@@ -224,6 +224,21 @@ export default function StudyPage() {
         <Link href={`/studies/${studyId}/participants`}>{tAnalytics("participants")} →</Link>
       </p>
 
+      <p>
+        <Link href={`/studies/${studyId}/analytics`}>{tAnalytics("analyticsTitle")} →</Link>
+      </p>
+
+      {/*
+        Export is `export:run` — ANALYST and above. Shown only where the viewer
+        could actually use it, because a link that always 403s teaches people to
+        ignore links.
+      */}
+      {study.viewerRole !== "VIEWER" ? (
+        <p>
+          <Link href={`/studies/${studyId}/export`}>{tAnalytics("exportTitle")} →</Link>
+        </p>
+      ) : null}
+
       {canAdminister ? (
         <p>
           <Link href={`/studies/${studyId}/members`}>{t("manageMembers")} →</Link>
