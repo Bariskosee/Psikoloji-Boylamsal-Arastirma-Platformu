@@ -118,9 +118,30 @@ describe("POST /api/auth/login", () => {
     });
 
     it("spends comparable time on a missing account as on a real one", async () => {
-      // Without the dummy-hash path, "no such user" returns in microseconds
-      // while a real account pays for argon2id — a timing oracle no amount of
-      // response-body care can hide.
+      /**
+       * The property: the unknown-email path pays for an argon2id verification
+       * (`verifyDummy`). Without it, "no such user" returns in microseconds
+       * while a real account pays ~50ms — a timing oracle no amount of care
+       * over the response body can hide.
+       *
+       * ── How the earlier version of this test was wrong ────────────────────
+       * It took ONE sample of each, always in the same order, and asserted a
+       * ratio. That fails on CI for reasons that have nothing to do with the
+       * code: whichever request goes first absorbs connection warm-up, a GC
+       * pause, or a noisy neighbour on a shared runner. It did fail, on main,
+       * with the unknown path measured at 9.6ms against a known path at 45.9ms
+       * — a ratio of 0.21 against a bound of 0.25, from noise rather than from
+       * a missing verification.
+       *
+       * Two changes, each fixing one half of that:
+       *
+       *  - **Interleaved samples, compared by median.** Alternating the two
+       *    requests cancels drift that a fixed order bakes in, and a median
+       *    over several samples is not moved by one slow outlier.
+       *  - **A bound taken from measurement.** The old 0.25 sat almost exactly
+       *    on the value a BROKEN implementation produces (~0.21), leaving no
+       *    margin at all. The new one was chosen after measuring both cases.
+       */
       const user = await createUser(harness.db);
 
       const timeOf = async (email: string): Promise<number> => {
@@ -132,12 +153,43 @@ describe("POST /api/auth/login", () => {
         return Number(process.hrtime.bigint() - started) / 1e6;
       };
 
-      const known = await timeOf(user.email);
-      const unknown = await timeOf(`ghost-${Date.now()}@example.org`);
+      // One discarded round trip so neither measurement below pays for
+      // connection setup, the argon2 native module, or the memoised dummy hash.
+      await timeOf(`warmup-${String(Date.now())}@example.org`);
 
-      // Generous bound: this asserts the dummy verification happens at all,
-      // not a precise constant time, which no test on a shared runner can.
-      expect(unknown).toBeGreaterThan(known * 0.25);
+      const knownSamples: number[] = [];
+      const unknownSamples: number[] = [];
+      for (let round = 0; round < 3; round += 1) {
+        knownSamples.push(await timeOf(user.email));
+        unknownSamples.push(
+          await timeOf(`ghost-${String(Date.now())}-${String(round)}@example.org`),
+        );
+      }
+
+      const median = (values: number[]): number =>
+        [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)] as number;
+
+      const known = median(knownSamples);
+      const unknown = median(unknownSamples);
+
+      /**
+       * The bound, taken from measurement rather than from feel.
+       *
+       * Measured on this suite against a real database: with `verifyDummy` in
+       * place the median ratio is ~0.96, because the two paths genuinely cost
+       * the same. With it deleted the ratio is ~0.21 — the unknown path then
+       * pays only for an audit write and the round trip, about 3ms against 15.
+       * 0.6 sits between the two with a wide margin either side.
+       *
+       * A ratio and not an absolute millisecond floor, deliberately. It
+       * self-normalises against how fast the runner is; and an absolute floor
+       * is what made a first attempt at this fix VACUOUS. "At least 2ms" is
+       * above the microseconds an early return costs, but comfortably below
+       * the ~3ms the unknown path costs even with the verification removed —
+       * so the test passed against a deliberately broken implementation, which
+       * a mutation run caught before it was committed.
+       */
+      expect(unknown).toBeGreaterThan(known * 0.6);
     });
   });
 
