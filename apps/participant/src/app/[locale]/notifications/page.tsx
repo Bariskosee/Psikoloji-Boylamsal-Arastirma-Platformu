@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { tokens } from "@lpr/ui";
 import type { PushSubscriptionListResponse, PushSubscriptionSummary } from "@lpr/contracts";
-import { api } from "@/lib/api";
+import { ApiError, api } from "@/lib/api";
 import { disablePush, enablePush, fetchPushConfig, readPushEnvironment } from "@/lib/push";
 import {
   classifyPushAvailability,
@@ -43,8 +43,21 @@ import { ErrorBanner, styles } from "@/lib/ui";
  */
 export default function NotificationsPage() {
   const t = useTranslations("notifications");
+  const tHome = useTranslations("home");
 
   const [availability, setAvailability] = useState<PushAvailability | null>(null);
+  /**
+   * Set when the credential is missing or rejected.
+   *
+   * Kept apart from `availability` because they answer different questions.
+   * Without it, a failed `/config` call collapses into `vapidConfigured: false`
+   * and the screen tells an unenrolled visitor that THE STUDY has no
+   * notifications — a claim about the study made from a fact about the visitor.
+   * Found by opening this page in a fresh iOS Safari, where it read
+   * "Notifications are not available for this study" to someone who had simply
+   * never enrolled.
+   */
+  const [signedOut, setSignedOut] = useState(false);
   const [vapidKey, setVapidKey] = useState<string | null>(null);
   const [subscriptions, setSubscriptions] = useState<PushSubscriptionSummary[]>([]);
   const [busy, setBusy] = useState(false);
@@ -60,13 +73,17 @@ export default function NotificationsPage() {
    */
   const refresh = useCallback(async () => {
     let key: string | null = null;
+    let missingCredential = false;
     try {
       key = await fetchPushConfig();
-    } catch {
-      // Treated as "not configured": the screen then says the study runs
-      // without notifications, which is the truthful thing to say when we
-      // cannot establish that it does not.
+    } catch (error) {
+      // 401 means "we do not know who you are", which is a different answer
+      // from "this study has no notifications". Anything else is a genuine
+      // failure to establish the configuration, and "unavailable" is then the
+      // truthful thing to say.
+      missingCredential = error instanceof ApiError && error.status === 401;
     }
+    setSignedOut(missingCredential);
     setVapidKey(key);
     setAvailability(classifyPushAvailability(readPushEnvironment(key !== null)));
 
@@ -116,6 +133,22 @@ export default function NotificationsPage() {
   }
 
   if (availability === null) return <p style={styles.page}>…</p>;
+
+  if (signedOut) {
+    // Say what is actually true, and offer the only action that helps.
+    return (
+      <div style={styles.page}>
+        <h1>{t("title")}</h1>
+        <ErrorBanner>{tHome("notSignedIn")}</ErrorBanner>
+        <Link
+          href="/recover"
+          style={{ ...styles.secondaryButton, textAlign: "center", textDecoration: "none" }}
+        >
+          {tHome("recover")}
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div style={styles.page}>
