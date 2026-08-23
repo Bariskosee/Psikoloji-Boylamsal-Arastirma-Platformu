@@ -48,8 +48,8 @@ Phase 8    PWA and push subscription lifecycle                             done
 Phase 9    Notification and reminder engine                                 done
 Phase 10   Researcher monitoring and compliance dashboard                  done
 Phase 11   Descriptive analytics and data export                           done
-Phase 12   Hardening: security, observability, i18n completion          ← next
-Phase 13   Pilot validation and MVP release gate
+Phase 12   Hardening: security, observability, i18n completion       mostly done
+Phase 13   Pilot validation and MVP release gate                          ← next
 ```
 
 **Out of sequence.** ADR-004's job queue and ADR-005's reconciliation loop were
@@ -870,6 +870,38 @@ Load test at target scale. Restore drill executed and timed. Automated accessibi
 ## What NOT to build yet
 
 No new features. Anything discovered here that is not a defect goes to the post-MVP backlog.
+
+## Status — what was done, and what was not
+
+**Done.**
+
+- **Security.** Dependency audit: 14 vulnerabilities (1 critical, 5 high, 8 moderate) down to 4 moderate, zero high or critical. Authorization review across all 76 routes, confirming exactly seven deliberate unauthenticated endpoints. XSS sweep (no `dangerouslySetInnerHTML` anywhere). Secret and log review. Rate-limit verification — which found the enrollment limit described below.
+- **Reliability.** Readiness now covers the job system as well as the database. Alerting for sweeper stalls, dead letters, push failure rate, and subscriber attrition, computed in `@lpr/domain` and surfaced on the operations page. Eight runbooks in `docs/runbooks/`.
+- **The restore drill was executed**, not merely written, with measured timings and two findings — `pg_dump` does not include roles, so a restore silently loses the NFR-03 boundary; and `pg_isready` reports ready during `initdb`.
+- **i18n.** Catalogs are key-complete and there are no hardcoded user-visible strings. Added the check that was missing: a Turkish value still identical to its English source. The reset email is translated too.
+- **Accessibility.** axe on both applications across every question type, arithmetic contrast checking of the palette, and a scan that fails if a component uses a colour the contrast test has not seen. Three real defects fixed.
+- **Password reset by email**, deferred from Phase 2.
+- **Data retention and erasure procedure**, in `docs/runbooks/data-erasure.md`.
+- **Load test at 500 participants**, with results and caveats in `docs/qa/load-test.md`.
+
+**Defects found and fixed along the way**, each with a regression test: an export was audited *after* the response closed, so a process dying in that window handed over a dataset with no record; the analytics role was applied by a fire-and-forget `SET ROLE` racing the caller's first query, which pg has deprecated and will remove — when it goes, an analytics query could run with full read-write privileges; `isUniqueViolation` stopped recognising wrapped driver errors, so an enrollment-code collision would have 500'd; participant answer controls carried no accessible link to the question they answered; and enrollment was capped at ten per hour per IP, which a single lab session would have hit.
+
+**Not done, and not to be read as done.**
+
+| Criterion | Status |
+|---|---|
+| "The 500-participant load test passes with 95th-percentile answer writes under 300 ms" | Measured at 202 ms p95, but **in-process over loopback**. The network, TLS, the load balancer and multi-process behaviour are absent, so this is a lower bound on server-side work and not a production figure. Re-measure against the deployed environment. |
+| "Add indexes where measured" | No sequential scan read more than a thousand rows across the whole run, so nothing is measurably missing — on a dataset far too small to prove it. Needs a database at the size of a finished study. |
+| The reminder burst, listed under Performance | Not driven. A realistic burst needs a push endpoint to answer, and a fake endpoint would measure the fake. |
+| "A screen-reader pass on the participant flow" | Not done. axe finds mechanically checkable violations; it cannot tell whether the announcement makes sense to somebody who cannot see the screen. Real hardware, real assistive technology. |
+| "Verified point-in-time backups" | The drill was executed against a local instance. PITR against the managed provider has not been exercised. |
+| "Every runbook has been walked through once" | Only `restore-drill.md`. The rest are written and reviewed but have not been followed under real conditions. |
+| Turkish layout review | The catalogs are complete and reviewed as text. Turkish strings run longer than English and the rendered layout has not been inspected at every breakpoint. |
+| The researcher dashboard palette | Not migrated to the contrast-checked colour tokens; only the participant application is covered by the scan. |
+
+**One known flake, disclosed rather than closed.** The API integration suite fails roughly one run in twelve — one test, a different one each time, always with the signature "a fixture created moments earlier in this test is not visible". Two genuine races were found and fixed while investigating (the export audit and the analytics pool), which took the rate down from about one in three, and the deprecation warning that led to the second is gone. The remainder is not diagnosed. It has never reproduced with a file run in isolation, and no failure has had a product-defect signature.
+
+Most of the outstanding items belong to Phase 13 by nature: they need real devices, real data volume, and a deployed environment.
 
 ---
 
