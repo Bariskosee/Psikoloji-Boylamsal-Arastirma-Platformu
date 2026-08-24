@@ -897,7 +897,9 @@ No new features. Anything discovered here that is not a defect goes to the post-
 | "Verified point-in-time backups" | The drill was executed against a local instance. PITR against the managed provider has not been exercised. |
 | "Every runbook has been walked through once" | Only `restore-drill.md`. The rest are written and reviewed but have not been followed under real conditions. |
 | Turkish layout review | The catalogs are complete and reviewed as text. Turkish strings run longer than English and the rendered layout has not been inspected at every breakpoint. |
-| The researcher dashboard palette | Not migrated to the contrast-checked colour tokens; only the participant application is covered by the scan. |
+| The researcher dashboard palette | Migrated after Phase 12: both applications are now covered by a `palette.test.ts` that fails on any hex literal in application source. |
+| Hosting | **Resolved (ADR-012).** The research team has no budget, so the platform self-hosts on one always-free VM rather than on managed hosting. Rehearsed in full locally — six services built and run, migrations applied, the privilege boundary verified — but not yet run on a real VM. |
+| "Verified point-in-time backups" (revised) | Self-hosting gives a nightly logical dump, not PITR. Up to a day of responses would be lost in a restore. NFR-18 is partly met and ADR-012 records it as open. |
 
 **One known flake, disclosed rather than closed.** The API integration suite fails roughly one run in twelve — one test, a different one each time, always with the signature "a fixture created moments earlier in this test is not visible". Two genuine races were found and fixed while investigating (the export audit and the analytics pool), which took the rate down from about one in three, and the deprecation warning that led to the second is gone. The remainder is not diagnosed. It has never reproduced with a file run in isolation, and no failure has had a product-defect signature.
 
@@ -917,7 +919,7 @@ Phase 12.
 
 ## Technical work
 
-Deploy to staging with **accelerated protocol timings** and run the full acceptance scenario against the reference protocol (`docs/reference-protocol.md`), compressing its 36 days into minutes · an internal dry run with five to ten team members on real iPhones and Androids across that compressed protocol · a **closed participant pilot** of ten to twenty participants at real timings for at least a week, long enough to exercise the daily block rather than only the baseline · instrument and **measure missed notifications separately from missed questionnaires**, because conflating them would misattribute a technical failure to participant behaviour · reconcile every pilot record end to end, from displayed value to database row to dashboard metric to CSV cell · collect participant feedback · triage and fix critical issues.
+Deploy the self-hosted stack (ADR-012, `docs/runbooks/self-hosted-deploy.md`), then run the full acceptance scenario with **accelerated protocol timings** against the reference protocol (`docs/reference-protocol.md`), compressing its 36 days into minutes · an internal dry run with five to ten team members on real iPhones and Androids across that compressed protocol · a **closed participant pilot** of ten to twenty participants at real timings for at least a week, long enough to exercise the daily block rather than only the baseline · instrument and **measure missed notifications separately from missed questionnaires**, because conflating them would misattribute a technical failure to participant behaviour · reconcile every pilot record end to end, from displayed value to database row to dashboard metric to CSV cell · collect participant feedback · triage and fix critical issues.
 
 ## Data-model impact
 

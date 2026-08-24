@@ -2,13 +2,14 @@
 
 Operational procedures for running the platform during a live study.
 
-**Status:** Written and reviewed in **Phase 12**. `first-deploy.md` was written against a rehearsal on a non-superuser database and has not yet been followed against a real provider. `restore-drill.md` has been executed once (2026-08-23) and carries its measured timings and two findings; the rest are written but have not all been followed under real pressure. A runbook that has never been followed is still partly a guess — walk each one during the pilot (Phase 13) and correct it from what actually happened.
+**Status:** Written and reviewed in **Phase 12**. `self-hosted-deploy.md` was written against a full local rehearsal — all six services built and run under Docker Compose, migrations applied, the privilege boundary verified — but has not yet been followed on a real VM. `first-deploy.md` (managed hosting) was rehearsed against a non-superuser database and has not been followed against a real provider. `restore-drill.md` has been executed once (2026-08-23) and carries its measured timings and two findings; the rest are written but have not all been followed under real pressure. A runbook that has never been followed is still partly a guess — walk each one during the pilot (Phase 13) and correct it from what actually happened.
 
 ## The runbooks
 
 | File | Purpose | Alert codes |
 |---|---|---|
-| `first-deploy.md` | Standing up an environment that has never existed — including the two steps no error message will tell you about. | — |
+| `self-hosted-deploy.md` | **The deployment in use (ADR-012).** The whole platform on one always-free VM, with the firewall step that traps everybody. | — |
+| `first-deploy.md` | The managed-hosting path, for a funded deployment — including the two steps no error message will tell you about. | — |
 | `sweeper-stall.md` | Scheduling has stopped. The highest-severity state in the platform, and the quietest. | `SWEEPER_ABSENT`, `SWEEPER_STALE`, `SWEEPER_FAILING` |
 | `dead-letter-triage.md` | Jobs that exhausted their retries: which were notifications, and what that cost. | `DEAD_LETTERS` |
 | `push-failure-triage.md` | Telling a transport or credential failure apart from ordinary subscriber attrition. | `PUSH_FAILURE_RATE`, `PUSH_ATTRITION` |

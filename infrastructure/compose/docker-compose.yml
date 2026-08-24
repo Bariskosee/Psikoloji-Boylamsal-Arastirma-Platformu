@@ -1,0 +1,216 @@
+# Self-hosted deployment (ADR-012). One machine, one region, one operator.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# This is the deployment for a research team without a hosting budget. It runs
+# the whole platform — including the always-on worker that ADR-005's scheduling
+# guarantee depends on — on a single always-free VM.
+#
+# The trade it makes is explicit: no managed backups, no managed TLS, no
+# provider on call. Those become the operator's job, and
+# `docs/runbooks/self-hosted-deploy.md` is how they are done.
+#
+# Run from the repository root:
+#   docker compose -f infrastructure/compose/docker-compose.yml --env-file .env.production up -d --build
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: lpr
+
+# ── Memory ceilings ─────────────────────────────────────────────────────────
+# Sized for a 4 GB VM, which is the smallest this stack fits on comfortably.
+#
+# These are not tuning. They are a blast radius: without them one runaway
+# container — a large export, a leak — gets the Linux OOM killer invoked, and
+# the kernel picks its victim by memory usage, not by importance. The worker is
+# small and quiet, so it is exactly the process that survives such an event
+# least often, and it is the one whose death stops the study silently.
+#
+# With a limit, a container that overruns dies alone and Docker restarts it.
+x-logging: &logging
+  # Without this a long-running study fills the VM's disk with JSON logs and
+  # PostgreSQL stops accepting writes — a disk-full outage that presents as a
+  # database fault.
+  driver: json-file
+  options: { max-size: "10m", max-file: "5" }
+
+services:
+  postgres:
+    mem_limit: 768m
+    image: postgres:16-alpine
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-lpr}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      # Creates the two NOLOGIN group roles NFR-03 rests on, before the first
+      # migration runs. Self-hosting is the one deployment where this can be
+      # automated: we own the superuser. See the file for why it matters.
+      - ./initdb:/docker-entrypoint-initdb.d:ro
+      - ./backups:/backups
+    # Never published to the host. The only things that reach the database are
+    # the two services on this network.
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB:-lpr}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    mem_limit: 640m
+    build:
+      context: ../..
+      dockerfile: infrastructure/compose/Dockerfile.node
+      args: { APP: api }
+    restart: unless-stopped
+    logging: *logging
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-lpr}
+      PARTICIPANT_ORIGIN: https://${PARTICIPANT_HOST:?set PARTICIPANT_HOST}
+      RESEARCHER_ORIGIN: https://${RESEARCHER_HOST:?set RESEARCHER_HOST}
+      SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      MAIL_FROM: ${MAIL_FROM:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    expose:
+      - "3001"
+    healthcheck:
+      # `/health` and not `/ready`: liveness must not fail on a database blip,
+      # or Docker restarts a process that is working perfectly.
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  # Migrations, as a one-shot container that must succeed before the API serves.
+  #
+  # Separated from the API's startup deliberately: two API replicas booting at
+  # once would both migrate, and a migration is the one thing that must happen
+  # exactly once. `restart: "no"` so a failure stays visible instead of looping.
+  migrate:
+    build:
+      context: ../..
+      dockerfile: infrastructure/compose/Dockerfile.node
+      args: { APP: api }
+    restart: "no"
+    logging: *logging
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-lpr}
+    command: ["node", "node_modules/@lpr/db/dist/migrate.js"]
+
+  worker:
+    mem_limit: 384m
+    build:
+      context: ../..
+      dockerfile: infrastructure/compose/Dockerfile.node
+      args: { APP: worker }
+    # ── The single most important line in this file (ADR-005, ADR-010) ───────
+    # `unless-stopped` keeps the reconciliation sweepers running across
+    # reboots. If this process is not running, sessions never open, windows
+    # never expire and reminders never fire — and NOTHING reports an error.
+    # A self-hosted VM is the deployment where this is easy to get right.
+    restart: unless-stopped
+    logging: *logging
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-lpr}
+      SWEEP_INTERVAL_SECONDS: ${SWEEP_INTERVAL_SECONDS:-60}
+      # Stable across restarts and distinct per instance, so the heartbeat row
+      # is not orphaned on every deploy.
+      WORKER_ID: ${WORKER_ID:-lpr-worker-1}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+
+  participant:
+    mem_limit: 384m
+    build:
+      context: ../..
+      dockerfile: infrastructure/compose/Dockerfile.next
+      args:
+        APP: participant
+        # Build-time, not run-time. See Dockerfile.next.
+        NEXT_PUBLIC_API_URL: https://${API_HOST:?set API_HOST}
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: "0.0.0.0"
+    expose:
+      - "3000"
+
+  researcher:
+    mem_limit: 384m
+    build:
+      context: ../..
+      dockerfile: infrastructure/compose/Dockerfile.next
+      args:
+        APP: researcher
+        NEXT_PUBLIC_API_URL: https://${API_HOST}
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      NODE_ENV: production
+      PORT: 3002
+      HOSTNAME: "0.0.0.0"
+    expose:
+      - "3002"
+
+  # ── TLS and routing ────────────────────────────────────────────────────────
+  # Caddy rather than nginx + certbot: it obtains and renews certificates on
+  # its own, with no cron job to forget. NFR-01 requires HTTPS, and Web Push
+  # and iOS Home Screen installation do not work without it — so a certificate
+  # that quietly expires does not degrade this platform, it stops the study.
+  proxy:
+    mem_limit: 96m
+    image: caddy:2-alpine
+    restart: unless-stopped
+    logging: *logging
+    depends_on: [api, participant, researcher]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      API_HOST: ${API_HOST}
+      PARTICIPANT_HOST: ${PARTICIPANT_HOST}
+      RESEARCHER_HOST: ${RESEARCHER_HOST}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  postgres-data:
+  caddy-data:
+  caddy-config:

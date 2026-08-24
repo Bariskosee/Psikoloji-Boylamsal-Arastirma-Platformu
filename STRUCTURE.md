@@ -25,7 +25,7 @@ This document is the authority for technical design. Product behaviour is define
 | Participant continuity | Hashed token cookie + one-time install handoff + recovery code | ADR-007 |
 | Versioning | Draft → published immutable; pinned at enrollment | ADR-008 |
 | Frontend | **Two** Next.js 15 applications on separate origins | ADR-009 |
-| Deployment | Render, Frankfurt, single EU region | ADR-010 |
+| Deployment | Docker Compose on one always-free VM, single EU region | ADR-012 (amends ADR-010) |
 | Validation | Zod, shared between server and both clients | ADR-001 |
 | Time | Luxon, IANA-aware | ADR-005 |
 | Testing | Vitest, Testcontainers, Playwright | ADR-001 |
@@ -132,7 +132,9 @@ This document is the authority for technical design. Product behaviour is define
 │   └── runbooks/             eight procedures; alerts name the file to open
 │
 ├── tests/e2e/                Playwright — cross-app critical journeys
-├── infrastructure/           render.yaml (production) + render.staging.yaml
+├── infrastructure/
+│   ├── compose/              Docker Compose deployment — the one in use (ADR-012)
+│   └── render*.yaml          managed-hosting blueprints, for a funded deployment
 └── *.md                      the six root documents
 ```
 
@@ -855,21 +857,27 @@ Test fixtures use neutral placeholder content (`Sample question 1`) exclusively.
 
 ## 17. Deployment
 
-Single EU region, one provider. See ADR-010.
+Single EU region, one machine. See ADR-012, which amends ADR-010.
 
 ```text
-research.example.org  → researcher   Next.js
-app.example.org       → participant  Next.js
-api.example.org       → api          NestJS, always-on web service
-                        worker       NestJS, always-on background worker
-                        postgres     managed, PITR, daily backup
+research.<domain>  → researcher   Next.js
+app.<domain>       → participant  Next.js      ─┐
+api.<domain>       → api          NestJS        ├─ Caddy, automatic TLS
+                     worker       always-on    ─┘
+                     postgres     in-container, nightly dump
 ```
 
-**The worker must run on an always-on instance.** A tier that spins down when idle stops the sweepers and silently disables the entire scheduling guarantee.
+Three hostnames, not one: the participant application and the researcher dashboard are separate origins by ADR-009, and a compromised researcher session must not be same-origin with participant data.
 
-Environments: `local` (Docker Compose with PostgreSQL only) · `test` (ephemeral Testcontainers) · `staging` (full mirror, seeded, with **accelerated protocol timings** so multi-day flows validate in minutes) · `production`.
+**The worker must run always-on.** A tier that spins down when idle stops the sweepers and silently disables the entire scheduling guarantee — which is why no free managed platform can host this and a plain VM can (ADR-012).
 
-Deploy flow: push → CI (lint, typecheck, unit, integration) → build → pre-deploy migration → api and worker → frontends. Migrations are always backward-compatible with the previous release, so a rollback never strands the schema.
+Everything lives in `infrastructure/compose/`: the compose file, two Dockerfiles, the Caddyfile, a first-run script creating the two group roles, and a nightly backup script. `infrastructure/render*.yaml` remain the managed-hosting path for a funded deployment, kept honest by `blueprints.test.ts`.
+
+Environments: `local` (Docker Compose with PostgreSQL only, applications run natively) · `test` (PostgreSQL service container in CI) · `production`. A separate always-on staging environment is a second VM and is not currently run; Phase 13's accelerated-timing validation happens on the production machine before any real participant is enrolled.
+
+Deploy flow: `git pull` → `docker compose up -d --build` → the `migrate` container applies migrations and exits → api, worker and frontends restart. Migrations are always backward-compatible with the previous release, so rolling the code back never strands the schema.
+
+**Backups are the operator's job now.** `backup.sh` takes a nightly logical dump *including roles* — `pg_dump` alone omits them, and a restore without them silently loses the NFR-03 boundary while every row arrives intact. This is not point-in-time recovery; NFR-18 is only partly met, and ADR-012 records it as open rather than satisfied.
 
 Operational baseline: `/health` and `/ready` · Sentry on all four services · heartbeat alerting if sweepers go stale beyond 5 minutes · an admin ops page showing dead-lettered jobs, push failure rates by status code, subscription attrition, and last sweep times · a scheduled restore drill.
 
