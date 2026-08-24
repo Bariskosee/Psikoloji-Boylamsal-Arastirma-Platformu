@@ -19,6 +19,19 @@ Row counts are the easy part and the least interesting. A restore of this platfo
 | 3 | The `app_analytics` privilege boundary | NFR-03: the analytics role may read `research` and must not reach `identity`. This is **schema-level GRANTs on roles**, and §5.1 is the reason this row exists. |
 | 4 | The migration ledger | `drizzle.__drizzle_migrations`. Without it the next deploy tries to re-apply every migration from the beginning. |
 
+## 1b. On the self-hosted deployment
+
+`infrastructure/compose/backup.sh` already produces both files this procedure
+needs — the roles dump and the data dump — into
+`infrastructure/compose/backups/`, and it produces them in that order for the
+reason §5.1 gives. The drill below is then a restore of the latest pair into a
+throwaway container rather than a fresh `pg_dump`.
+
+Note what self-hosting does not give you: there is no point-in-time recovery,
+so "restore" means "restore to last night". ADR-012 records that as an open
+item against NFR-18 rather than as satisfied, and closing it means WAL
+archiving to off-site storage.
+
 ## 2. Take the backup
 
 ```bash

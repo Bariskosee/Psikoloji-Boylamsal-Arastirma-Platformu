@@ -1,5 +1,11 @@
 # ADR-010 — Deployment Platform
 
+> **Amended by [ADR-012](ADR-012-self-hosted-deployment.md) (2026-08-24).** The research
+> team has no hosting budget, and no free tier of any managed platform can run the
+> always-on worker this ADR identifies as its most important operational fact. The
+> platform now deploys with Docker Compose on a single always-free VM. Everything
+> below still holds for a funded deployment, and the blueprints remain in the tree.
+
 **Status:** Accepted
 **Date:** 2026-08-17
 

@@ -1,0 +1,41 @@
+# Automatic HTTPS for the three public hostnames (ADR-009, ADR-012, NFR-01).
+#
+# The participant application and the researcher dashboard are separate origins
+# by ADR-009 and must stay that way: a compromised researcher session must not
+# be same-origin with participant data.
+#
+# Caddy obtains and renews certificates by itself. There is no renewal cron to
+# forget — which matters because an expired certificate here does not degrade
+# the platform, it stops the study: Web Push and iOS Home Screen installation
+# both require valid HTTPS.
+
+{
+	email {$ACME_EMAIL}
+}
+
+(common) {
+	encode zstd gzip
+	header {
+		# Sent by the proxy so every service inherits it, including error pages
+		# the applications never render themselves.
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+}
+
+{$API_HOST} {
+	import common
+	reverse_proxy api:3001
+}
+
+{$PARTICIPANT_HOST} {
+	import common
+	reverse_proxy participant:3000
+}
+
+{$RESEARCHER_HOST} {
+	import common
+	reverse_proxy researcher:3002
+}

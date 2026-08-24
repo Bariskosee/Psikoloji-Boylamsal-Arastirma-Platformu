@@ -1,0 +1,49 @@
+# The API and the worker. One Dockerfile, selected by the APP build argument.
+#
+# ── Why `pnpm deploy` and not `COPY node_modules` ───────────────────────────
+# This is a pnpm workspace: `node_modules` is a forest of symlinks into a
+# content-addressed store, and copying it into an image produces dangling
+# links. `pnpm deploy` resolves a single workspace package and its production
+# dependencies into a self-contained directory — which is exactly what a
+# container needs and nothing more.
+#
+# ── Why a build stage at all ────────────────────────────────────────────────
+# The backends compile to CommonJS with `emitDecoratorMetadata`, which NestJS's
+# dependency injection requires at run time. Running TypeScript through a
+# loader in production would drop that metadata and DI would fail at startup
+# with an error that points at a guard rather than at the build.
+
+FROM node:22-alpine AS base
+ENV PNPM_HOME=/pnpm
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
+WORKDIR /repo
+
+FROM base AS build
+ARG APP
+# Manifests first, so a source-only change does not re-resolve the whole
+# dependency graph on every rebuild.
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json turbo.json tsconfig.base.json ./
+COPY packages ./packages
+COPY apps ./apps
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+    pnpm install --frozen-lockfile
+RUN pnpm build --filter=@lpr/${APP}...
+# `--legacy` because the workspace uses the default (non-isolated) node-linker;
+# without it `deploy` refuses rather than guessing.
+RUN pnpm --filter=@lpr/${APP} --prod --legacy deploy /out
+
+FROM base AS runtime
+ARG APP
+ENV NODE_ENV=production
+# Never root. A compromised dependency should not be able to write to the
+# image, and this platform runs code that handles psychological research data.
+RUN addgroup -S lpr && adduser -S lpr -G lpr
+WORKDIR /app
+COPY --from=build --chown=lpr:lpr /out ./
+# The migration entrypoint reads these at run time; `pnpm deploy` keeps only
+# what the manifest declares, and a folder of .sql files is not a dependency.
+COPY --from=build --chown=lpr:lpr /repo/packages/db/migrations ./node_modules/@lpr/db/migrations
+USER lpr
+# Overridden per service in compose; here so the image is runnable on its own.
+CMD ["node", "dist/main.js"]
