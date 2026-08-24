@@ -8,6 +8,7 @@ Operational procedures for running the platform during a live study.
 
 | File | Purpose | Alert codes |
 |---|---|---|
+| `../../infrastructure/oracle/README.md` | Oracle Always Free production path: cost envelope, hardened Compose, TLS, verification, backup and reboot procedure. | — |
 | `self-hosted-deploy.md` | **The deployment in use (ADR-012).** The whole platform on one always-free VM, with the firewall step that traps everybody. | — |
 | `first-deploy.md` | The managed-hosting path, for a funded deployment — including the two steps no error message will tell you about. | — |
 | `sweeper-stall.md` | Scheduling has stopped. The highest-severity state in the platform, and the quietest. | `SWEEPER_ABSENT`, `SWEEPER_STALE`, `SWEEPER_FAILING` |

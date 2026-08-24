@@ -1,0 +1,11 @@
+.git
+.env
+.env.*
+**/node_modules
+**/.next
+**/dist
+**/.turbo
+**/coverage
+infrastructure/oracle/backups
+*.dump
+*.sql.tmp

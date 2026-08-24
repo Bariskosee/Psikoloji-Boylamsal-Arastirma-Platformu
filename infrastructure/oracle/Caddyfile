@@ -1,0 +1,27 @@
+# Three public origins on one Oracle Always Free VM. Only Caddy publishes host
+# ports; every application and PostgreSQL stay on the Docker bridge network.
+
+(common) {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+}
+
+{$API_HOST} {
+	import common
+	reverse_proxy api:3001
+}
+
+{$PARTICIPANT_HOST} {
+	import common
+	reverse_proxy participant:3000
+}
+
+{$RESEARCHER_HOST} {
+	import common
+	reverse_proxy researcher:3002
+}

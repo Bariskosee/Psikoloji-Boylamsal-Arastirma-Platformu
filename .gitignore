@@ -27,6 +27,7 @@ playwright-report/
 .env
 .env.*
 !.env.example
+!infrastructure/oracle/.env.production.example
 
 # Secrets and keys
 *.pem
@@ -51,3 +52,4 @@ Thumbs.db
 npm-debug.log*
 pnpm-debug.log*
 infrastructure/compose/backups/
+infrastructure/oracle/backups/

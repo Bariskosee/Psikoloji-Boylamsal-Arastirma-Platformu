@@ -27,6 +27,10 @@ needs — the roles dump and the data dump — into
 reason §5.1 gives. The drill below is then a restore of the latest pair into a
 throwaway container rather than a fresh `pg_dump`.
 
+The Oracle path uses `infrastructure/oracle/backup.sh` and writes the same pair
+to `/var/backups/lpr` by default. Its VM bootstrap installs
+`postgresql-client`, which supplies the host-side commands below.
+
 Note what self-hosting does not give you: there is no point-in-time recovery,
 so "restore" means "restore to last night". ADR-012 records that as an open
 item against NFR-18 rather than as satisfied, and closing it means WAL
@@ -46,17 +50,42 @@ On a managed provider, use its point-in-time restore to produce a new instance a
 Never into the live database, and never into an instance anything else points at. A drill that can damage production is not a drill.
 
 ```bash
+RESTORE_PASSWORD=$(openssl rand -hex 24)
+APP_DATABASE_USER=lpr_app # use the value from the source .env.production
+
 docker run -d --name restore-drill \
-  -e POSTGRES_USER=lpr -e POSTGRES_PASSWORD=… -e POSTGRES_DB=lpr -p 5446:5432 postgres:16
+  -e POSTGRES_USER=restore_admin -e POSTGRES_PASSWORD="$RESTORE_PASSWORD" \
+  -e POSTGRES_DB=lpr \
+  -p 127.0.0.1:5446:5432 postgres:16
 
 # Poll over TCP, NOT the local socket — see §5.2.
-until pg_isready -h 127.0.0.1 -p 5446 -U lpr; do sleep 1; done
+until pg_isready -h 127.0.0.1 -p 5446 -U restore_admin; do sleep 1; done
 
-psql       -h 127.0.0.1 -p 5446 -U lpr -d postgres -f roles.sql   # roles FIRST
-pg_restore -h 127.0.0.1 -p 5446 -U lpr -d lpr --clean --if-exists drill.dump
+# Prove the drill listener is not exposed on the VM's public interfaces.
+ss -lnt | grep '127.0.0.1:5446'
+
+# PostgreSQL 16 records the source grantor on role-membership lines. Restore
+# definitions first, then recreate these two known memberships as the clean
+# cluster's superuser; see §5.3.
+sed '/^GRANT .* GRANTED BY /d' roles.sql | \
+  PGPASSWORD="$RESTORE_PASSWORD" psql -v ON_ERROR_STOP=1 \
+    -h 127.0.0.1 -p 5446 -U restore_admin -d postgres
+
+PGPASSWORD="$RESTORE_PASSWORD" psql -v ON_ERROR_STOP=1 \
+  -v app_user="$APP_DATABASE_USER" \
+  -h 127.0.0.1 -p 5446 -U restore_admin -d postgres <<'SQL'
+SELECT format('GRANT app_readwrite, app_analytics TO %I', :'app_user')
+\gexec
+SQL
+
+PGPASSWORD="$RESTORE_PASSWORD" pg_restore --exit-on-error \
+  -h 127.0.0.1 -p 5446 -U restore_admin -d lpr \
+  --clean --if-exists drill.dump
 ```
 
-`role "lpr" already exists` from `roles.sql` is expected and harmless — the container created it. Any *other* role error means step §5.1 is about to bite.
+Use a bootstrap name such as `restore_admin` that is not present in the source
+roles dump. With `ON_ERROR_STOP`/`--exit-on-error`, any role or object error
+fails the drill rather than leaving a plausible-looking partial restore.
 
 ## 4. Verify — all four properties, every time
 
@@ -116,6 +145,22 @@ On the first attempt this produced `role "app_readwrite" does not exist` repeate
 The official Postgres image runs an initialisation phase on a temporary local socket before starting the real listener. `pg_isready` against that socket answers *yes* while the server is not actually accepting connections, so the restore began too early and the roles step failed.
 
 **Consequence:** poll over TCP (`-h 127.0.0.1`), as §3 does. This matters for CI and for any scripted restore, not just for the drill.
+
+### 5.3 Finding — PostgreSQL 16 preserves the role-membership grantor
+
+The 2026-08-24 Oracle drill found that `pg_dumpall --roles-only` emits membership
+statements such as `GRANT app_analytics TO lpr_app ... GRANTED BY lpr_admin`.
+On a new cluster, replaying that line as a different bootstrap superuser fails
+with `permission denied to grant privileges as role "lpr_admin"`, even though
+the four role definitions were created successfully. A restore that does not
+stop on this error leaves the login present but unable to assume either
+application role.
+
+**Consequence:** keep the unmodified roles dump as the backup artifact, filter
+only these `GRANTED BY` membership lines during restore, and recreate the two
+known memberships as the clean cluster's superuser, as §3 does. The tested
+drill then restored all 10 migrations, both pg-boss queues, the heartbeat,
+`lpr_app` ownership of `pgboss`, and the analytics/identity denial.
 
 ## 6. Tear down
 

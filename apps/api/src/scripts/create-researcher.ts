@@ -80,7 +80,10 @@ async function readPassword(): Promise<string> {
 
   const rl = createInterface({ input: process.stdin, output: process.stdout });
   try {
-    return (await rl.question("Password (input is visible): ")).trim();
+    // Provisioning wrappers use a masked host-side prompt and pipe the value.
+    // A non-TTY stream therefore needs no misleading or noisy prompt.
+    const prompt = process.stdin.isTTY ? "Password (input is visible): " : "";
+    return (await rl.question(prompt)).trim();
   } finally {
     rl.close();
   }

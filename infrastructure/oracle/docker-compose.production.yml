@@ -1,0 +1,254 @@
+name: lpr-oracle
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    mem_limit: 768m
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-lpr}
+      APP_DATABASE_USER: ${APP_DATABASE_USER:?set APP_DATABASE_USER}
+      APP_DATABASE_PASSWORD: ${APP_DATABASE_PASSWORD:?set APP_DATABASE_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./initdb:/docker-entrypoint-initdb.d:ro
+    expose:
+      - "5432"
+    healthcheck:
+      # TCP is intentional. The local socket reports ready during the temporary
+      # initdb server, before role creation has completed.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    networks: [backend]
+
+  migrate:
+    build:
+      context: ../..
+      dockerfile: infrastructure/compose/Dockerfile.node
+      args:
+        APP: api
+    restart: "no"
+    logging: *logging
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-lpr}
+    command: ["node", "node_modules/@lpr/db/dist/migrate.js"]
+    networks: [backend]
+
+  api:
+    build:
+      context: ../..
+      dockerfile: infrastructure/compose/Dockerfile.node
+      args:
+        APP: api
+    mem_limit: 640m
+    restart: unless-stopped
+    logging: *logging
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      queue-migrate:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://${APP_DATABASE_USER}:${APP_DATABASE_PASSWORD}@postgres:5432/${POSTGRES_DB:-lpr}
+      PARTICIPANT_ORIGIN: https://${PARTICIPANT_HOST:?set PARTICIPANT_HOST}
+      RESEARCHER_ORIGIN: https://${RESEARCHER_HOST:?set RESEARCHER_HOST}
+      SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      MAIL_FROM: ${MAIL_FROM:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    expose:
+      - "3001"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks: [backend]
+
+  queue-migrate:
+    image: lpr-oracle-worker:latest
+    restart: "no"
+    logging: *logging
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${APP_DATABASE_USER}:${APP_DATABASE_PASSWORD}@postgres:5432/${POSTGRES_DB:-lpr}
+      APP_DATABASE_USER: ${APP_DATABASE_USER:?set APP_DATABASE_USER}
+    command: ["node", "/app/queue-bootstrap.cjs"]
+    volumes:
+      - ./queue-bootstrap.cjs:/app/queue-bootstrap.cjs:ro
+    networks: [backend]
+
+  worker:
+    image: lpr-oracle-worker:latest
+    build:
+      context: ../..
+      dockerfile: infrastructure/compose/Dockerfile.node
+      args:
+        APP: worker
+    mem_limit: 384m
+    restart: unless-stopped
+    logging: *logging
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      queue-migrate:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${APP_DATABASE_USER}:${APP_DATABASE_PASSWORD}@postgres:5432/${POSTGRES_DB:-lpr}
+      SWEEP_INTERVAL_SECONDS: ${SWEEP_INTERVAL_SECONDS:-60}
+      WORKER_ID: ${WORKER_ID:-lpr-worker-1}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "const{createPool}=require('@lpr/db');const p=createPool({connectionString:process.env.DATABASE_URL,max:1,connectionTimeoutMillis:5000});p.query('SELECT 1 FROM research.system_heartbeats WHERE worker_id=$1 AND swept_at > now() - make_interval(secs => sweep_interval_seconds * 3 + 30)',[process.env.WORKER_ID]).then(r=>{process.exitCode=r.rowCount===1?0:1}).catch(()=>{process.exitCode=1}).finally(()=>p.end())",
+        ]
+      interval: 30s
+      timeout: 8s
+      retries: 3
+      start_period: 120s
+    networks: [backend]
+
+  participant:
+    build:
+      context: ../..
+      dockerfile: infrastructure/compose/Dockerfile.next
+      args:
+        APP: participant
+        NEXT_PUBLIC_API_URL: https://${API_HOST:?set API_HOST}
+    mem_limit: 384m
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+    expose:
+      - "3000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/en').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks: [backend]
+
+  researcher:
+    build:
+      context: ../..
+      dockerfile: infrastructure/compose/Dockerfile.next
+      args:
+        APP: researcher
+        NEXT_PUBLIC_API_URL: https://${API_HOST:?set API_HOST}
+    mem_limit: 384m
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      NODE_ENV: production
+      PORT: 3002
+      HOSTNAME: 0.0.0.0
+    expose:
+      - "3002"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3002/en/login').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks: [backend]
+
+  proxy:
+    image: caddy:2-alpine
+    mem_limit: 128m
+    restart: unless-stopped
+    logging: *logging
+    depends_on:
+      api:
+        condition: service_healthy
+      participant:
+        condition: service_healthy
+      researcher:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      API_HOST: ${API_HOST:?set API_HOST}
+      PARTICIPANT_HOST: ${PARTICIPANT_HOST:?set PARTICIPANT_HOST}
+      RESEARCHER_HOST: ${RESEARCHER_HOST:?set RESEARCHER_HOST}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks: [backend]
+
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  caddy-data:
+  caddy-config:
