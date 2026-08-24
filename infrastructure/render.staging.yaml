@@ -48,6 +48,7 @@ services:
     region: frankfurt
     plan: starter # NOT free — free spins down
     buildCommand: pnpm install --frozen-lockfile && pnpm build --filter=@lpr/api...
+    startCommand: pnpm --filter=@lpr/api start
     # Migrations run before the new version serves traffic, and are always
     # backward-compatible with the previous release so rollback is safe.
     #
