@@ -38,9 +38,13 @@ Work through it with the researcher present. Several items are research decision
 ## 5. Operations
 
 - [ ] **The worker is on an always-on tier.** ADR-010. A host that idles it out stops all scheduling silently. This is the failure mode most likely to ruin a study.
+- [ ] **Origins are participant-stable.** `DEPLOYMENT_MODE=participant`; use registered hostnames or a public IP verified as reserved. Ephemeral-IP `sslip.io` is smoke-only because an origin change permanently invalidates continuity cookies and push subscriptions.
 - [ ] `GET /ready` returns 200 with **both** checks passing.
 - [ ] Sweeper heartbeats are fresh on the operations page, and someone is actually watching the alerts.
-- [ ] **The restore drill has been executed against this environment**, not merely read. `restore-drill.md`.
+- [ ] **Bounded health recovery is active.** On the Oracle path, both `lpr-health-recovery.timer` and `lpr-backup.timer` are enabled and active; PostgreSQL remains monitor-only.
+- [ ] **A fresh client-side encrypted off-VM backup exists.** Its repository-file SHA-256 matches the approved destination, and the live provider/account has an enforced no-billable-overage control (not merely an alert); current `$0` cost/quota and residency have been checked, and the Restic password also exists in an independent secure location.
+- [ ] **The restore drill has been executed against the off-site snapshot**, not merely read. `restore-drill.md`.
+- [ ] On the Oracle path, `infrastructure/oracle/participant-readiness.sh` exits 0 and its output is attached to the launch record.
 - [ ] Someone specific is named as on call, and knows `docs/runbooks/` exists.
 
 ## 6. A dry run with a real device

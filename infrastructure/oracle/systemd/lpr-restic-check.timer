@@ -1,0 +1,10 @@
+[Unit]
+Description=Check the LPR Restic repository weekly
+
+[Timer]
+OnCalendar=Sun *-*-* 05:17:00
+RandomizedDelaySec=30min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -28,10 +28,48 @@ reason §5.1 gives. The drill below is then a restore of the latest pair into a
 throwaway container rather than a fresh `pg_dump`.
 
 The Oracle path uses `infrastructure/oracle/backup.sh` and writes the same pair
-to `/var/backups/lpr` by default. Its VM bootstrap installs
+to `/var/backups/lpr` by default, along with a SHA-256 manifest and the current
+secret bundle for total-VM recovery. In participant mode the matched transaction
+is uploaded with client-side encryption by Restic. Its VM bootstrap installs
 `postgresql-client`, which supplies the host-side commands below.
 
-Note what self-hosting does not give you: there is no point-in-time recovery,
+After the operator has configured and manually initialized an approved remote
+repository, the Oracle path automates the isolated drill:
+
+```bash
+infrastructure/oracle/backup.sh
+infrastructure/oracle/check-offsite-backup.sh
+infrastructure/oracle/restore-offsite-drill.sh
+infrastructure/oracle/participant-readiness.sh
+```
+
+`restore-offsite-drill.sh` downloads the last snapshot into a mode-700 temporary
+directory, verifies its manifest, restores into an unexposed throwaway
+PostgreSQL container, checks the repository migration count, structure,
+pg-boss queues and the analytics allow/deny boundary, then removes the copy.
+`participant-readiness.sh` rejects drill evidence older than 90 days.
+
+If the VM and its local `offsite-success` state are both lost, recreate the
+private Restic repository/password/backend configuration and current approval
+record from the separately stored recovery copy. Recompute the repository-file
+SHA-256 and reverify the provider/account no-overage control, then use the
+explicit fresh-VM mode. It selects the newest
+authenticated `lpr-oracle-prod` snapshot tagged `lpr-nightly`, validates its
+exact three-entry SHA-256 manifest, runs the same full PostgreSQL drill and keeps
+the verified recovery transaction only in a new private target:
+
+```bash
+install -d -m 700 "$HOME/lpr-recovery"
+infrastructure/oracle/restore-offsite-drill.sh \
+  --fresh-vm-recovery "$HOME/lpr-recovery/latest"
+```
+
+The target must not exist beforehand. The directory is `0700` and each artifact,
+including the production secret bundle and `recovery-evidence`, is `0600`. Move
+the required files into the rebuilt deployment through an approved recovery
+procedure, then securely remove this bundle.
+
+Note what this still does not give you: there is no point-in-time recovery,
 so "restore" means "restore to last night". ADR-012 records that as an open
 item against NFR-18 rather than as satisfied, and closing it means WAL
 archiving to off-site storage.

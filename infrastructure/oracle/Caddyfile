@@ -1,5 +1,8 @@
 # Three public origins on one Oracle Always Free VM. Only Caddy publishes host
 # ports; every application and PostgreSQL stay on the Docker bridge network.
+{
+	email {$ACME_EMAIL}
+}
 
 (common) {
 	encode zstd gzip

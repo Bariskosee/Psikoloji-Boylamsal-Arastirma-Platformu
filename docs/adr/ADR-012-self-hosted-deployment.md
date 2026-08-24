@@ -34,9 +34,10 @@ close to Türkiye. Nothing in the deployment is specific to Oracle: it is a
 Linux VM with Docker, and `infrastructure/compose/` would run unchanged on any
 other.
 
-Concretely, `infrastructure/compose/` holds a `docker-compose.yml` for six
-services, two Dockerfiles, a Caddyfile, a first-run SQL script that creates the
-two group roles, and a nightly backup script.
+Concretely, `infrastructure/oracle/` holds the hardened single-VM Compose layer,
+Caddy configuration, first-run role bootstrap, staged deployment, bounded
+host-side health recovery, and client-side encrypted off-site backup tooling.
+The shared Dockerfiles remain in `infrastructure/compose/`.
 
 ## Why this rather than the alternatives
 
@@ -65,7 +66,9 @@ allowance.
 ## Consequences
 
 **The always-on requirement is satisfied natively, not worked around.** The
-worker runs as a normal container with `restart: unless-stopped`. ADR-005 is
+worker runs as a normal container with `restart: unless-stopped`; a bounded
+host timer reacts when a live container becomes unhealthy, which Docker's
+restart policy alone does not do. ADR-005 is
 untouched, ADR-009's separate origins are preserved by three hostnames on one
 proxy, and ADR-003's two-schema privilege split works better here than on a
 managed provider — we own the superuser, so the two NOLOGIN group roles are
@@ -73,9 +76,14 @@ created automatically on first run rather than by hand.
 
 **The operator inherits what a provider used to do.** Patching, TLS renewal
 (automated by Caddy, but its failure is now ours), uptime, and above all
-backups. `infrastructure/compose/backup.sh` takes a nightly dump with the
-roles — the restore drill found that `pg_dump` omits them, so a naive restore
-silently loses the analytics boundary while every row arrives intact.
+backups. `infrastructure/oracle/backup.sh` takes a nightly dump with the roles,
+manifest and stable secret bundle, then requires a client-side encrypted
+off-VM Restic snapshot in participant mode. The approved destination is bound
+to the repository-file SHA-256, while a provider/account-side enforced
+no-billable-overage control is required because a client-side size estimate cannot enforce
+a billing boundary. The restore drill found that
+`pg_dump` omits roles, so a naive restore silently loses the analytics boundary
+while every row arrives intact.
 
 **NFR-18 is only partly met.** A nightly logical dump is not point-in-time
 recovery: up to twenty-four hours of responses would be lost. If the ethics

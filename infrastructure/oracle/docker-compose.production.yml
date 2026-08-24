@@ -6,6 +6,18 @@ x-logging: &logging
     max-size: "10m"
     max-file: "5"
 
+x-api-build: &api-build
+  context: ../..
+  dockerfile: infrastructure/compose/Dockerfile.node
+  args:
+    APP: api
+
+x-worker-build: &worker-build
+  context: ../..
+  dockerfile: infrastructure/compose/Dockerfile.node
+  args:
+    APP: worker
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -31,14 +43,12 @@ services:
       timeout: 5s
       retries: 12
       start_period: 20s
-    networks: [backend]
+    networks: [data]
 
   migrate:
-    build:
-      context: ../..
-      dockerfile: infrastructure/compose/Dockerfile.node
-      args:
-        APP: api
+    image: lpr-oracle-api:latest
+    build: *api-build
+    mem_limit: 640m
     restart: "no"
     logging: *logging
     depends_on:
@@ -48,14 +58,11 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-lpr}
     command: ["node", "node_modules/@lpr/db/dist/migrate.js"]
-    networks: [backend]
+    networks: [data]
 
   api:
-    build:
-      context: ../..
-      dockerfile: infrastructure/compose/Dockerfile.node
-      args:
-        APP: api
+    image: lpr-oracle-api:latest
+    build: *api-build
     mem_limit: 640m
     restart: unless-stopped
     logging: *logging
@@ -98,10 +105,13 @@ services:
       timeout: 5s
       retries: 3
       start_period: 30s
-    networks: [backend]
+    # Dual attachment preserves internet egress while data stays internal-only.
+    networks: [web, data]
 
   queue-migrate:
     image: lpr-oracle-worker:latest
+    build: *worker-build
+    mem_limit: 384m
     restart: "no"
     logging: *logging
     depends_on:
@@ -116,15 +126,11 @@ services:
     command: ["node", "/app/queue-bootstrap.cjs"]
     volumes:
       - ./queue-bootstrap.cjs:/app/queue-bootstrap.cjs:ro
-    networks: [backend]
+    networks: [data]
 
   worker:
     image: lpr-oracle-worker:latest
-    build:
-      context: ../..
-      dockerfile: infrastructure/compose/Dockerfile.node
-      args:
-        APP: worker
+    build: *worker-build
     mem_limit: 384m
     restart: unless-stopped
     logging: *logging
@@ -157,7 +163,7 @@ services:
       timeout: 8s
       retries: 3
       start_period: 120s
-    networks: [backend]
+    networks: [web, data]
 
   participant:
     build:
@@ -187,7 +193,7 @@ services:
       timeout: 5s
       retries: 3
       start_period: 30s
-    networks: [backend]
+    networks: [web]
 
   researcher:
     build:
@@ -217,7 +223,7 @@ services:
       timeout: 5s
       retries: 3
       start_period: 30s
-    networks: [backend]
+    networks: [web]
 
   proxy:
     image: caddy:2-alpine
@@ -238,14 +244,24 @@ services:
       API_HOST: ${API_HOST:?set API_HOST}
       PARTICIPANT_HOST: ${PARTICIPANT_HOST:?set PARTICIPANT_HOST}
       RESEARCHER_HOST: ${RESEARCHER_HOST:?set RESEARCHER_HOST}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:2019/config/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
       - caddy-config:/config
-    networks: [backend]
+    networks: [web]
 
 networks:
-  backend:
+  data:
+    driver: bridge
+    internal: true
+  web:
     driver: bridge
 
 volumes:

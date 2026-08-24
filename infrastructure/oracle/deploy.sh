@@ -4,6 +4,7 @@ set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 ENV_FILE=${ENV_FILE:-$ROOT/.env.production}
 COMPOSE="$ROOT/infrastructure/oracle/compose.sh"
+STATE_DIR=${LPR_OPERATION_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/lpr-oracle}
 
 if [ ! -f "$ENV_FILE" ]; then
   echo "missing $ENV_FILE; copy infrastructure/oracle/.env.production.example first" >&2
@@ -11,6 +12,15 @@ if [ ! -f "$ENV_FILE" ]; then
 fi
 
 chmod 600 "$ENV_FILE"
+if ! command -v flock >/dev/null 2>&1; then
+  echo "deployment requires flock (provided by util-linux)" >&2
+  exit 1
+fi
+mkdir -p "$STATE_DIR"
+chmod 700 "$STATE_DIR"
+exec 9>"$STATE_DIR/operation.lock"
+flock 9
+
 "$COMPOSE" config --quiet
 "$COMPOSE" build
 "$COMPOSE" up -d postgres
@@ -81,6 +91,7 @@ for service in api worker participant researcher; do
   wait_for_health "$service" 60
 done
 "$COMPOSE" up -d --no-deps proxy
+wait_for_health proxy 24
 
 "$COMPOSE" ps --all
 echo "deployment started; run infrastructure/oracle/verify.sh after TLS is issued"

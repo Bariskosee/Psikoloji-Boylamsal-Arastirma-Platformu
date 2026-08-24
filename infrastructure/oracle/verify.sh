@@ -13,6 +13,28 @@ fi
 API_HOST=$(sed -n 's/^API_HOST=//p' "$ENV_FILE" | tail -n 1)
 PARTICIPANT_HOST=$(sed -n 's/^PARTICIPANT_HOST=//p' "$ENV_FILE" | tail -n 1)
 RESEARCHER_HOST=$(sed -n 's/^RESEARCHER_HOST=//p' "$ENV_FILE" | tail -n 1)
+WORKER_ID=$(sed -n 's/^WORKER_ID=//p' "$ENV_FILE" | tail -n 1)
+WORKER_ID=${WORKER_ID:-lpr-worker-1}
+
+MIGRATION_JOURNAL="$ROOT/packages/db/migrations/meta/_journal.json"
+EXPECTED_MIGRATIONS=$(python3 - "$MIGRATION_JOURNAL" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+journal_path = Path(sys.argv[1])
+try:
+    journal = json.loads(journal_path.read_text())
+except (OSError, json.JSONDecodeError) as error:
+    raise SystemExit(f"cannot read migration journal {journal_path}: {error}") from error
+
+entries = journal.get("entries")
+if not isinstance(entries, list):
+    raise SystemExit(f"migration journal {journal_path} has no entries list")
+
+print(len(entries))
+PY
+)
 
 "$COMPOSE" ps --all
 
@@ -55,7 +77,7 @@ assert_completed() {
 for service in postgres api worker participant researcher; do
   assert_running "$service" yes
 done
-assert_running proxy no
+assert_running proxy yes
 assert_completed migrate
 assert_completed queue-migrate
 echo "container lifecycle and health checks ok"
@@ -83,22 +105,28 @@ curl --fail --silent --show-error --output /dev/null "https://$PARTICIPANT_HOST/
 curl --fail --silent --show-error --output /dev/null "https://$RESEARCHER_HOST/en/login"
 echo "participant and researcher HTTPS ok"
 
-"$COMPOSE" exec -T postgres sh -c '
-  psql -v ON_ERROR_STOP=1 -v app_user="$APP_DATABASE_USER" \
-    -U "$POSTGRES_USER" -d "$POSTGRES_DB" <<"SQL"
-SELECT count(*) = 10 AS migrations_ok
+"$COMPOSE" exec -T \
+  -e VERIFY_EXPECTED_MIGRATIONS="$EXPECTED_MIGRATIONS" \
+  -e VERIFY_WORKER_ID="$WORKER_ID" \
+  postgres sh -c '
+  exec psql -v ON_ERROR_STOP=1 -v app_user="$APP_DATABASE_USER" \
+    -v expected_migrations="$VERIFY_EXPECTED_MIGRATIONS" \
+    -v worker_id="$VERIFY_WORKER_ID" \
+    -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+  ' <<'SQL'
+SELECT count(*) = (:expected_migrations)::integer AS migrations_ok
   FROM drizzle.__drizzle_migrations
 \gset
 \if :migrations_ok
 \else
-  \echo 'expected all 10 application migrations'
+  \echo 'migration ledger does not match repository journal; expected' :expected_migrations 'entries'
   \quit 1
 \endif
 
 SELECT COALESCE((
   SELECT NOT rolsuper AND NOT rolcreaterole AND NOT rolcreatedb AND NOT rolreplication
     FROM pg_roles
-   WHERE rolname = :'"'"'app_user'"'"'
+   WHERE rolname = :'app_user'
 ), false) AS runtime_role_ok
 \gset
 \if :runtime_role_ok
@@ -107,9 +135,9 @@ SELECT COALESCE((
   \quit 1
 \endif
 
-SELECT pg_has_role(:'"'"'app_user'"'"', '"'"'app_readwrite'"'"', '"'"'MEMBER'"'"')
-   AND pg_has_role(:'"'"'app_user'"'"', '"'"'app_analytics'"'"', '"'"'MEMBER'"'"')
-   AND NOT has_database_privilege(:'"'"'app_user'"'"', current_database(), '"'"'CREATE'"'"')
+SELECT pg_has_role(:'app_user', 'app_readwrite', 'MEMBER')
+   AND pg_has_role(:'app_user', 'app_analytics', 'MEMBER')
+   AND NOT has_database_privilege(:'app_user', current_database(), 'CREATE')
   AS role_boundary_ok
 \gset
 \if :role_boundary_ok
@@ -119,9 +147,9 @@ SELECT pg_has_role(:'"'"'app_user'"'"', '"'"'app_readwrite'"'"', '"'"'MEMBER'"'"
 \endif
 
 SELECT COALESCE((
-  SELECT pg_get_userbyid(nspowner) = :'"'"'app_user'"'"'
+  SELECT pg_get_userbyid(nspowner) = :'app_user'
     FROM pg_namespace
-   WHERE nspname = '"'"'pgboss'"'"'
+   WHERE nspname = 'pgboss'
 ), false) AS queue_owner_ok
 \gset
 \if :queue_owner_ok
@@ -130,45 +158,40 @@ SELECT COALESCE((
   \quit 1
 \endif
 
-SELECT to_regclass('"'"'pgboss.version'"'"') IS NOT NULL
+SELECT to_regclass('pgboss.version') IS NOT NULL
    AND (SELECT count(*) FROM pgboss.queue
-         WHERE name IN ('"'"'notification.send'"'"', '"'"'notification.send.dlq'"'"')) = 2
+         WHERE name IN ('notification.send', 'notification.send.dlq')) = 2
+   -- The active pg-boss owner persists this every two minutes. It remains a
+   -- current readiness signal long after the one-time worker startup log ages out.
+   AND COALESCE((
+     SELECT maintained_on > now() - interval '5 minutes'
+       FROM pgboss.version
+   ), false)
   AS queue_ok
 \gset
 \if :queue_ok
 \else
-  \echo 'pg-boss schema or required queues are missing'
+  \echo 'pg-boss schema, required queues, or maintenance heartbeat is missing or stale'
   \quit 1
 \endif
 
 SELECT EXISTS (
   SELECT 1
     FROM research.system_heartbeats
-   WHERE swept_at > now() - make_interval(secs => sweep_interval_seconds * 3 + 30)
+   WHERE worker_id = :'worker_id'
+     AND swept_at > now() - make_interval(secs => sweep_interval_seconds * 3 + 30)
      AND consecutive_failures = 0
      AND last_error IS NULL
 ) AS heartbeat_ok
 \gset
 \if :heartbeat_ok
 \else
-  \echo 'worker heartbeat is stale or reports failures'
+  \echo 'configured worker heartbeat is missing, stale, or reports failures:' :worker_id
   \quit 1
 \endif
 SQL
-'
 
-echo "migration ledger, restricted roles, pg-boss queues and heartbeat ok"
-
-worker_logs=$("$COMPOSE" logs --no-color --since 15m worker)
-if printf '%s\n' "$worker_logs" | grep -q 'pg-boss UNAVAILABLE'; then
-  echo "worker queue is unavailable" >&2
-  exit 1
-fi
-if ! printf '%s\n' "$worker_logs" | grep -q 'pg-boss connected as queue owner'; then
-  echo "worker has not confirmed a pg-boss connection in the last 15 minutes" >&2
-  exit 1
-fi
-echo "worker pg-boss connection ok"
+echo "migration ledger ($EXPECTED_MIGRATIONS from journal), restricted roles, current pg-boss maintenance and worker heartbeat ok"
 
 echo "participant: https://$PARTICIPANT_HOST"
 echo "researcher:  https://$RESEARCHER_HOST"

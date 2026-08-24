@@ -3,8 +3,16 @@
 # never appears in argv, the environment, shell history, or process listings.
 set -eu
 
-if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
-  echo "usage: $0 <email> [display-name]" >&2
+if [ "$#" -ne 2 ]; then
+  echo "usage: $0 <email> <display-name>" >&2
+  exit 2
+fi
+if [ -z "$1" ]; then
+  echo "email cannot be empty" >&2
+  exit 2
+fi
+if [ -z "$2" ]; then
+  echo "display-name cannot be empty" >&2
   exit 2
 fi
 if [ ! -t 0 ] || [ ! -t 1 ]; then
@@ -13,7 +21,7 @@ if [ ! -t 0 ] || [ ! -t 1 ]; then
 fi
 
 EMAIL=$1
-DISPLAY_NAME=${2:-Baris Kose}
+DISPLAY_NAME=$2
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 COMPOSE="$ROOT/infrastructure/oracle/compose.sh"
 

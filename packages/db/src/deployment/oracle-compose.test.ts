@@ -7,6 +7,9 @@ const ROOT = resolve(__dirname, "..", "..", "..", "..");
 
 interface Service {
   build?: { context?: string };
+  image?: string;
+  mem_limit?: string;
+  networks?: string[];
   restart?: string;
   ports?: string[];
   volumes?: string[];
@@ -27,6 +30,12 @@ const queueBootstrap = readFileSync(
   "utf8",
 );
 const composeScript = readFileSync(resolve(ROOT, "infrastructure", "oracle", "compose.sh"), "utf8");
+const verifyScript = readFileSync(resolve(ROOT, "infrastructure", "oracle", "verify.sh"), "utf8");
+const caddyfile = readFileSync(resolve(ROOT, "infrastructure", "oracle", "Caddyfile"), "utf8");
+const environmentTemplate = readFileSync(
+  resolve(ROOT, "infrastructure", "oracle", ".env.production.example"),
+  "utf8",
+);
 const dockerIgnore = readFileSync(resolve(ROOT, ".dockerignore"), "utf8");
 
 describe("the Oracle single-VM deployment", () => {
@@ -55,7 +64,7 @@ describe("the Oracle single-VM deployment", () => {
 
   it("resolves build and bind paths from the Compose file directory", () => {
     expect(composeScript).not.toContain("--project-directory");
-    for (const name of ["migrate", "api", "worker", "participant", "researcher"]) {
+    for (const name of ["migrate", "api", "queue-migrate", "worker", "participant", "researcher"]) {
       expect(compose.services[name]?.build?.context).toBe("../..");
     }
     expect(compose.services.postgres?.volumes).toContain("./initdb:/docker-entrypoint-initdb.d:ro");
@@ -95,11 +104,52 @@ describe("the Oracle single-VM deployment", () => {
     expect(probe).not.toContain("require('pg')");
   });
 
+  it("verifies current worker and pg-boss state without relying on startup logs", () => {
+    expect(verifyScript).toContain("worker_id = :'worker_id'");
+    expect(verifyScript).toContain("maintained_on > now() - interval '5 minutes'");
+    expect(verifyScript).not.toContain("logs --no-color --since");
+    expect(verifyScript).not.toContain("pg-boss connected as queue owner");
+  });
+
+  it("derives the expected migration count from the repository journal", () => {
+    expect(verifyScript).toContain("packages/db/migrations/meta/_journal.json");
+    expect(verifyScript).toContain('entries = journal.get("entries")');
+    expect(verifyScript).toContain("print(len(entries))");
+    expect(verifyScript).toContain("(:expected_migrations)::integer");
+    expect(verifyScript).not.toMatch(/count\(\*\)\s*=\s*\d+/);
+  });
+
   it("keeps every long-running service alive across a reboot", () => {
     for (const name of ["postgres", "api", "worker", "participant", "researcher", "proxy"]) {
       expect(compose.services[name]?.restart).toBe("unless-stopped");
     }
     expect(compose.services.migrate?.restart).toBe("no");
     expect(compose.services["queue-migrate"]?.restart).toBe("no");
+  });
+
+  it("keeps frontends off the PostgreSQL data network and makes one-shots self-contained", () => {
+    expect(compose.services.postgres?.networks).toEqual(["data"]);
+    expect(compose.services.participant?.networks).toEqual(["web"]);
+    expect(compose.services.researcher?.networks).toEqual(["web"]);
+    expect(compose.services.proxy?.networks).toEqual(["web"]);
+    expect(compose.services.api?.networks).toEqual(["web", "data"]);
+    expect(compose.services.worker?.networks).toEqual(["web", "data"]);
+    expect(compose.services.migrate?.image).toBe("lpr-oracle-api:latest");
+    expect(compose.services.migrate?.mem_limit).toBe("640m");
+    expect(compose.services["queue-migrate"]?.image).toBe("lpr-oracle-worker:latest");
+    expect(compose.services["queue-migrate"]?.build?.context).toBe("../..");
+    expect(compose.services["queue-migrate"]?.mem_limit).toBe("384m");
+  });
+
+  it("gives Caddy a local liveness probe for bounded host recovery", () => {
+    expect(compose.services.proxy?.healthcheck?.test?.join(" ")).toContain(
+      "http://127.0.0.1:2019/config/",
+    );
+  });
+
+  it("configures an explicit ACME contact email", () => {
+    expect(caddyfile).toMatch(/\{\s+email \{\$ACME_EMAIL\}\s+\}/);
+    expect(compose.services.proxy?.environment?.ACME_EMAIL).toBe("${ACME_EMAIL:?set ACME_EMAIL}");
+    expect(environmentTemplate).toContain("ACME_EMAIL=");
   });
 });

@@ -1,0 +1,12 @@
+[Unit]
+Description=LPR Restic repository structural check
+
+[Service]
+Type=oneshot
+WorkingDirectory=@ROOT@
+ExecStart=@ROOT@/infrastructure/oracle/check-offsite-backup.sh
+TimeoutStartSec=4h
+Nice=15
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true

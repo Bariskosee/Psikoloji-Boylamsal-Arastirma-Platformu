@@ -1,0 +1,11 @@
+[Unit]
+Description=LPR Docker health recovery
+
+[Service]
+Type=oneshot
+WorkingDirectory=@ROOT@
+ExecStart=@ROOT@/infrastructure/oracle/recover-unhealthy.sh
+TimeoutStartSec=6min
+Nice=10
+NoNewPrivileges=true
+PrivateTmp=true

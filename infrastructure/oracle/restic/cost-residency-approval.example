@@ -1,0 +1,14 @@
+# A human must verify these facts in the selected provider's live account.
+# Change each no to yes only after checking the named live destination.
+OFF_VM=no
+ZERO_RECURRING_COST_CONFIRMED=no
+# This must mean a provider/account-side control rejects billable overage;
+# a budget alert or this repository's local preflight threshold is not enough.
+NO_BILLABLE_OVERAGE_ENFORCED=no
+DATA_RESIDENCY_APPROVED=no
+STABLE_ORIGIN_CONFIRMED=no
+DESTINATION=replace_with_provider_bucket_and_region
+REPOSITORY_SHA256=replace_with_sha256_of_the_exact_repository_file
+# Conservative client-side preflight threshold, not a provider billing cap.
+MAX_REPOSITORY_BYTES=replace_with_preflight_threshold_below_the_free_quota
+APPROVED_AT=YYYY-MM-DD

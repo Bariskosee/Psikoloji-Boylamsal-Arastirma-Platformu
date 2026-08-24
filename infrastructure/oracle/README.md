@@ -52,7 +52,7 @@ sudo apt update
 sudo DEBIAN_FRONTEND=noninteractive apt upgrade -y
 sudo DEBIAN_FRONTEND=noninteractive apt install -y \
   docker.io docker-compose-v2 git curl ca-certificates python3 \
-  iptables-persistent postgresql-client
+  iptables-persistent postgresql-client restic util-linux
 sudo systemctl enable --now docker
 sudo usermod -aG docker "$USER"
 ```
@@ -70,18 +70,38 @@ git clone https://github.com/Bariskosee/Psikoloji-Boylamsal-Arastirma-Platformu.
 cd /opt/psikoloji-platform
 ```
 
-For an initial no-cost hostname, `bootstrap-env.sh` derives three distinct
-`sslip.io` names from the public IPv4 and generates the database, session and
-VAPID secrets without printing them:
+Choose the origin mode before generating secrets. An ephemeral-IP `sslip.io`
+origin is explicitly smoke-only:
 
 ```bash
-infrastructure/oracle/bootstrap-env.sh <PUBLIC_IPV4>
+infrastructure/oracle/bootstrap-env.sh \
+  --smoke-test-ip <EPHEMERAL_PUBLIC_IPV4> --acme-email <OPERATIONS_EMAIL>
 infrastructure/oracle/deploy.sh
 ```
 
-Do not rerun `bootstrap-env.sh`: it refuses to overwrite `.env.production` so
-redeploys cannot rotate VAPID. Copy `.env.production` to a second encrypted,
-access-controlled location before enrolling real participants.
+Never enroll real participants in that mode. An IP change changes the origin,
+invalidating continuity cookies and every push subscription. Participant mode
+requires one of these stable choices:
+
+```bash
+# Stable registered names; DNS may later point at a different VM/IP.
+infrastructure/oracle/bootstrap-env.sh \
+  --domain study.example.org --acme-email <OPERATIONS_EMAIL>
+
+# Or three existing stable names.
+infrastructure/oracle/bootstrap-env.sh \
+  --hostnames api.example.org join.example.org dashboard.example.org \
+  --acme-email <OPERATIONS_EMAIL>
+
+# Or only after the operator has verified the OCI address is reserved.
+infrastructure/oracle/bootstrap-env.sh \
+  --reserved-ip <RESERVED_PUBLIC_IPV4> --acme-email <OPERATIONS_EMAIL>
+```
+
+The script records `DEPLOYMENT_MODE` and `ORIGIN_MODE`, validates the names and
+ACME contact, and refuses to overwrite `.env.production`; redeploys therefore
+cannot silently rotate VAPID. It cannot verify an OCI reservation or a DNS
+registration. Those remain explicit human launch attestations.
 
 ## What starts, and in what order
 
@@ -97,6 +117,35 @@ certificates automatically.
 
 `migrate` and `queue-migrate` are one-shot. PostgreSQL, API, worker, both Next.js
 apps and Caddy all use `restart: unless-stopped`, and Docker is enabled at boot.
+The frontends and Caddy use only the `web` network; only API/worker and the
+one-shots can join PostgreSQL's internal `data` network.
+
+Docker does not restart a container merely because its health becomes
+`unhealthy`. Enable user lingering and install the operations timers after
+reconnecting:
+
+```bash
+sudo loginctl enable-linger "$USER"
+infrastructure/oracle/install-systemd.sh
+```
+
+The installer fails unless `loginctl` confirms lingering, because an active
+user timer without lingering disappears after the SSH user logs out or the VM
+reboots.
+
+The health timer requires two consecutive unhealthy observations before it
+acts, restarts only an allowlisted Compose service, waits for recovery, and
+enforces per-service/global cooldown limits. PostgreSQL is monitor-only so a
+disk, OOM or recovery incident cannot become an automatic database restart
+loop. Deploy and backup operations share a lock with the watchdog. Only a full,
+successful scan atomically refreshes its success marker; participant readiness
+requires that evidence to be no more than five minutes old. Inspect it with:
+
+```bash
+systemctl --user list-timers 'lpr-*'
+journalctl --user -u lpr-health-recovery.service --since today
+cat "${XDG_STATE_HOME:-$HOME/.local/state}/lpr-oracle-recovery/health-recovery-success"
+```
 
 ## Verify the first deployment
 
@@ -107,8 +156,8 @@ infrastructure/oracle/compose.sh logs --tail=200 worker
 
 Required evidence:
 
-- `migrate` and `queue-migrate` are `Exited (0)` and all 10 application
-  migrations are recorded;
+- `migrate` and `queue-migrate` are `Exited (0)` and the database migration
+  ledger count matches the repository journal;
 - `/health` is 200;
 - `/ready` is 200, `ready=true`, and every returned check has `ok=true`;
 - worker is healthy, the sweeper list is nonempty and fresh,
@@ -126,24 +175,113 @@ so the password never appears in a shell argument, environment variable,
 history, or process list:
 
 ```bash
-infrastructure/oracle/create-admin.sh <EMAIL> "Baris Kose"
+infrastructure/oracle/create-admin.sh <EMAIL> "Research Administrator"
 ```
 
 ## Backups and restore drill
 
-Install the user-owned nightly job:
+`install-systemd.sh` installs a persistent nightly backup timer and a weekly
+Restic structural-check timer. Every local transaction contains a matched role
+dump, database dump, recovery secret-bundle copy and SHA-256 manifest;
+the `latest` marker is moved only after the local artifacts validate.
 
-```cron
-17 3 * * * cd /opt/psikoloji-platform && infrastructure/oracle/backup.sh >> /var/log/lpr/backup.log 2>&1
+Smoke mode may retain only the local copy. Participant mode fails its nightly
+job and readiness gate unless a remote Restic repository is configured. The
+repository is client-side encrypted. No provider account, bucket, repository,
+paid feature or OCI resource is created by these scripts.
+
+First choose an off-VM destination and verify its current price/quota and data
+residency in the live account. Then create user-owned private configuration:
+
+```bash
+sudo install -d -m 700 -o "$USER" -g "$USER" /etc/lpr/restic
+install -m 600 /secure/input/restic-repository /etc/lpr/restic/repository
+install -m 600 /secure/input/restic-password /etc/lpr/restic/password
+
+# Only when the backend needs credential environment variables:
+cp infrastructure/oracle/restic/backend.env.example /etc/lpr/restic/backend.env
+chmod 600 /etc/lpr/restic/backend.env
+
+cp infrastructure/oracle/restic/cost-residency-approval.example \
+  /etc/lpr/restic/cost-residency-approval
+chmod 600 /etc/lpr/restic/cost-residency-approval
+
+# Copy this exact lowercase digest into REPOSITORY_SHA256 in the approval file.
+sha256sum /etc/lpr/restic/repository
 ```
 
-Run it once immediately, verify both `roles-*.sql` and `lpr-*.dump` are
-nonempty, then perform `docs/runbooks/restore-drill.md`. The roles dump must be
-restored before the custom-format database dump; normal `pg_dump` does not
-contain roles. On-VM backups do not survive a lost instance. Off-site storage
-is deliberately not provisioned automatically because its $0 eligibility must
-be checked against live account usage first. Do not enroll real participants
-until an encrypted off-VM copy has been configured and restore-tested.
+`repository` and `password` each contain exactly one line. Store the encryption
+password in a second secure off-VM location separate from the Restic data. Give
+backend credentials access only to the selected bucket/path. Complete the
+approval record with the checked destination, region, exact repository-file
+SHA-256, current `$0` conclusion and stable-origin confirmation. Real participant
+mode additionally requires a provider/account-side control that rejects billable
+overage; a budget alert is not enforcement. Set
+`NO_BILLABLE_OVERAGE_ENFORCED=yes` only after verifying that control in the live
+account. If the selected provider cannot enforce it, this zero-cost deployment
+must not enroll participants.
+
+`MAX_REPOSITORY_BYTES` is a conservative client-side preflight threshold. Set it
+at least 64 MiB below the provider's enforced free-storage ceiling, but do not
+treat it as a billing cap: Restic raw-data statistics do not include every
+provider-billed object and another writer can race a local check. The approval
+date must be within the last 30 days. It is intentionally human evidence: code
+cannot prove future billing or that a public IP is reserved.
+
+Initialize the already-approved empty repository manually—nightly jobs never
+run `init`—then produce and test the first encrypted snapshot:
+
+```bash
+infrastructure/oracle/restic-command.py init
+infrastructure/oracle/backup.sh
+infrastructure/oracle/check-offsite-backup.sh
+infrastructure/oracle/restore-offsite-drill.sh
+```
+
+The drill downloads the encrypted snapshot into a mode-700 temporary directory,
+restores it into an isolated PostgreSQL container with no host port, and checks
+the migration ledger, triggers/constraints, pg-boss queues, research access and
+identity denial. Its evidence expires after 90 days. The weekly `restic check`
+is structural; a full pack-read schedule needs separate quota approval. Uploads
+measure `restic stats --mode raw-data` before and after writing and refuse to
+start above the conservative `MAX_REPOSITORY_BYTES` projection. The enforced
+provider/account no-overage control—not this preflight—is the cost boundary.
+Snapshots are not pruned automatically because provider request costs and
+retention/immutability rules differ. Approve a provider-specific retention
+action before the threshold is approached; after changing the threshold, rerun
+the structural check and create a new backup so evidence agrees.
+
+After total VM/state loss, recreate the private Restic repository, password,
+required backend credential and current cost/residency approval files from their
+separately stored recovery copies. Recompute `REPOSITORY_SHA256` and reverify the
+provider/account no-overage control before downloading data. The normal drill
+deliberately requires the local success marker; the explicit recovery mode
+instead selects the newest authenticated
+`lpr-oracle-prod`/`lpr-nightly` snapshot, verifies its exact transaction manifest,
+performs the full isolated PostgreSQL drill, and leaves a private recovery bundle:
+
+```bash
+install -d -m 700 "$HOME/lpr-recovery"
+infrastructure/oracle/restore-offsite-drill.sh \
+  --fresh-vm-recovery "$HOME/lpr-recovery/latest"
+```
+
+The target must not already exist. Its mode is `0700`; its dumps, production
+secret bundle, manifest and `recovery-evidence` are `0600`. Treat the directory
+as production psychological-study data and remove it securely after recovery.
+
+Finally run the fail-closed enrollment gate:
+
+```bash
+infrastructure/oracle/participant-readiness.sh
+```
+
+It also runs normal deployment verification and requires verified systemd user
+lingering, enabled timers, a fresh (<5m) successful watchdog scan, a fresh
+(<26h) local/remote matched transaction, successful remote restore and hash
+comparison, a <7-day Restic check, and a <90-day PostgreSQL restore drill.
+This operational gate does not replace consent approval, protocol review or the
+real-device dry run in `docs/runbooks/study-launch-checklist.md`.
 
 ## Updating and reboot verification
 
