@@ -1,6 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, desc, eq } from "drizzle-orm";
-import { consentVersionTranslations, consentVersions, type Database } from "@lpr/db";
+import { and, desc, eq, sql } from "drizzle-orm";
+import { consentVersionTranslations, consentVersions, studies, type Database } from "@lpr/db";
 import type {
   ConsentVersionListResponse,
   ConsentVersionResponse,
@@ -15,6 +15,7 @@ import { AuditService } from "../audit/audit.service.js";
 import type { RequestContext } from "../auth/session.service.js";
 
 type ConsentVersionRow = typeof consentVersions.$inferSelect;
+type ConsentTranslationRow = typeof consentVersionTranslations.$inferSelect;
 
 /**
  * Consent documents (FR-05, PLAN.md Phase 5).
@@ -46,24 +47,47 @@ export class ConsentService {
 
   /** The draft, created on demand so a study need not pre-declare one. */
   async draft(studyId: string, now: Date): Promise<ConsentVersionResponse> {
-    const existing = (
-      await this.db
+    const result = await this.db.transaction(async (tx) => {
+      // First-open requests from two dashboard tabs must not both observe an
+      // empty draft and race into the one-draft partial unique index. Publish
+      // already locks this same study row first, so this also preserves one
+      // consistent lock order across draft creation and publication.
+      const study = (
+        await tx
+          .select({ id: studies.id })
+          .from(studies)
+          .where(eq(studies.id, studyId))
+          .limit(1)
+          .for("update")
+      )[0];
+      if (!study) throw ApiErrors.studyNotFound();
+
+      let version = (
+        await tx
+          .select()
+          .from(consentVersions)
+          .where(and(eq(consentVersions.studyId, studyId), eq(consentVersions.status, "DRAFT")))
+          .limit(1)
+      )[0];
+
+      if (!version) {
+        version = (
+          await tx
+            .insert(consentVersions)
+            .values({ studyId, status: "DRAFT", createdAt: now, updatedAt: now })
+            .returning()
+        )[0];
+      }
+      if (!version) throw new Error("consent version insert returned no row");
+
+      const translations = await tx
         .select()
-        .from(consentVersions)
-        .where(and(eq(consentVersions.studyId, studyId), eq(consentVersions.status, "DRAFT")))
-        .limit(1)
-    )[0];
-    if (existing) return this.present(existing);
+        .from(consentVersionTranslations)
+        .where(eq(consentVersionTranslations.consentVersionId, version.id));
+      return { version, translations };
+    });
 
-    const created = (
-      await this.db
-        .insert(consentVersions)
-        .values({ studyId, status: "DRAFT", createdAt: now, updatedAt: now })
-        .returning()
-    )[0];
-    if (!created) throw new Error("consent version insert returned no row");
-
-    return this.present(created);
+    return this.toResponse(result.version, result.translations);
   }
 
   async upsertTranslation(
@@ -71,38 +95,56 @@ export class ConsentService {
     input: UpsertConsentTranslationRequest,
     now: Date,
   ): Promise<ConsentVersionResponse> {
-    const draft = await this.requireDraft(studyId);
+    return this.db.transaction(async (tx) => {
+      // Publishing takes this same lock. A save that starts before publish is
+      // therefore included in the version; a save that starts after it is
+      // rejected because there is no longer a draft. Consent wording can never
+      // change between publish validation and the immutable transition.
+      const draft = (
+        await tx
+          .select()
+          .from(consentVersions)
+          .where(and(eq(consentVersions.studyId, studyId), eq(consentVersions.status, "DRAFT")))
+          .limit(1)
+          .for("update")
+      )[0];
+      if (!draft) throw ApiErrors.consentVersionNotFound();
 
-    const existing = (
-      await this.db
+      const existing = (
+        await tx
+          .select()
+          .from(consentVersionTranslations)
+          .where(
+            and(
+              eq(consentVersionTranslations.consentVersionId, draft.id),
+              eq(consentVersionTranslations.locale, input.locale),
+            ),
+          )
+          .limit(1)
+      )[0];
+
+      if (existing) {
+        await tx
+          .update(consentVersionTranslations)
+          .set({ title: input.title, body: input.body, updatedAt: now })
+          .where(eq(consentVersionTranslations.id, existing.id));
+      } else {
+        await tx.insert(consentVersionTranslations).values({
+          consentVersionId: draft.id,
+          locale: input.locale,
+          title: input.title,
+          body: input.body,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+
+      const translations = await tx
         .select()
         .from(consentVersionTranslations)
-        .where(
-          and(
-            eq(consentVersionTranslations.consentVersionId, draft.id),
-            eq(consentVersionTranslations.locale, input.locale),
-          ),
-        )
-        .limit(1)
-    )[0];
-
-    if (existing) {
-      await this.db
-        .update(consentVersionTranslations)
-        .set({ title: input.title, body: input.body, updatedAt: now })
-        .where(eq(consentVersionTranslations.id, existing.id));
-    } else {
-      await this.db.insert(consentVersionTranslations).values({
-        consentVersionId: draft.id,
-        locale: input.locale,
-        title: input.title,
-        body: input.body,
-        createdAt: now,
-        updatedAt: now,
-      });
-    }
-
-    return this.present(draft);
+        .where(eq(consentVersionTranslations.consentVersionId, draft.id));
+      return this.toResponse(draft, translations);
+    });
   }
 
   /**
@@ -119,22 +161,48 @@ export class ConsentService {
     now: Date,
     context: RequestContext,
   ): Promise<ConsentVersionResponse> {
-    const draft = await this.requireDraft(studyId);
+    const result = await this.db.transaction(async (tx) => {
+      // Lock the study first so the required locale set cannot change between
+      // validation and publication. Study updates take the same PostgreSQL row
+      // lock implicitly, giving this operation one atomic point in time.
+      const study = (
+        await tx
+          .select({ supportedLocales: studies.supportedLocales })
+          .from(studies)
+          .where(eq(studies.id, studyId))
+          .limit(1)
+          .for("update")
+      )[0];
+      if (!study) throw ApiErrors.studyNotFound();
 
-    const translations = await this.db
-      .select()
-      .from(consentVersionTranslations)
-      .where(eq(consentVersionTranslations.consentVersionId, draft.id));
-    if (translations.length === 0) throw ApiErrors.consentVersionEmpty();
+      // Shared with upsertTranslation: the wording cannot move underneath the
+      // completeness check (no validation/read/update TOCTOU window).
+      const draft = (
+        await tx
+          .select()
+          .from(consentVersions)
+          .where(and(eq(consentVersions.studyId, studyId), eq(consentVersions.status, "DRAFT")))
+          .limit(1)
+          .for("update")
+      )[0];
+      if (!draft) throw ApiErrors.consentVersionNotFound();
 
-    const published = await this.db.transaction(async (tx) => {
+      const translations = await tx
+        .select()
+        .from(consentVersionTranslations)
+        .where(eq(consentVersionTranslations.consentVersionId, draft.id));
+      const translationsByLocale = new Map(translations.map((row) => [row.locale, row]));
+      const missingLocales = study.supportedLocales.filter((locale) => {
+        const translation = translationsByLocale.get(locale);
+        return !translation?.title.trim() || !translation.body.trim();
+      });
+      if (missingLocales.length > 0) throw ApiErrors.consentVersionIncomplete(missingLocales);
+
       const highest = (
         await tx
-          .select({ versionNumber: consentVersions.versionNumber })
+          .select({ versionNumber: sql<number | null>`max(${consentVersions.versionNumber})` })
           .from(consentVersions)
           .where(eq(consentVersions.studyId, studyId))
-          .orderBy(desc(consentVersions.versionNumber))
-          .limit(1)
       )[0];
 
       // `max()` semantics via a filtered read would be equivalent; what matters
@@ -156,8 +224,10 @@ export class ConsentService {
           .returning()
       )[0];
       if (!row) throw ApiErrors.consentVersionNotFound();
-      return row;
+      return { row, translations };
     });
+
+    const published = result.row;
 
     await this.audit.record({
       actorType: "RESEARCHER",
@@ -169,7 +239,7 @@ export class ConsentService {
       entityId: published.id,
       metadata: {
         versionNumber: published.versionNumber,
-        locales: translations.map((t) => t.locale),
+        locales: result.translations.map((translation) => translation.locale),
       },
       context,
       occurredAt: now,
@@ -178,24 +248,19 @@ export class ConsentService {
     return this.present(published);
   }
 
-  private async requireDraft(studyId: string): Promise<ConsentVersionRow> {
-    const draft = (
-      await this.db
-        .select()
-        .from(consentVersions)
-        .where(and(eq(consentVersions.studyId, studyId), eq(consentVersions.status, "DRAFT")))
-        .limit(1)
-    )[0];
-    if (!draft) throw ApiErrors.consentVersionNotFound();
-    return draft;
-  }
-
   private async present(version: ConsentVersionRow): Promise<ConsentVersionResponse> {
     const translations = await this.db
       .select()
       .from(consentVersionTranslations)
       .where(eq(consentVersionTranslations.consentVersionId, version.id));
 
+    return this.toResponse(version, translations);
+  }
+
+  private toResponse(
+    version: ConsentVersionRow,
+    translations: readonly ConsentTranslationRow[],
+  ): ConsentVersionResponse {
     return {
       id: version.id,
       studyId: version.studyId,

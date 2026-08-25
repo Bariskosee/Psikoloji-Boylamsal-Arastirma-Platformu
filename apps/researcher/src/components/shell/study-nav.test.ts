@@ -21,6 +21,7 @@ describe("study navigation by role", () => {
   it("gives an OWNER everything", () => {
     expect(ids("OWNER")).toEqual([
       "overview",
+      "consent",
       "questionnaires",
       "protocols",
       "participants",
@@ -34,6 +35,7 @@ describe("study navigation by role", () => {
   it("gives an EDITOR everything except member administration", () => {
     expect(ids("EDITOR")).toEqual([
       "overview",
+      "consent",
       "questionnaires",
       "protocols",
       "participants",
@@ -84,6 +86,7 @@ describe("resolving the active section", () => {
 
   it("matches a section at its own path", () => {
     expect(activeSection(`/en/studies/${STUDY}/monitoring`, STUDY)).toBe("monitoring");
+    expect(activeSection(`/tr/studies/${STUDY}/consent`, STUDY)).toBe("consent");
   });
 
   /**

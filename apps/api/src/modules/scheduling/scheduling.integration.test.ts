@@ -59,13 +59,15 @@ async function study(): Promise<Built> {
   const studyId: string = created.body.id;
 
   await client.get(`/api/studies/${studyId}/consent/draft`).expect(200);
-  await client
-    .put(`/api/studies/${studyId}/consent/draft/translations`, {
-      locale: "en",
-      title: "Sample consent title",
-      body: "Sample consent body supplied by the research team.",
-    })
-    .expect(200);
+  for (const locale of ["en", "tr"]) {
+    await client
+      .put(`/api/studies/${studyId}/consent/draft/translations`, {
+        locale,
+        title: "Sample consent title",
+        body: "Sample consent body supplied by the research team.",
+      })
+      .expect(200);
+  }
   const consent = await client.post(`/api/studies/${studyId}/consent/publish`).expect(201);
 
   const questionnaire = await client

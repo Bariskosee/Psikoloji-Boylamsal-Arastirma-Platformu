@@ -7,6 +7,7 @@ import {
   BarChart3,
   ClipboardList,
   Download,
+  FileCheck2,
   FlaskConical,
   LayoutDashboard,
   LineChart,
@@ -40,6 +41,7 @@ import { STUDY_SECTIONS, activeSection, sectionsFor, type StudySectionId } from 
 
 const ICONS: Record<StudySectionId, typeof LayoutDashboard> = {
   overview: LayoutDashboard,
+  consent: FileCheck2,
   questionnaires: ClipboardList,
   protocols: ListChecks,
   participants: Users,

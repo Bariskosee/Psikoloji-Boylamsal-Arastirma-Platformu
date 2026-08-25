@@ -57,6 +57,10 @@ export function AuthenticatedShell({ children }: { children: ReactNode }) {
     let cancelled = false;
     void (async () => {
       try {
+        // Rehydrate the double-submit proof from the API's host-only cookie.
+        // This also repairs valid sessions opened before researcher-origin
+        // CSRF persistence was deployed, without exposing the session token.
+        await api.bootstrapCsrf();
         const response = await api.get<{ user: ResearcherProfile }>("/api/auth/me");
         if (!cancelled) setUser(response.user);
       } catch {
@@ -98,7 +102,7 @@ export function AuthenticatedShell({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     setSigningOut(true);
     try {
-      await api.post("/api/auth/logout");
+      await api.logout();
     } finally {
       // Leave regardless. If the call failed the cookie may still be live, but
       // staying on an authenticated screen after the user asked to leave is

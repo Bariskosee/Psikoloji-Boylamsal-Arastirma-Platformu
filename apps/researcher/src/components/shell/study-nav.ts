@@ -20,6 +20,7 @@ import type { StudyRole } from "@lpr/contracts";
  */
 export type StudySectionId =
   | "overview"
+  | "consent"
   | "questionnaires"
   | "protocols"
   | "participants"
@@ -50,6 +51,15 @@ const ANALYSTS: readonly StudyRole[] = ["OWNER", "EDITOR", "ANALYST"];
  */
 export const STUDY_SECTIONS: readonly StudySection[] = [
   { id: "overview", segment: "", labelKey: "overview", icon: "overview", roles: ALL },
+  {
+    id: "consent",
+    segment: "/consent",
+    labelKey: "consent",
+    icon: "consent",
+    // Consent content is study configuration. The API applies the same
+    // `consent:edit` permission used by this authoring-only section.
+    roles: EDITORS,
+  },
   {
     id: "questionnaires",
     segment: "/questionnaires",

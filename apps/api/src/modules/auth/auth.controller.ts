@@ -1,4 +1,14 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, Req, Res } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  Header,
+  HttpCode,
+  HttpStatus,
+  Post,
+  Req,
+  Res,
+} from "@nestjs/common";
 import type { Response } from "express";
 import {
   changePasswordRequestSchema,
@@ -7,16 +17,18 @@ import {
   requestPasswordResetSchema,
   type ChangePasswordRequest,
   type ConfirmPasswordResetRequest,
+  type CsrfTokenResponse,
   type LoginRequest,
   type LoginResponse,
   type RequestPasswordResetRequest,
   type ResearcherProfile,
 } from "@lpr/contracts";
 import { ClockService } from "../../common/core.module.js";
-import { clearAuthCookies, setCsrfCookie, setSessionCookie } from "../../common/cookies.js";
+import { setCsrfCookie, setSessionCookie } from "../../common/cookies.js";
 import { loadEnv, shouldUseSecureCookies } from "../../config/env.js";
 import { ZodBodyPipe } from "../../common/zod-body.pipe.js";
 import { AuthService } from "./auth.service.js";
+import { readResearcherCsrfToken } from "./csrf-bootstrap.js";
 import { PasswordResetService } from "./password-reset.service.js";
 import { CurrentSession, CurrentUser } from "./decorators/current-user.decorator.js";
 import { Public } from "./decorators/public.decorator.js";
@@ -75,24 +87,49 @@ export class AuthController {
   }
 
   /**
+   * Restores the dashboard's non-secret double-submit proof from the API's
+   * host-only cookie after a deploy, reload, or lost Web Storage entry.
+   *
+   * GETs normally need no CSRF check, so this endpoint performs a deliberately
+   * narrower check of its own: only the exact researcher origin may read it,
+   * and the cookie must still be the one paired with the resolved session.
+   * The public participant sibling origin is explicitly not sufficient.
+   */
+  @Get("csrf")
+  @Header("Cache-Control", "no-store")
+  csrf(
+    @CurrentSession() session: RequestAuth,
+    @Req() request: AuthenticatedRequest,
+  ): CsrfTokenResponse {
+    return {
+      csrfToken: readResearcherCsrfToken(
+        request,
+        this.env.RESEARCHER_ORIGIN,
+        session.csrfTokenHash,
+      ),
+    };
+  }
+
+  /**
    * `POST /api/auth/logout`
    *
-   * Revokes server-side FIRST, then clears the cookies. If the response never
-   * reaches the browser, the session is still dead — the opposite order would
-   * leave a live session behind on a dropped connection.
+   * Revokes server-side before replying. The response deliberately does not
+   * clear the shared host cookies: an older logout response can arrive after a
+   * newer login in another dashboard tab, and an unconditional Set-Cookie
+   * deletion would destroy that newer session. The revoked token remaining in
+   * the cookie jar is inert, expires at its original deadline, and is replaced
+   * by the next successful login.
    */
   @Post("logout")
   @HttpCode(HttpStatus.NO_CONTENT)
   async logout(
     @CurrentSession() session: RequestAuth,
     @Req() request: AuthenticatedRequest,
-    @Res({ passthrough: true }) response: Response,
   ): Promise<void> {
     await this.auth.logout(session.sessionId, session.user, this.clock.now(), {
       ip: clientIp(request),
       userAgent: request.headers["user-agent"],
     });
-    clearAuthCookies(response, { secure: shouldUseSecureCookies(this.env), maxAgeMs: 0 });
   }
 
   /**

@@ -251,6 +251,17 @@ export const ApiErrors = {
       "A consent version needs text in at least one language before it can be published",
     ),
 
+  consentVersionIncomplete: (locales: readonly string[]) =>
+    new ApiException(
+      "CONSENT_VERSION_INCOMPLETE",
+      HttpStatus.CONFLICT,
+      `Consent title and text are required for every supported study locale: ${locales.join(", ")}`,
+      locales.map((locale) => ({
+        path: `translations.${locale}`,
+        message: "Both title and body must contain non-whitespace text",
+      })),
+    ),
+
   consentVersionStale: () =>
     new ApiException(
       "CONSENT_VERSION_STALE",

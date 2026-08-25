@@ -88,6 +88,8 @@ export const API_ERROR_CODES = [
   // Consent and participants (Phase 5)
   "CONSENT_VERSION_NOT_FOUND",
   "CONSENT_VERSION_EMPTY",
+  /** One or more current study locales lacks non-blank title/body text. */
+  "CONSENT_VERSION_INCOMPLETE",
   /** The consent text the participant read is no longer the study's current one. */
   "CONSENT_VERSION_STALE",
   "STUDY_NOT_ACCEPTING_ENROLLMENTS",
