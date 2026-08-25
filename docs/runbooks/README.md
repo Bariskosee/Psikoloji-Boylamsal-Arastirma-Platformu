@@ -18,6 +18,7 @@ Operational procedures for running the platform during a live study.
 | `participant-relink.md` | Reconnecting a participant who lost their device and recovery code, without a duplicate and without a wrong match. | — |
 | `data-erasure.md` | Retention and erasure, and the distinction from withdrawal. | — |
 | `study-launch-checklist.md` | Pre-launch verification, run with the researcher before the first enrollment. | — |
+| `smoke-test.md` | Proving a real phone receives a real notification from a new deployment, on a deliberately compressed protocol. | — |
 
 Alerts are computed in `packages/domain/src/operations/alerts.ts`, surfaced on the researcher operations page, and each one names the file above that says what to do. If you add an alert, add its procedure in the same change.
 
