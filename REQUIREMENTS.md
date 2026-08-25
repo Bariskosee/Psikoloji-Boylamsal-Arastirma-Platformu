@@ -811,7 +811,7 @@ The following are intentionally configurable and must never be hard-coded. The s
 1. **Data retention period**, and whether responses are retained after withdrawal. Required for the ethics submission and for NFR-18 and FR-39.
 2. **Consent scope on change** — does a mid-study consent revision require re-consent, or does the version bound at enrollment suffice?
 3. **Is an email address collected?** If yes, it materially strengthens participant recovery (FR-41). If no, the recovery code is the only backstop and participants must be instructed to save it.
-4. **Hosting region acceptability** — the architecture assumes a single EU region. A requirement to keep data within Türkiye changes only the deployment target, not the application.
+4. ~~**Hosting region acceptability**~~ — **resolved 2026-08-25.** The deployment runs on a single VM located in Türkiye, so participant data does not cross a border and the ethics submission has no international transfer to declare. See ADR-012's amendment. The architecture is unchanged: this was only ever a deployment target.
 
 ---
 

@@ -1,6 +1,7 @@
 # ADR-012 — Self-hosted single-VM deployment
 
 **Status:** Accepted — 2026-08-24. Amends ADR-010; does not replace it.
+Amended 2026-08-25 — see *Amendment: the machine is paid and in Türkiye*.
 
 ## Context
 
@@ -95,3 +96,49 @@ run.
 `render.staging.yaml` remain the managed path, and `blueprints.test.ts` still
 keeps them honest. Moving to managed hosting later is a deployment change, not
 an application change, which is the property ADR-010 was protecting.
+
+---
+
+## Amendment — 2026-08-25: the machine is paid, and it is in Türkiye
+
+**What changed.** The deployment target is no longer Oracle Cloud's Always Free
+Ampere A1 in an EU region. It is a TuemCloud *Advanced VDS* located in Türkiye,
+at roughly 356 ₺ per month.
+
+**Why.** Ampere A1 capacity was unavailable for three consecutive days
+(`OUT_OF_HOST_CAPACITY`), which is a chronic and widely reported condition of
+that tier rather than a transient one. The documented remedy — upgrading to Pay
+As You Go for capacity priority, which keeps Always Free resources at zero cost —
+requires a card and a verification hold, and was declined. No other always-free
+tier provides the always-on process ADR-005 requires; that finding is unchanged
+and is the whole reason this ADR exists.
+
+Waiting was the real cost. A longitudinal study's enrollment window is not
+elastic, and the original decision's own framing applies here: a deployment
+whose availability has no date attached is worse than a small predictable bill.
+
+**What this buys beyond availability.** `REQUIREMENTS.md` §10 item 4 asked
+whether data must remain in Türkiye and recorded it as open. A Turkish host
+settles it in the strongest available direction: participant data never crosses
+a border, and the ethics submission has no international transfer to describe.
+The original ADR wanted "one data-residency sentence for the ethics committee";
+this is a shorter sentence than the EU one would have been.
+
+**What it costs.** The zero-cost property is gone, and with it the guarantee
+that the machine cannot lapse for financial reasons. An unpaid renewal
+suspends the VM, the sweepers stop, and — exactly as with an idled free tier —
+**nothing reports an error**. The renewal date is now an operational
+dependency of the scheduling guarantee, and `self-hosted-deploy.md` §9 lists it
+as something to watch. This is a worse failure mode than a cloud provider's
+billing, because there is no grace period to rely on.
+
+**What is unchanged.** Everything else. `infrastructure/compose/` runs as
+written; ADR-005's always-on worker, ADR-003's two-schema split created by the
+first-run script, ADR-009's three origins on one proxy, and the nightly logical
+dump all behave identically. NFR-18 is still only partly met: still no
+point-in-time recovery. One machine is still one point of failure.
+
+The ARM64 consequence recorded above is now conditional rather than binding —
+the target is x86-64 unless the provider says otherwise — but the underlying
+rule is the same: build on the machine that will run the images, or push
+multi-architecture ones.
