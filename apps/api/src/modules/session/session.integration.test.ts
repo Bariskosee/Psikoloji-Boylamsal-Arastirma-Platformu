@@ -60,13 +60,15 @@ async function openSession(window?: { from: Date; until: Date }): Promise<Fixtur
   const studyId: string = study.body.id;
 
   await client.get(`/api/studies/${studyId}/consent/draft`).expect(200);
-  await client
-    .put(`/api/studies/${studyId}/consent/draft/translations`, {
-      locale: "en",
-      title: "Sample consent title",
-      body: "Sample consent body supplied by the research team.",
-    })
-    .expect(200);
+  for (const locale of ["en", "tr"]) {
+    await client
+      .put(`/api/studies/${studyId}/consent/draft/translations`, {
+        locale,
+        title: "Sample consent title",
+        body: "Sample consent body supplied by the research team.",
+      })
+      .expect(200);
+  }
   await client.post(`/api/studies/${studyId}/consent/publish`).expect(201);
 
   const questionnaire = await client
