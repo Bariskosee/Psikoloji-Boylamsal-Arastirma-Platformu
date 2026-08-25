@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ErrorBanner } from "@/components/ui/states";
-import type { LoginResponse } from "@lpr/contracts";
 
 /**
  * Researcher login.
@@ -32,7 +31,7 @@ export default function LoginPage() {
     setPending(true);
 
     try {
-      await api.post<LoginResponse>("/api/auth/login", { email, password });
+      await api.login({ email, password });
       router.push("/studies");
     } catch (caught) {
       // The message is translated from the CODE, never taken from the server's

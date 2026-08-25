@@ -273,6 +273,19 @@ describe("session lifecycle", () => {
     expect(after.body.error.code).toBe("SESSION_EXPIRED");
   });
 
+  it("does not let a delayed logout response erase a newer tab's cookies", async () => {
+    const user = await createUser(harness.db);
+    const client = await Client.login(harness.app, user);
+
+    const response = await client.post("/api/auth/logout").expect(204);
+
+    // Cookie deletion headers are inherently unscoped: a response to an old
+    // request would delete whatever same-name cookie the browser has now,
+    // including one minted by a newer login in another tab. Revocation is the
+    // security boundary; the dead cookie is harmless and expires normally.
+    expect(response.headers["set-cookie"]).toBeUndefined();
+  });
+
   it("marks the row revoked rather than deleting it", async () => {
     const user = await createUser(harness.db);
     const client = await Client.login(harness.app, user);
@@ -360,6 +373,50 @@ describe("session lifecycle", () => {
     );
 
     await client.get("/api/auth/me").expect(401);
+  });
+});
+
+describe("GET /api/auth/csrf", () => {
+  it("returns only the CSRF cookie paired with the live session to the researcher origin", async () => {
+    const user = await createUser(harness.db);
+    const client = await Client.login(harness.app, user);
+
+    const response = await client.get("/api/auth/csrf").expect(200);
+
+    expect(response.body).toEqual({ csrfToken: client.csrfToken });
+    expect(response.headers["cache-control"]).toBe("no-store");
+  });
+
+  it("does not expose the token to the participant sibling origin", async () => {
+    const user = await createUser(harness.db);
+    const client = await Client.login(harness.app, user);
+    const participantOrigin = process.env["PARTICIPANT_ORIGIN"] ?? "http://localhost:3000";
+
+    const response = await request(server())
+      .get("/api/auth/csrf")
+      .set("Cookie", client.cookies)
+      .set("Origin", participantOrigin)
+      .expect(403);
+
+    expect(response.body.error.code).toBe("CSRF_FAILED");
+    expect(JSON.stringify(response.body)).not.toContain(client.csrfToken);
+  });
+
+  it("rejects a CSRF cookie that is not paired with the authenticated session", async () => {
+    const user = await createUser(harness.db);
+    const client = await Client.login(harness.app, user);
+    const cookies = client.cookies
+      .filter((cookie) => !cookie.startsWith(`${CSRF_COOKIE_NAME}=`))
+      .concat(`${CSRF_COOKIE_NAME}=not-the-session-token`);
+
+    const response = await request(server())
+      .get("/api/auth/csrf")
+      .set("Cookie", cookies)
+      .set("Origin", RESEARCHER_ORIGIN)
+      .expect(403);
+
+    expect(response.body.error.code).toBe("CSRF_FAILED");
+    expect(JSON.stringify(response.body)).not.toContain(client.csrfToken);
   });
 });
 

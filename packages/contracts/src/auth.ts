@@ -60,16 +60,24 @@ export const loginResponseSchema = z.object({
   /**
    * The double-submit CSRF token (STRUCTURE.md §11.5).
    *
-   * Also set as a readable (non-HttpOnly) cookie. It is returned in the body
-   * so a client can hold it in memory instead of reading `document.cookie` on
-   * every request. It is not a secret in the way the session token is: it
-   * authorises nothing on its own, it only proves the caller can read a
-   * same-site response.
+   * Also set as a non-HttpOnly, host-only API cookie. ADR-009 puts the dashboard
+   * on a different origin, so dashboard script cannot read that cookie and
+   * receives the value in this body instead. It is not a secret in the way the
+   * session token is: it authorises nothing without the HttpOnly session cookie
+   * and an allowed request origin.
    */
   csrfToken: z.string(),
 });
 
 export type LoginResponse = z.infer<typeof loginResponseSchema>;
+
+/**
+ * Recovery response for an already-authenticated dashboard whose researcher-
+ * origin CSRF storage is absent (for example, an open session from before the
+ * cross-origin token persistence fix was deployed).
+ */
+export const csrfTokenResponseSchema = loginResponseSchema.pick({ csrfToken: true });
+export type CsrfTokenResponse = z.infer<typeof csrfTokenResponseSchema>;
 
 export const changePasswordRequestSchema = z.object({
   currentPassword: z.string().min(1).max(MAX_PASSWORD_LENGTH),
